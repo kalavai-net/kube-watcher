@@ -4,7 +4,6 @@ How to create a token: https://kubernetes.io/docs/tasks/access-application-clust
 """
 
 import kubernetes.client
-import time
 from kubernetes.client.rest import ApiException
 from pprint import pprint
 
@@ -18,7 +17,6 @@ if __name__ == "__main__":
     configuration.host = "https://10.8.0.1:6443"
     configuration.verify_ssl = False
     configuration.api_key = {"authorization": "Bearer " + token}
-
 
     # Enter a context with an instance of the API kubernetes.client
     with kubernetes.client.ApiClient(configuration) as api_client:

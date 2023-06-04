@@ -1,5 +1,6 @@
 # Kube-Watcher
 
+Python kubernetes API reference https://github.com/kubernetes-client/python/blob/master/kubernetes/README.md
 
 
 ## Install
