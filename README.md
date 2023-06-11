@@ -48,3 +48,20 @@ https://www.phillipsj.net/posts/k8s-yaml-alternative-python/
 https://github.com/janakiramm/kubernetes-101
 https://dev.to/itminds/hello-python-through-docker-and-kubernetes-379d
 https://developer.ibm.com/tutorials/scalable-python-app-with-kubernetes/
+
+
+## TODO
+
+Monitor resources --> active polling vs prometheus logging and querying in batch?
+- Simpler to poll, but critical as it can miss data (if service goes down info is lost)
+- More robust is to use prometheus (stores in database) as it can be done at any point, and if it fails, it is recoverable.
+
+
+- [x] fetch resources available (allocatable) and registered (capacity)
+- [x] fetch nodes readiness
+- [] deploy prometheus to store cluster metrics (can do nodes and resources?)
+- [] deploy database to store node readiness and user resource mappings
+- [] service / application to register users (register resources to user accountns)
+- [] service / application to monitor node readiness
+- [] service / application to show resources availability
+- [] service / application to manage user nodes (crud CPUs, memory, GPUs)
