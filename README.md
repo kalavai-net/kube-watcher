@@ -1,5 +1,7 @@
 # Kube-Watcher
 
+Set of OpenFaaS functions to request Kubernetes API information in Kalavai.
+
 Python kubernetes API reference https://github.com/kubernetes-client/python/blob/master/kubernetes/README.md
 
 
@@ -50,6 +52,32 @@ https://dev.to/itminds/hello-python-through-docker-and-kubernetes-379d
 https://developer.ibm.com/tutorials/scalable-python-app-with-kubernetes/
 
 
+# To connect to Graphana
+
+In control plane:
+```
+kubectl port-forward deployment/prometheus-grafana 3000
+```
+
+Then forward the port 3000 to local machine (vscode)
+
+Access graphana on localhost:3000
+- admin
+- prom-operator
+
+
+# Connect to prometheus (via browser or API)
+
+In control plane
+```
+kubectl port-forward --namespace default svc/prometheus-kube-prometheus-prometheus 9090:9090
+```
+
+Then forward the port 9090 to local machine (vscode) 
+
+Access prometheus UI on localhost:9090 or use python client to connect to port 9090
+
+
 ## TODO
 
 Monitor resources --> active polling vs prometheus logging and querying in batch?
@@ -59,7 +87,8 @@ Monitor resources --> active polling vs prometheus logging and querying in batch
 
 - [x] fetch resources available (allocatable) and registered (capacity)
 - [x] fetch nodes readiness
-- [] deploy prometheus to store cluster metrics (can do nodes and resources?)
+- [x] deploy prometheus to store cluster metrics (can do nodes and resources?)
+- [] access clusterIP of prometheus server from a cluster node (can't connect without port forwarding now)
 - [] deploy database to store node readiness and user resource mappings
 - [] service / application to register users (register resources to user accountns)
 - [] service / application to monitor node readiness

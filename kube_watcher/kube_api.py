@@ -69,7 +69,7 @@ def is_node_ready(node):
 if __name__ == "__main__":
 
     # # Enter a context with an instance of the API kubernetes.client
-    kubernetes.config.load_kube_config("certs/cluster_config.yaml")
+    kubernetes.config.load_kube_config("~/.kube/kalavai_config")
     with kubernetes.client.ApiClient() as api_client:
         # Create an instance of the API class
         api_instance = kubernetes.client.CoreV1Api(api_client)
