@@ -6,9 +6,11 @@ authors     = ["Carlos Fernandez Musoles <carlos@kalavai.net>"]
 
 
 [tool.poetry.dependencies]
-python                  = { version = ">= 3.8, < 4.0" }
-kubernetes              = { version = "^26.1" }
+python                  = ">= 3.8, < 4.0" 
+kubernetes              = { version = "^27.2.0" }
 prometheus-api-client   = { version = "^0.5.3" }
+plotext                 = { version = "^5.2.8" }
+fastapi                 = { version = "0.101.1", extras = ["all"] }
 
 # interface
 plotly                  = { version = "^5.15.0" }

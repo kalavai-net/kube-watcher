@@ -40,18 +40,6 @@ clusters:
 ...
 ```
 
-## Python lib to create pods
-
-https://www.phillipsj.net/posts/k8s-yaml-alternative-python/
-
-
-## Deployment to kubernetes
-
-https://github.com/janakiramm/kubernetes-101
-https://dev.to/itminds/hello-python-through-docker-and-kubernetes-379d
-https://developer.ibm.com/tutorials/scalable-python-app-with-kubernetes/
-
-
 # To connect to Graphana
 
 In control plane:
@@ -78,19 +66,117 @@ Then forward the port 9090 to local machine (vscode)
 Access prometheus UI on localhost:9090 or use python client to connect to port 9090
 
 
-## TODO
+# Serverless Kubernetes API
 
-Monitor resources --> active polling vs prometheus logging and querying in batch?
-- Simpler to poll, but critical as it can miss data (if service goes down info is lost)
-- More robust is to use prometheus (stores in database) as it can be done at any point, and if it fails, it is recoverable.
+OpenFaaS for serverless functions to help worker clients access kubernetes stats.
+
+Example: https://medium.com/@turcios.kevinj/get-started-with-the-kubernetes-python-client-on-openfaas-d5a8eb2f3eca
+
+Current functions
+
+- get-node-stats --> for a node(s) get connectivity stats
+- get-capacity --> for the network, get allocatable, capacity and online availability
 
 
-- [x] fetch resources available (allocatable) and registered (capacity)
-- [x] fetch nodes readiness
-- [x] deploy prometheus to store cluster metrics (can do nodes and resources?)
-- [] access clusterIP of prometheus server from a cluster node (can't connect without port forwarding now)
-- [] deploy database to store node readiness and user resource mappings
-- [] service / application to register users (register resources to user accountns)
-- [] service / application to monitor node readiness
-- [] service / application to show resources availability
-- [] service / application to manage user nodes (crud CPUs, memory, GPUs)
+## Install
+
+```bash
+curl -sSL https://cli.openfaas.com | sudo sh
+curl -sLS https://get.arkade.dev | sudo sh
+arkade install openfaas
+```
+
+Create a python function from template:
+```bash
+faas-cli new --lang python3 get-all-pods --prefix <YOUR_DOCKERHUB_USERNAME> --gateway http://127.0.0.1:31112
+```
+
+Template will be created in folder get-all-pods
+
+Add dependencies to requirements.txt
+```bash
+kubernetes
+```
+
+Add to template/python3/template.yml:
+```yaml
+  - name: kubernetes-client
+    packages:
+      - g++
+      - libffi-dev
+      - openssl-dev
+```
+
+Apply read only role for namespace openfaas-fn
+```bash
+kubectl apply -f cluster_role.yaml
+```
+
+Login to openfaas
+```bash
+kubectl port-forward -n openfaas svc/gateway 8080:8080 &
+PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
+echo -n $PASSWORD | faas-cli login --username admin --password-stdin
+```
+
+Login to private image registry:
+```bash
+faas-cli registry-login --username admin --password admin --server 159.65.30.72:32000
+```
+
+Build and deploy function:
+```bash
+faas-cli up --build-option kubernetes-client -f get-all-pods.yml
+```
+
+To test the function:
+
+```
+http://159.65.30.72:31112/ui/
+http://159.65.30.72:31112/function/get-all-pods
+```
+
+### Install notes
+
+```bash
+=======================================================================
+= OpenFaaS has been installed.                                        =
+=======================================================================
+
+# Get the faas-cli
+curl -SLsf https://cli.openfaas.com | sudo sh
+
+# Forward the gateway to your machine
+kubectl rollout status -n openfaas deploy/gateway
+kubectl port-forward -n openfaas svc/gateway 8080:8080 &
+
+# If basic auth is enabled, you can now log into your gateway:
+PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
+echo -n $PASSWORD | faas-cli login --username admin --password-stdin
+
+faas-cli store deploy figlet
+faas-cli list
+
+# For Raspberry Pi
+faas-cli store list \
+ --platform armhf
+
+faas-cli store deploy figlet \
+ --platform armhf
+```
+
+
+## FastAPI service
+
+Build docker image:
+```bash
+docker build -t kube_watcher .
+docker tag kube_watcher:latest bundenth/kube_watcher:v1
+docker push bundenth/kube_watcher:v1
+```
+
+Create service and deployment
+
+```bash
+kubectl apply -f kube_deployment.yaml
+```
