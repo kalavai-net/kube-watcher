@@ -11,6 +11,7 @@ kubernetes              = { version = "^27.2.0" }
 prometheus-api-client   = { version = "^0.5.3" }
 plotext                 = { version = "^5.2.8" }
 fastapi                 = { version = "0.101.1", extras = ["all"] }
+anvil-uplink            = { version = "0.4.2" }
 
 # interface
 plotly                  = { version = "^5.15.0" }

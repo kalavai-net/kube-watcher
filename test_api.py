@@ -1,15 +1,18 @@
 import requests
 
 
-URL = "http://159.65.30.72:31230"
+URL = "http://localhost:8009"
 
 if __name__ == "__main__":
 
     params = {
-        "node_id": "carlosfm-laptop"
+        "username": "carlos.fernandez.musoles@gmail.com",
+        "password": ""
     }
     response = requests.get(
-        f"{URL}/v1/get_node_stats",
+        f"{URL}/v1/validate_user",
         json=params
     )
     print(response.json())
+    
+    

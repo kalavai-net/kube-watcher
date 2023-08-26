@@ -33,7 +33,7 @@ class PrometheusAPI():
             chunk_size=chunk_size
         )
         metric_df = MetricRangeDataFrame(metric).reset_index()
-        return metric_df.to_dict()
+        return metric_df.to_dict(orient="list")
 
 
 if __name__ == "__main__":

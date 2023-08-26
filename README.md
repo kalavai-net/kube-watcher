@@ -171,8 +171,8 @@ faas-cli store deploy figlet \
 Build docker image:
 ```bash
 docker build -t kube_watcher .
-docker tag kube_watcher:latest bundenth/kube_watcher:v1
-docker push bundenth/kube_watcher:v1
+docker tag kube_watcher:latest bundenth/kube_watcher:v8
+docker push bundenth/kube_watcher:v8
 ```
 
 Create service and deployment
@@ -180,3 +180,8 @@ Create service and deployment
 ```bash
 kubectl apply -f kube_deployment.yaml
 ```
+
+
+### Check valid username/password
+
+RESULT=$(curl -X GET http://localhost:8009/v1/validate_user -H 'Content-Type: application/json' -d '{"username":"EMAIL", "password":"PASSWORD"}')

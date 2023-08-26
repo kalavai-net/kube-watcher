@@ -4,7 +4,6 @@ from kubernetes import config
 
 
 def load_config(in_cluster=False):
-    print(in_cluster)
     if in_cluster:
         config.load_incluster_config()
     else:
@@ -54,8 +53,10 @@ def extract_cluster_capacity(nodes):
     for node in nodes:
         status = True if extract_node_readiness(node).status == "True" else False
         if status:
+            data["online"]["n_nodes"] += 1
             for resource, value in node.status.capacity.items():
                 data["online"][resource] += cast_resource_value(value)
+        data["total"]["n_nodes"] += 1
         for resource, value in node.status.capacity.items():
             data["total"][resource] += cast_resource_value(value)
     return data
