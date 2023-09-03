@@ -9,7 +9,7 @@ metadata:
   name: kube-watcher-api
   namespace: kube-watcher
 spec:
-  replicas: 1
+  replicas: 2 # ensure there is minimal downtime if node goes down
   selector:
     matchLabels:
       app: kube-watcher-api
@@ -20,13 +20,15 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v8
+        image: bundenth/kube_watcher:v9
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
         env:
         - name: PROMETHEUS_ENDPOINT
           value: "http://10.152.183.108:9090"
+        - name: ANVIL_CLIENT_KEY
+          value: "client_RIH6JESGB46H5H2C26QNTEPN-WCK6VK5MLEHD7BEC"
 ---
 apiVersion: v1
 kind: Service

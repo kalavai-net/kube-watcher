@@ -1,13 +1,13 @@
 import requests
 
 
-URL = "http://localhost:8009"
+URL = "http://159.65.30.72:31230"
 
 if __name__ == "__main__":
 
     params = {
         "username": "carlos.fernandez.musoles@gmail.com",
-        "password": ""
+        "password": "iekeopru"
     }
     response = requests.get(
         f"{URL}/v1/validate_user",
