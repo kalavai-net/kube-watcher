@@ -2,6 +2,12 @@
 
 kubectl get svc
 
+PROMETHEUS QUERIES:
+- Flops between ready and not ready in the last 10h: sum(changes(kube_node_status_condition{status="true",condition="Ready"}[10h])) by (node) > 2
+- CPU Utilisation per node: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[10m]) * 100) * on(instance) group_left(nodename) (node_uname_info))
+- Load per instance overtime: sum by (instance) (node_load5) / count by (instance) (node_cpu_seconds_total{mode="user"}) * 100
+
+
 """
 import logging
 
@@ -66,5 +72,6 @@ if __name__ == "__main__":
         color="node"
     )
     fig.show()
+    
     
     
