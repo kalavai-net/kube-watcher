@@ -1,16 +1,16 @@
 import os
+from typing import List
 
-from kubernetes import client
 from fastapi import FastAPI
 
 from app.models import (
     NodeStatusRequest,
     ValidateUserRequest,
-    LinNodeUserRequest
+    NodeLabelsRequest,
+    LinkNodeUserRequest
 )
 from app.kube_core import (
-    load_config,
-    extract_cluster_capacity
+    KubeAPI
 )
 from app.prometheus_core import PrometheusAPI
 from app.anvil_core import (
@@ -23,16 +23,24 @@ IN_CLUSTER = "True" == os.getenv("IN_CLUSTER", "True")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://159.65.30.72:9090")
 ANVIL_CLIENT_KEY = os.getenv("ANVIL_CLIENT_KEY", "client_RIH6JESGB46H5H2C26QNTEPN-WCK6VK5MLEHD7BEC")
 
-load_config(in_cluster=IN_CLUSTER)
-v1 = client.CoreV1Api()
+kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
 
 
-@app.get("/v1/get_capacity")
-async def capacity():
-    nodes = v1.list_node()
-    capacity = extract_cluster_capacity(nodes.items)
-    return capacity
+@app.get("/v1/get_cluster_capacity")
+async def cluster_capacity():
+    cluster_capacity = kube_api.extract_cluster_capacity()
+    return cluster_capacity
+
+@app.get("/v1/get_cluster_labels")
+async def cluster_labels():
+    labels = kube_api.extract_cluster_labels()
+    return labels
+
+@app.get("/v1/get_node_labels")
+async def node_labels(request: NodeLabelsRequest):
+    labels = kube_api.get_node_labels(node_names=request.node_names)
+    return labels
 
 
 @app.get("/v1/get_node_stats")
@@ -56,7 +64,7 @@ async def validate_user(request: ValidateUserRequest):
     )
 
 @app.get("/v1/link_user_node")
-async def post_user_node(request: LinNodeUserRequest):
+async def post_user_node(request: LinkNodeUserRequest):
     return link_user_node(
         anvil_key=ANVIL_CLIENT_KEY,
         username=request.user.username,

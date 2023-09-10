@@ -1,18 +1,18 @@
+import json
 import requests
 
 
-URL = "http://159.65.30.72:31230"
+URL = "http://localhost:8009"
 
 if __name__ == "__main__":
 
     params = {
-        "username": "carlos.fernandez.musoles@gmail.com",
-        "password": "iekeopru"
+        "node_names": ["carlosfm-laptop"],
     }
     response = requests.get(
-        f"{URL}/v1/validate_user",
-        json=params
+        f"{URL}/v1/get_cluster_capacity",
+        #json=params
     )
-    print(response.json())
+    print(json.dumps(response.json(), indent=3))
     
     

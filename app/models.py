@@ -1,3 +1,4 @@
+from typing import List
 from pydantic import BaseModel
 
 class NodeStatusRequest(BaseModel):
@@ -11,6 +12,9 @@ class ValidateUserRequest(BaseModel):
     username: str
     password: str
 
-class LinNodeUserRequest(BaseModel):
+class LinkNodeUserRequest(BaseModel):
     user: ValidateUserRequest
     node_name: str
+    
+class NodeLabelsRequest(BaseModel):
+    node_names: List[str] = None
