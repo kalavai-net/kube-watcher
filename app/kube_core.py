@@ -1,4 +1,6 @@
 import json
+import time
+import yaml
 from collections import defaultdict
 
 from kubernetes import config, client
@@ -56,7 +58,7 @@ class KubeAPI():
         else:
             # Only works if this script is run by K8s as a POD
             config.load_kube_config()
-        self.api = client.CoreV1Api()
+        self.core_api = client.CoreV1Api()
     
     
     def extract_node_readiness(self, node):
@@ -68,7 +70,7 @@ class KubeAPI():
     
     def _extract_resources(self, fn):
         """Generalisation to extract values in dict form"""
-        nodes = self.api.list_node()
+        nodes = self.core_api.list_node()
         data = {"online": defaultdict(int), "total": defaultdict(int)}
         for node in nodes.items:
             status = True if self.extract_node_readiness(node).status == "True" else False
@@ -106,10 +108,77 @@ class KubeAPI():
             else:
                 node_labels[name] = node.metadata.labels
         return node_labels
+    
+    def create_vcluster(self, namespace):
+        # TODO: create vcluster for user
+        pass
+    
+    
+    def create_ray_cluster(self, namespace, cluster_config=None, nodeport_config=None):
+        # TODO:
+        # - Create a ray cluster in the user namespace
+        try:
+            print("Creating namespace...")
+            result = self.core_api.create_namespace(
+                body=client.V1Namespace(
+                    metadata={"name": namespace}
+                )
+            )
+            print(result)
+        except:
+            # skip if already present
+            pass
 
+        if cluster_config:
+            print("Creating ray cluster...")
+            with open(cluster_config, 'r') as yaml_in:
+                yaml_object = yaml.safe_load(yaml_in) # yaml_object will be a list or a dict
+            
+            result = client.CustomObjectsApi().create_namespaced_custom_object(
+                group="ray.io", 
+                version="v1alpha1",
+                namespace=namespace,
+                plural="rayclusters",
+                body=yaml_object,
+                pretty=True
+            )
+            print(result)
+        
+        # - create a nodeport service to access the cluster
+        if nodeport_config:
+            print("Creating ray nodeport...")
+            with open(nodeport_config, 'r') as yaml_in:
+                yaml_object = yaml.safe_load(yaml_in) # yaml_object will be a list or a dict
+            
+            result = api.core_api.create_namespaced_service(
+                namespace=namespace,
+                body=yaml_object,
+                pretty=True
+            )
+            print(result)
+        # - return connection details via the nodeport
+        return result
+        
 
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
+    
+    result = api.create_ray_cluster(
+        namespace="carlos-ray",
+        cluster_config="data/ray_cluster.yaml",
+        nodeport_config="data/ray_nodeport.yaml"
+    )
+    
+    # Get custom objects that match:
+    #apiVersion: ray.io/v1alpha1
+    #kind: RayCluster
+    clusters = client.CustomObjectsApi().list_cluster_custom_object(
+        group="ray.io", 
+        version="v1alpha1",
+        plural="rayclusters")
+    for item in clusters["items"]:
+        print(json.dumps(item, indent=3))
+    exit()
     
     values = api.extract_cluster_labels()
     print(json.dumps(values, indent=3))

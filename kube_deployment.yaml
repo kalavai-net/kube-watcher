@@ -20,15 +20,17 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v10
+        image: bundenth/kube_watcher:v12
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
         env:
         - name: PROMETHEUS_ENDPOINT
-          value: "http://10.152.183.108:9090"
+          value: "http://10.152.183.239"
+        - name: OPENCOST_ENDPOINT
+          value: "http://10.152.183.93:9003"
         - name: ANVIL_CLIENT_KEY
-          value: "client_RIH6JESGB46H5H2C26QNTEPN-WCK6VK5MLEHD7BEC"
+          value: "client_A2ZZVMV6LLHVCZ4XSMTOWTSH-ADMVMYW5OIRPH75P"
 ---
 apiVersion: v1
 kind: Service
@@ -40,5 +42,6 @@ spec:
   ports:
   - port: 8000
     targetPort: 8000
+    nodePort: 30873
   selector:
     app: kube-watcher-api

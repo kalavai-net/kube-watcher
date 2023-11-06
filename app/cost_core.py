@@ -22,17 +22,14 @@ class OpenCostAPI():
     def _form_url(self, endpoint):
         return urljoin(self.base_url, endpoint)
     
-    def get_nodes_computation(self, window, resolution, nodes: list=None):
-        params = {
-            "window": window,
-            "aggregate": "node",
-            "accumulate": True,
-            "resolution": resolution
-        }
+    def get_nodes_computation(self, nodes: list=None, **kwargs):
+        # https://docs.kubecost.com/apis/apis-overview/allocation
+        kwargs["aggregate"] = "node"
         result = requests.get(
-            self._form_url(endpoint="/allocation"),
-            params=params
+            self._form_url(endpoint="/allocation/compute"),
+            params=kwargs
         )
+        print(result.text)
         data = result.json()['data']
         if nodes is None:
             return data
@@ -40,17 +37,14 @@ class OpenCostAPI():
             return {name: info for block in data for name, info in block.items() if name in nodes}
 
 
-    def get_namespaces_cost(self, window, resolution, namespaces: list=None):
-        params = {
-            "window": window,
-            "aggregate": "namespace",
-            "accumulate": True,
-            "resolution": resolution
-        }
+    def get_namespaces_cost(self, namespaces: list=None, **kwargs):
+        # https://docs.kubecost.com/apis/apis-overview/allocation
+        kwargs["aggregate"] = "namespace"
         result = requests.get(
-            self._form_url(endpoint="/allocation"),
-            params=params
+            self._form_url(endpoint="/allocation/compute"),
+            params=kwargs
         )
+        print(result.text)
         data = result.json()['data']
         if namespaces is None:
             return data
@@ -60,12 +54,13 @@ class OpenCostAPI():
 
 if __name__ == "__main__":
     
-    BASE_URL = os.getenv("OPENCOST_URL", default="http://10.152.183.57:9003")
+    BASE_URL = os.getenv("OPENCOST_URL", default="http://10.152.183.80:9003")
     opencost = OpenCostAPI(base_url=BASE_URL)
 
-    result = opencost.get_namespaces_cost(
-        window="7d",
-        resolution="1m",
-        namespaces=["kube-system"])
+    result = opencost.get_nodes_computation(
+        window="2023-09-15T20:16:00Z,2023-09-21T21:16:00Z",
+        accumulate=True,
+        resolution="1s",
+        nodes=["kube-control-plane", "carlosfm-laptop"])
     print(json.dumps(result, indent=3))
     

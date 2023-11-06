@@ -171,8 +171,8 @@ faas-cli store deploy figlet \
 Build docker image:
 ```bash
 docker build -t kube_watcher .
-docker tag kube_watcher:latest bundenth/kube_watcher:v10
-docker push bundenth/kube_watcher:v10
+docker tag kube_watcher:latest bundenth/kube_watcher:v12
+docker push bundenth/kube_watcher:v12
 ```
 
 Create service and deployment

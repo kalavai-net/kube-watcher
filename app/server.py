@@ -2,12 +2,16 @@ import os
 from typing import List
 
 from fastapi import FastAPI
+from app.cost_core import OpenCostAPI
 
 from app.models import (
     NodeStatusRequest,
     ValidateUserRequest,
     NodeLabelsRequest,
-    LinkNodeUserRequest
+    LinkNodeUserRequest,
+    NodeCostRequest,
+    NamespacesCostRequest,
+    RayClusterRequest
 )
 from app.kube_core import (
     KubeAPI
@@ -21,6 +25,7 @@ from app.anvil_core import (
 
 IN_CLUSTER = "True" == os.getenv("IN_CLUSTER", "True")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://159.65.30.72:9090")
+OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.152.183.80:9003")
 ANVIL_CLIENT_KEY = os.getenv("ANVIL_CLIENT_KEY", "client_RIH6JESGB46H5H2C26QNTEPN-WCK6VK5MLEHD7BEC")
 
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
@@ -55,6 +60,24 @@ async def node_stats(request: NodeStatusRequest):
     )
 
 
+@app.get("/v1/get_nodes_cost")
+async def node_cost(request: NodeCostRequest):
+    opencost = OpenCostAPI(base_url=OPENCOST_ENDPOINT)
+
+    return opencost.get_nodes_computation(
+        nodes=request.node_names,
+        **request.kubecost_params.model_dump())
+
+
+@app.get("/v1/get_namespaces_cost")
+async def namespace_cost(request: NamespacesCostRequest):
+    opencost = OpenCostAPI(base_url=OPENCOST_ENDPOINT)
+
+    return opencost.get_namespaces_cost(
+        namespaces=request.namespace_names,
+        **request.kubecost_params.model_dump())
+
+
 @app.get("/v1/validate_user")
 async def validate_user(request: ValidateUserRequest):
     return validate_anvil_user(
@@ -69,5 +92,15 @@ async def post_user_node(request: LinkNodeUserRequest):
         anvil_key=ANVIL_CLIENT_KEY,
         username=request.user.username,
         password=request.user.password,
-        node_name=request.node_name
+        node_name=request.node_name,
+        os=request.os
     )
+
+@app.get("/v1/create_ray_cluster")
+async def create_ray_cluster(request: RayClusterRequest):
+    result = kube_api.create_ray_cluster(
+        namespace=request.namespace,
+        cluster_config="data/ray_cluster.yaml",
+        nodeport_config="data/ray_ndoeport.yaml"
+    )
+    return result

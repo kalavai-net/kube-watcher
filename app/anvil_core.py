@@ -17,14 +17,14 @@ def validate_anvil_user(anvil_key, username, password):
     except:
         return False
     
-def link_user_node(anvil_key, username, password, node_name):
+def link_user_node(anvil_key, username, password, node_name, os):
     user = validate_anvil_user(
         anvil_key=anvil_key,
         username=username,
         password=password
     )
     anvil.server.connect(anvil_key)
-    anvil.server.call('link_user_node', node_name)
+    anvil.server.call('link_user_node', node_name, os)
     return user
 
     
