@@ -26,19 +26,18 @@ class NamespacesCostRequest(BaseModel):
     namespace_names: List[str]
     kubecost_params: KubecostParameters
 
-
-class ValidateUserRequest(BaseModel):
-    username: str
-    password: str
-
-class LinkNodeUserRequest(BaseModel):
-    user: ValidateUserRequest
-    node_name: str
-    os: str
+class DeepsparseDeploymentRequest(BaseModel):
+    namespace: str
+    deployment_name: str
+    deepsparse_model_id: str
+    task: str
+    num_cores: int
+    ram_memory: str
+    ephemeral_memory: str
+    
+class DeepsparseDeploymentDeleteRequest(BaseModel):
+    namespace: str
+    deployment_name: str
     
 class NodeLabelsRequest(BaseModel):
     node_names: List[str] = None
-
-class RayClusterRequest(BaseModel):
-    namespace: str
-    

@@ -3,7 +3,9 @@ import time
 import yaml
 from collections import defaultdict
 
-from kubernetes import config, client
+from kubernetes import config, client, utils
+
+from app.utils import create_deployment_yaml
 
 
 def cast_resource_value(value):
@@ -108,11 +110,60 @@ class KubeAPI():
             else:
                 node_labels[name] = node.metadata.labels
         return node_labels
+
+    def kube_deploy(self, yaml_strs):
+        yamls = yaml_strs.split("---")
+        result = True
+        for yaml_str in yamls:
+            yaml_obj =  yaml.safe_load(yaml_str)
+            # load kubernetes client
+            k8s_client = client.api_client.ApiClient()
+            # create pods from yaml object
+            try:
+                res = utils.create_from_yaml(
+                    k8s_client,
+                    yaml_objects=[yaml_obj],
+                )
+            except Exception as e:
+                result = False
+        return result
     
-    def create_vcluster(self, namespace):
-        # TODO: create vcluster for user
-        pass
+    def deploy_deepsparse_model(
+        self,
+        deployment_name,
+        model_id,
+        namespace,
+        num_cores,
+        ephemeral_memory,
+        ram_memory,
+        task
+    ):
+        # Deploy a deepsparse model
+        yaml = create_deployment_yaml(
+            values={
+                "deployment_name": deployment_name,
+                "model_id": model_id,
+                "namespace": namespace,
+                "num_cores": num_cores,
+                "ephemeral_memory": ephemeral_memory,
+                "ram_memory": ram_memory,
+                "task": task
+            }
+        )
+        return self.kube_deploy(yaml)
     
+    def delete_deepsparse_model(
+        self,
+        namespace,
+        deployment_name
+    ):
+        try:
+            self.core_api.delete_namespaced_pod(f"{deployment_name}-model", namespace)
+            self.core_api.delete_namespaced_service(f"{deployment_name}-nodeport", namespace)
+            return True
+        except Exception as e:
+            print("Exception when calling CoreV1Api->delete_namespaced_service: %s\n" % e)
+            return False
     
     def create_ray_cluster(self, namespace, cluster_config=None, nodeport_config=None):
         # TODO:
@@ -163,6 +214,8 @@ class KubeAPI():
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
     
+    api.delete_deepsparse_model(namespace="carlosfm", deployment_name="mpt-7b")
+    exit()
     result = api.create_ray_cluster(
         namespace="carlos-ray",
         cluster_config="data/ray_cluster.yaml",

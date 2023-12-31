@@ -3,6 +3,65 @@ kind: Namespace
 metadata:
   name: kube-watcher
 ---
+# Cluster roles and service account permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-service-account
+  namespace: kube-watcher
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: api-cluster-role
+  namespace: kube-watcher
+rules:
+  - apiGroups:
+        - ""
+        - apps
+        - autoscaling
+        - batch
+        - extensions
+        - policy
+        - rbac.authorization.k8s.io
+    resources:
+      - pods
+      - componentstatuses
+      - configmaps
+      - daemonsets
+      - deployments
+      - events
+      - endpoints
+      - horizontalpodautoscalers
+      - ingress
+      - jobs
+      - limitranges
+      - namespaces
+      - nodes
+      - pods
+      - persistentvolumes
+      - persistentvolumeclaims
+      - resourcequotas
+      - replicasets
+      - replicationcontrollers
+      - serviceaccounts
+      - services
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: api-cluster-role-binding
+subjects:
+- namespace: kube-watcher 
+  kind: ServiceAccount
+  name: api-service-account 
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: api-cluster-role 
+---
+## Service deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,17 +79,18 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v12
+        image: bundenth/kube_watcher:v13
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
         env:
         - name: PROMETHEUS_ENDPOINT
-          value: "http://10.152.183.239"
+          value: "http://10.43.164.196"
         - name: OPENCOST_ENDPOINT
-          value: "http://10.152.183.93:9003"
-        - name: ANVIL_CLIENT_KEY
-          value: "client_A2ZZVMV6LLHVCZ4XSMTOWTSH-ADMVMYW5OIRPH75P"
+          value: "http://10.43.53.194:9003"
+        - name: IN_CLUSTER
+          value: "True"
+      serviceAccountName: api-service-account  # Service account with cluster permissions
 ---
 apiVersion: v1
 kind: Service

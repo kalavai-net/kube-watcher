@@ -13,6 +13,28 @@ source env/bin/activate
 pip install -e .
 ```
 
+## FastAPI service
+
+Build docker image:
+```bash
+docker build -t kube_watcher .
+docker tag kube_watcher:latest bundenth/kube_watcher:v13
+docker push bundenth/kube_watcher:v13
+```
+
+Create service and deployment
+
+```bash
+kubectl apply -f kube_deployment.yaml
+```
+
+Local testing:
+
+```bash
+IN_CLUSTER=False uvicorn app.server:app
+```
+
+
 ## Create bearer tokens
 
 Same tokens a for Kubernetes-dashboard work.
@@ -166,20 +188,7 @@ faas-cli store deploy figlet \
 ```
 
 
-## FastAPI service
 
-Build docker image:
-```bash
-docker build -t kube_watcher .
-docker tag kube_watcher:latest bundenth/kube_watcher:v12
-docker push bundenth/kube_watcher:v12
-```
-
-Create service and deployment
-
-```bash
-kubectl apply -f kube_deployment.yaml
-```
 
 
 ### Check valid username/password

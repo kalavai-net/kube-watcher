@@ -6,27 +6,21 @@ from app.cost_core import OpenCostAPI
 
 from app.models import (
     NodeStatusRequest,
-    ValidateUserRequest,
     NodeLabelsRequest,
-    LinkNodeUserRequest,
     NodeCostRequest,
     NamespacesCostRequest,
-    RayClusterRequest
+    DeepsparseDeploymentRequest,
+    DeepsparseDeploymentDeleteRequest
 )
 from app.kube_core import (
     KubeAPI
 )
 from app.prometheus_core import PrometheusAPI
-from app.anvil_core import (
-    validate_anvil_user,
-    link_user_node
-)
 
 
 IN_CLUSTER = "True" == os.getenv("IN_CLUSTER", "True")
-PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://159.65.30.72:9090")
-OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.152.183.80:9003")
-ANVIL_CLIENT_KEY = os.getenv("ANVIL_CLIENT_KEY", "client_RIH6JESGB46H5H2C26QNTEPN-WCK6VK5MLEHD7BEC")
+PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://10.43.164.196:9090")
+OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.43.53.194:9003")
 
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
@@ -78,29 +72,24 @@ async def namespace_cost(request: NamespacesCostRequest):
         **request.kubecost_params.model_dump())
 
 
-@app.get("/v1/validate_user")
-async def validate_user(request: ValidateUserRequest):
-    return validate_anvil_user(
-        anvil_key=ANVIL_CLIENT_KEY,
-        username=request.username,
-        password=request.password
-    )
-
-@app.get("/v1/link_user_node")
-async def post_user_node(request: LinkNodeUserRequest):
-    return link_user_node(
-        anvil_key=ANVIL_CLIENT_KEY,
-        username=request.user.username,
-        password=request.user.password,
-        node_name=request.node_name,
-        os=request.os
-    )
-
-@app.get("/v1/create_ray_cluster")
-async def create_ray_cluster(request: RayClusterRequest):
-    result = kube_api.create_ray_cluster(
+# Create model deployment with deepsparse
+@app.get("/v1/deploy_deepsparse_model")
+async def namespace_cost(request: DeepsparseDeploymentRequest):
+    model_response = kube_api.deploy_deepsparse_model(
+        deployment_name=request.deployment_name,
+        model_id=request.deepsparse_model_id,
         namespace=request.namespace,
-        cluster_config="data/ray_cluster.yaml",
-        nodeport_config="data/ray_ndoeport.yaml"
+        num_cores=request.num_cores,
+        ephemeral_memory=request.ephemeral_memory,
+        ram_memory=request.ram_memory,
+        task=request.task
     )
-    return result
+    return model_response
+
+@app.get("/v1/delete_deepsparse_model")
+async def namespace_cost(request: DeepsparseDeploymentDeleteRequest):
+    model_response = kube_api.delete_deepsparse_model(
+        deployment_name=request.deployment_name,
+        namespace=request.namespace,
+    )
+    return model_response
