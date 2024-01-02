@@ -3,31 +3,40 @@ kind: Namespace
 metadata:
   name: $namespace
 ---
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: $deployment_name-model
   namespace: $namespace
   labels:
     deepsparse: model
 spec:
-  containers:
-  - name: deepsparse-container
-    image: ghcr.io/neuralmagic/deepsparse:v1.6.1
-    command: ["sh", "-c"]
-    args:
-    - |
-      deepsparse.server --task $task --model_path "$model_id" --num-cores $num_cores
-    resources:
-      limits:
-        cpu: $num_cores
-        memory: $ram_memory 
-        ephemeral-storage: "$ephemeral_memory"
-      requests:
-        cpu: $num_cores # must accommodate num-cores requested for execution
-        memory: $ram_memory # must accommodate for the model's weights
-        ephemeral-storage: "$ephemeral_memory"
-  restartPolicy: OnFailure
+  replicas: $replicas
+  selector:
+    matchLabels:
+      deepsparse: model
+  template:
+    metadata:
+      labels:
+        deepsparse: model
+    spec:
+      containers:
+      - name: deepsparse-container
+        image: ghcr.io/neuralmagic/deepsparse:v1.6.1
+        command: ["sh", "-c"]
+        args:
+        - |
+          deepsparse.server --task $task --model_path "$model_id" --num-cores $num_cores
+        resources:
+          limits:
+            cpu: $num_cores
+            memory: $ram_memory 
+            ephemeral-storage: "$ephemeral_memory"
+          requests:
+            cpu: $num_cores # must accommodate num-cores requested for execution
+            memory: $ram_memory # must accommodate for the model's weights
+            ephemeral-storage: "$ephemeral_memory"
+      restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service

@@ -1,107 +1,34 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: kube-watcher
----
-# Cluster roles and service account permissions
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: api-service-account
-  namespace: kube-watcher
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: api-cluster-role
-  namespace: kube-watcher
-rules:
-  - apiGroups:
-        - ""
-        - apps
-        - autoscaling
-        - batch
-        - extensions
-        - policy
-        - rbac.authorization.k8s.io
-    resources:
-      - pods
-      - componentstatuses
-      - configmaps
-      - daemonsets
-      - deployments
-      - events
-      - endpoints
-      - horizontalpodautoscalers
-      - ingress
-      - jobs
-      - limitranges
-      - namespaces
-      - nodes
-      - pods
-      - persistentvolumes
-      - persistentvolumeclaims
-      - resourcequotas
-      - replicasets
-      - replicationcontrollers
-      - serviceaccounts
-      - services
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: api-cluster-role-binding
-subjects:
-- namespace: kube-watcher 
-  kind: ServiceAccount
-  name: api-service-account 
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: api-cluster-role 
----
-## Service deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kube-watcher-api
-  namespace: kube-watcher
+  name: my-sparse-model
+  namespace: carlosfm
+  labels:
+    deepsparse: model
 spec:
-  replicas: 2 # ensure there is minimal downtime if node goes down
+  replicas: 1
   selector:
     matchLabels:
-      app: kube-watcher-api
+      deepsparse: model
   template:
     metadata:
       labels:
-        app: kube-watcher-api
+        deepsparse: model
     spec:
       containers:
-      - name: kube-watcher-api
-        image: bundenth/kube_watcher:v13
-        imagePullPolicy: "IfNotPresent"
-        ports:
-        - containerPort: 8000
-        env:
-        - name: PROMETHEUS_ENDPOINT
-          value: "http://10.43.164.196"
-        - name: OPENCOST_ENDPOINT
-          value: "http://10.43.53.194:9003"
-        - name: IN_CLUSTER
-          value: "True"
-      serviceAccountName: api-service-account  # Service account with cluster permissions
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kube-watcher-nodeport
-  namespace: kube-watcher
-spec:
-  type: NodePort
-  ports:
-  - port: 8000
-    targetPort: 8000
-    nodePort: 30873
-  selector:
-    app: kube-watcher-api
+      - name: deepsparse-container
+        image: ghcr.io/neuralmagic/deepsparse:v1.6.1
+        command: ["sh", "-c"]
+        args:
+        - |
+          deepsparse.server --task chat --model_path "zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized" --num-cores 2
+        resources:
+          limits:
+            cpu: 2
+            memory: 8Gi 
+            ephemeral-storage: "24Gi"
+          requests:
+            cpu: 2 # must accommodate num-cores requested for execution
+            memory: 8Gi # must accommodate for the model's weights
+            ephemeral-storage: "24Gi"
+      restartPolicy: Always

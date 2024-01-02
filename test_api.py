@@ -4,18 +4,18 @@ import datetime
 import time
 
 
-URL = "http://10.43.112.76:8000"
+URL = "http://0.0.0.0:8000"
 
 if __name__ == "__main__":
     
-    response = requests.get(
-        f"{URL}/v1/get_cluster_capacity"
-    )
-    print(response.text)
-    exit()
-    print(json.dumps(response.json(), indent=3))
+    # response = requests.get(
+    #     f"{URL}/v1/get_cluster_capacity"
+    # )
+    # print(response.text)
+    # exit()
+    # print(json.dumps(response.json(), indent=3))
     
-    exit()
+    # exit()
     
     # now_time = datetime.date(2023, 12, 31)
     # start = (now_time - datetime.timedelta(days=13)).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -41,7 +41,8 @@ if __name__ == "__main__":
         ephemeral_memory="42Gi",
         ram_memory="12Gi",
         num_cores=4,
-        task="chat"
+        task="chat",
+        replicas=1
     )
     response = requests.get(
         f"{URL}/v1/deploy_deepsparse_model",
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     time.sleep(15)
     
     params = dict(
-        deployment_name="mpt-7b",
+        deployment_name="my-sparse-model",
         namespace="carlosfm"
     )
     response = requests.get(

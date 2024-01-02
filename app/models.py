@@ -34,6 +34,7 @@ class DeepsparseDeploymentRequest(BaseModel):
     num_cores: int
     ram_memory: str
     ephemeral_memory: str
+    replicas: int
     
 class DeepsparseDeploymentDeleteRequest(BaseModel):
     namespace: str

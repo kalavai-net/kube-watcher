@@ -29,7 +29,6 @@ class OpenCostAPI():
             self._form_url(endpoint="/allocation/compute"),
             params=kwargs
         )
-        print(result.text)
         data = result.json()['data']
         if nodes is None:
             return data
@@ -44,7 +43,6 @@ class OpenCostAPI():
             self._form_url(endpoint="/allocation/compute"),
             params=kwargs
         )
-        print(result.text)
         data = result.json()['data']
         if namespaces is None:
             return data
@@ -54,13 +52,14 @@ class OpenCostAPI():
 
 if __name__ == "__main__":
     
-    BASE_URL = os.getenv("OPENCOST_URL", default="http://10.152.183.80:9003")
+    BASE_URL = os.getenv("OPENCOST_URL", default="http://10.43.53.194:9003")
     opencost = OpenCostAPI(base_url=BASE_URL)
 
-    result = opencost.get_nodes_computation(
-        window="2023-09-15T20:16:00Z,2023-09-21T21:16:00Z",
+    result = opencost.get_namespaces_cost(
+        #window="2023-09-15T20:16:00Z,2023-09-21T21:16:00Z",
+        window="today",
         accumulate=True,
-        resolution="1s",
-        nodes=["kube-control-plane", "carlosfm-laptop"])
+        #resolution="1s",
+        namespaces=["kube-system"])
     print(json.dumps(result, indent=3))
     

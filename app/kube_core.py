@@ -136,7 +136,8 @@ class KubeAPI():
         num_cores,
         ephemeral_memory,
         ram_memory,
-        task
+        task,
+        replicas
     ):
         # Deploy a deepsparse model
         yaml = create_deployment_yaml(
@@ -147,7 +148,8 @@ class KubeAPI():
                 "num_cores": num_cores,
                 "ephemeral_memory": ephemeral_memory,
                 "ram_memory": ram_memory,
-                "task": task
+                "task": task,
+                "replicas": replicas
             }
         )
         return self.kube_deploy(yaml)
@@ -157,8 +159,9 @@ class KubeAPI():
         namespace,
         deployment_name
     ):
+        k8s_apps = client.AppsV1Api()
         try:
-            self.core_api.delete_namespaced_pod(f"{deployment_name}-model", namespace)
+            k8s_apps.delete_namespaced_deployment(f"{deployment_name}-model", namespace)
             self.core_api.delete_namespaced_service(f"{deployment_name}-nodeport", namespace)
             return True
         except Exception as e:

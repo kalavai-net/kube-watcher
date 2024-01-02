@@ -82,7 +82,8 @@ async def namespace_cost(request: DeepsparseDeploymentRequest):
         num_cores=request.num_cores,
         ephemeral_memory=request.ephemeral_memory,
         ram_memory=request.ram_memory,
-        task=request.task
+        task=request.task,
+        replicas=request.replicas
     )
     return model_response
 
