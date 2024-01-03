@@ -6,7 +6,7 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: $deployment_name-model
+  name: $deployment_name
   namespace: $namespace
   labels:
     deepsparse: model
@@ -41,7 +41,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: $deployment_name-nodeport
+  name: $deployment_name
   namespace: $namespace
 spec:
   selector:
