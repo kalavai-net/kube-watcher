@@ -154,6 +154,25 @@ class KubeAPI():
         )
         return self.kube_deploy(yaml)
     
+    def list_deepsparse_deployments(self, namespace):
+        k8s_apps = client.AppsV1Api()
+        deployments = k8s_apps.list_namespaced_deployment(namespace)
+        model_deployments = defaultdict(dict)
+        for deployment in deployments.items:
+            model_deployments[deployment.metadata.name] = {
+                "replicas": deployment.spec.replicas,
+                "available_replicas": deployment.status.available_replicas,
+                "unavailable_replicas": deployment.status.unavailable_replicas,
+                "ready_replicas": deployment.status.ready_replicas,
+                "paused": deployment.spec.paused
+            }
+        # get nodeport services
+        services = self.core_api.list_namespaced_service(namespace)
+        for service in services.items:
+            model_deployments[service.metadata.name]["cluster_ip"] = service.spec.cluster_ip
+            model_deployments[service.metadata.name]["ports"] = [(port.node_port, port.target_port) for port in service.spec.ports]
+        return model_deployments
+    
     def delete_deepsparse_model(
         self,
         namespace,
@@ -217,7 +236,8 @@ class KubeAPI():
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
     
-    api.delete_deepsparse_model(namespace="carlosfm", deployment_name="mpt-7b")
+    res = api.list_deepsparse_deployments("kube-watcher")
+    print(res)
     exit()
     result = api.create_ray_cluster(
         namespace="carlos-ray",

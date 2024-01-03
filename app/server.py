@@ -10,7 +10,8 @@ from app.models import (
     NodeCostRequest,
     NamespacesCostRequest,
     DeepsparseDeploymentRequest,
-    DeepsparseDeploymentDeleteRequest
+    DeepsparseDeploymentDeleteRequest,
+    DeepsparseDeploymentListRequest
 )
 from app.kube_core import (
     KubeAPI
@@ -94,3 +95,11 @@ async def namespace_cost(request: DeepsparseDeploymentDeleteRequest):
         namespace=request.namespace,
     )
     return model_response
+
+@app.get("/v1/list_deepsparse_deployments")
+async def namespace_cost(request: DeepsparseDeploymentListRequest):
+    model_response = kube_api.list_deepsparse_deployments(
+        namespace=request.namespace
+    )
+    return model_response
+

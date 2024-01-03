@@ -8,11 +8,16 @@ URL = "http://0.0.0.0:8000"
 
 if __name__ == "__main__":
     
-    # response = requests.get(
-    #     f"{URL}/v1/get_cluster_capacity"
-    # )
-    # print(response.text)
-    # exit()
+    params = dict(
+        namespace="default"
+    )
+    
+    response = requests.get(
+        f"{URL}/v1/list_deepsparse_deployments",
+        json=params
+    )
+    print(json.dumps(response.json(), indent=3))
+    exit()
     # print(json.dumps(response.json(), indent=3))
     
     # exit()
