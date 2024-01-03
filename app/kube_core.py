@@ -180,8 +180,8 @@ class KubeAPI():
     ):
         k8s_apps = client.AppsV1Api()
         try:
-            k8s_apps.delete_namespaced_deployment(f"{deployment_name}-model", namespace)
-            self.core_api.delete_namespaced_service(f"{deployment_name}-nodeport", namespace)
+            k8s_apps.delete_namespaced_deployment(f"{deployment_name}", namespace)
+            self.core_api.delete_namespaced_service(f"{deployment_name}", namespace)
             return True
         except Exception as e:
             print("Exception when calling CoreV1Api->delete_namespaced_service: %s\n" % e)
