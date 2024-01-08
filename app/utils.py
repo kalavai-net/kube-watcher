@@ -8,12 +8,23 @@ DEFAULT_DEEPSPARSE_VALUES = {
 }
 DEPLOYMENT_TEMPLATE = "app/deployment_template.yaml"
 
+RAY_DEPLOYMENT_TEMPLATE = "app/ray_deployment_template.yaml"
 
-def create_deployment_yaml(values, template_file=DEPLOYMENT_TEMPLATE):
+DEFAULT_RAY_VALUES = {
+    "model_id": "facebook/opt-125m",
+    "tokenizer_id": "facebook/opt-125m",
+    "TOKENIZER_ARGS":None,
+    "TOKENIZING_ARGS":None,
+    "MODEL_ARGS":None,
+    "GENERATE_ARGS":None,
+}
+
+
+def create_deployment_yaml(values, default_values=DEFAULT_DEEPSPARSE_VALUES, template_file=DEPLOYMENT_TEMPLATE):
     """
     generates a yaml deployment file for a deepsparse model serving
     """
-    for key, value in DEFAULT_DEEPSPARSE_VALUES.items():
+    for key, value in default_values.items():
         if key not in values:
             values[key] = value
             print(f"{key} not found, using default value {value}")

@@ -4,8 +4,10 @@ import yaml
 from collections import defaultdict
 
 from kubernetes import config, client, utils
+from kubernetes.dynamic import DynamicClient
 
-from app.utils import create_deployment_yaml
+from app.utils import create_deployment_yaml, RAY_DEPLOYMENT_TEMPLATE, DEFAULT_RAY_VALUES
+
 
 
 def cast_resource_value(value):
@@ -128,6 +130,24 @@ class KubeAPI():
                 result = False
         return result
     
+
+    def crd_kube_deploy(self, yaml_strs):
+        yamls = yaml_strs.split("---")
+        result = True
+        k8s_client = client.api_client.ApiClient()
+        dyn_client = DynamicClient(k8s_client)
+        
+        for yaml_str in yamls:
+            yaml_obj = yaml.safe_load(yaml_str)
+            try:
+                gvr = dyn_client.resources.get(api_version=yaml_obj["apiVersion"], kind=yaml_obj["kind"])
+                res = gvr.create(body=yaml_obj, namespace=yaml_obj.get("metadata", {}).get("namespace", "default"))
+                print(res)
+            except Exception as e:
+                print(e)
+                result = False
+        return result
+    
     def deploy_deepsparse_model(
         self,
         deployment_name,
@@ -150,9 +170,39 @@ class KubeAPI():
                 "ram_memory": ram_memory,
                 "task": task,
                 "replicas": replicas
-            }
+            },
+            default_values= DEFAULT_RAY_VALUES,
+            deployment_template = RAY_DEPLOYMENT_TEMPLATE
         )
         return self.kube_deploy(yaml)
+    
+
+        
+    def deploy_ray_model(
+        self,
+        deployment_name,
+        model_id,
+        namespace,
+        num_cpus=1,
+        num_gpus=1,
+        num_replicas=1,
+    ):
+        # Deploy a deepsparse model
+        yaml = create_deployment_yaml(
+            values={
+                "deployment_name": deployment_name,
+                "model_id": model_id,
+                "namespace": namespace,
+                "num_cpus": num_cpus,
+                "num_gpus": num_gpus,
+                "num_replicas":num_replicas
+            },
+            DEPLOY
+            
+        )
+        return self.crd_kube_deploy(yaml)
+
+
     
     def list_deepsparse_deployments(self, namespace):
         k8s_apps = client.AppsV1Api()
