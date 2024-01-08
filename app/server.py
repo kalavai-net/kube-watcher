@@ -11,7 +11,10 @@ from app.models import (
     NamespacesCostRequest,
     DeepsparseDeploymentRequest,
     DeepsparseDeploymentDeleteRequest,
-    DeepsparseDeploymentListRequest
+    DeepsparseDeploymentListRequest,
+    RayDeploymentRequest,
+    RayDeploymentDeleteRequest,
+    RayDeploymentListRequest
 )
 from app.kube_core import (
     KubeAPI
@@ -103,3 +106,33 @@ async def namespace_cost(request: DeepsparseDeploymentListRequest):
     )
     return model_response
 
+
+# Create model deployment with deepsparse
+@app.get("/v1/deploy_ray_model")
+async def deploy_ray_model(request: RayDeploymentRequest):
+    model_response = kube_api.deploy_ray_model(
+        namespace=request.namespace,
+        deployment_name=request.deployment_name,
+        model_id=request.ray_model_id,
+        num_cpus=request.num_cpus,
+        num_gpus=request.num_gpus,
+        num_replicas=request.num_replicas
+        # TODO ADD ARGS DICTS
+    )
+    return model_response
+
+
+@app.get("/v1/delete_ray_model")
+async def delete_ray_model(request: RayDeploymentDeleteRequest):
+    model_response = kube_api.delete_ray_model(
+        deployment_name=request.deployment_name,
+        namespace=request.namespace,
+    )
+    return model_response
+
+@app.get("/v1/list_ray_deployments")
+async def list_ray_deployments(request: RayDeploymentListRequest):
+    model_response = kube_api.list_ray_deployments(
+        namespace=request.namespace
+    )
+    return model_response

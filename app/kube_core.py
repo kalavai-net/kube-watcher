@@ -63,6 +63,10 @@ class KubeAPI():
             # Only works if this script is run by K8s as a POD
             config.load_kube_config()
         self.core_api = client.CoreV1Api()
+
+        # CRD handling for
+        self.k8s_client = client.api_client.ApiClient()
+        self.dyn_client = DynamicClient(self.k8s_client)
     
     
     def extract_node_readiness(self, node):
@@ -171,8 +175,6 @@ class KubeAPI():
                 "task": task,
                 "replicas": replicas
             },
-            default_values= DEFAULT_RAY_VALUES,
-            deployment_template = RAY_DEPLOYMENT_TEMPLATE
         )
         return self.kube_deploy(yaml)
     
@@ -185,8 +187,22 @@ class KubeAPI():
         namespace,
         num_cpus=1,
         num_gpus=1,
-        num_replicas=1,
+        num_replicas=1
+        # TODO ADD ARGS DICTS
     ):
+        
+        try:
+            print("Creating namespace...")
+            result = self.core_api.create_namespace(
+                body=client.V1Namespace(
+                    metadata={"name": namespace}
+                )
+            )
+            print(result)
+        except:
+            # skip if already present
+            pass
+        
         # Deploy a deepsparse model
         yaml = create_deployment_yaml(
             values={
@@ -196,9 +212,10 @@ class KubeAPI():
                 "num_cpus": num_cpus,
                 "num_gpus": num_gpus,
                 "num_replicas":num_replicas
-            },
-            DEPLOY
-            
+            },            
+            default_values= DEFAULT_RAY_VALUES,
+            template_file = RAY_DEPLOYMENT_TEMPLATE
+
         )
         return self.crd_kube_deploy(yaml)
 
@@ -281,6 +298,57 @@ class KubeAPI():
             print(result)
         # - return connection details via the nodeport
         return result
+    
+    def list_ray_deployments(self, namespace=None):
+        """
+        Lists Ray model deployments deployed as CRDs.
+
+        :param namespace: The namespace in which to list the Ray deployments.
+
+        :return: A dictionary of Ray model deployments.
+        """
+        ray_deployments = defaultdict(dict)
+
+        try:
+            # Define the GVR for RayService
+            ray_service_gvr = self.dyn_client.resources.get(api_version="ray.io/v1alpha1", kind="RayService")
+
+            # List all RayService CRD instances in the specified namespace
+            crd_instances = ray_service_gvr.get(namespace=namespace)
+
+            for instance in crd_instances.items:
+                # Extract relevant data from each RayService instance
+                ray_deployments[instance.metadata.name] = {
+                    "serviceUnhealthySecondThreshold": instance.spec.serviceUnhealthySecondThreshold,
+                    "deploymentUnhealthySecondThreshold": instance.spec.deploymentUnhealthySecondThreshold,
+                    "serveConfigV2": instance.spec.serveConfigV2,
+                    "rayClusterConfig": instance.spec.rayClusterConfig,
+                    # Add other relevant fields here
+                }
+        except Exception as e:
+            print(f"Error listing Ray deployments: {e}")
+
+        return ray_deployments
+    
+    def delete_ray_model(self, deployment_name, namespace=None):
+        """
+        Deletes a Ray CRD model.
+
+        :param crd_name: The name of the Ray CRD model to delete.
+        :param namespace: The namespace of the Ray CRD model.        
+
+        :return: True if the deletion was successful, False otherwise.
+        """
+        try:
+            # Define the GVR for RayService
+            ray_service_gvr = self.dyn_client.resources.get(api_version="ray.io/v1alpha1", kind="RayService")
+
+            # Delete the RayService CRD instance
+            ray_service_gvr.delete(name=deployment_name, namespace=namespace)
+            return True
+        except Exception as e:
+            print(f"Exception when trying to delete Ray CRD model: {e}")
+            return False
         
 
 if __name__ == "__main__":

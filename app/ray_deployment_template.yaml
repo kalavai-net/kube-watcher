@@ -1,21 +1,16 @@
-# Make sure to increase resource requests and limits before using this example in production.
-# For examples with more realistic resource configuration, see
-# ray-cluster.complete.large.yaml and
-# ray-cluster.autoscaler.large.yaml.
-
 apiVersion: ray.io/v1alpha1
 kind: RayService
 metadata:
-  name: rs-llm-singlegpu
+  name: $deployment_name
+  namespace: $namespace 
+
 spec:
-  serviceUnhealthySecondThreshold: 900 # Config for the health check threshold for Ray Serve applications. Default value is 900.
-  deploymentUnhealthySecondThreshold: 300 # Config for the health check threshold for Ray dashboard agent. Default value is 300.
-  # serveConfigV2 takes a yaml multi-line scalar, which should be a Ray Serve multi-application config. See https://docs.ray.io/en/latest/serve/multi-app.html.
-  # Only one of serveConfig and serveConfigV2 should be used.
+  serviceUnhealthySecondThreshold: 900 
+  deploymentUnhealthySecondThreshold: 300 
   serveConfigV2: |
     applications:
-      - name: llm
-        import_path: serve.huggingface.llms.model.deployment
+      - name: llm 
+        import_path: serve.huggingface.llms.parameterized_model.deployment 
         route_prefix: /
         runtime_env:
           working_dir: "https://github.com/kalavai-net/ray-examples/archive/refs/heads/main.zip"
@@ -25,20 +20,22 @@ spec:
             - numpy<1.24
             - torch
             - bitsandbytes
+          env_vars:
+            MODEL_ID: "$model_id"
+            TOKENIZER_ID: "$tokenizer_id"
+            TOKENIZER_ARGS: "$TOKENIZER_ARGS"
+            TOKENIZING_ARGS: "$TOKENIZING_ARGS"
+            MODEL_ARGS: "$MODEL_ARGS"
+            GENERATE_ARGS: "$GENERATE_ARGS"
         deployments:
           - name: PredictDeployment
-            num_replicas: 1
+            num_replicas: $num_replicas
             ray_actor_options:
-              num_cpus: 1
-              num_gpus: 1
+              num_cpus: $num_cpus
+              num_gpus: $num_gpus
   rayClusterConfig:
-    rayVersion: '2.8.0' # should match the Ray version in the image of the containers
-    ######################headGroupSpecs#################################
-    # Ray head pod template.
+    rayVersion: '2.8.0'
     headGroupSpec:
-      # The `rayStartParams` are used to configure the `ray start` command.
-      # See https://github.com/ray-project/kuberay/blob/master/docs/guidance/rayStartParams.md for the default settings of `rayStartParams` in KubeRay.
-      # See https://docs.ray.io/en/latest/cluster/cli.html#ray-start for all available options in `rayStartParams`.
       rayStartParams:
         dashboard-host: '0.0.0.0'
       #pod template
@@ -47,8 +44,7 @@ spec:
           runtimeClassName: nvidia # microk8s addition
           containers:
             - name: ray-head
-              #image: 178.62.13.8:32000/ray:2.8.0-py39-gpu # question does the head need gpu?
-              image: rayproject/ray:2.8.0-py39-gpu # question does the head need gpu?
+              image: rayproject/ray:2.8.0-py39-gpu 
               resources:
                 limits:
                   nvidia.com/gpu: 0
@@ -68,14 +64,11 @@ spec:
                   name: serve
     workerGroupSpecs:
       # the pod replicas in this group typed worker
-      - replicas: 1
-        minReplicas: 1
+      - replicas: $num_replicas
+        minReplicas: $num_replicas
         maxReplicas: 5
         # logical group name, for this called small-group, also can be functional
         groupName: small-group
-        # The `rayStartParams` are used to configure the `ray start` command.
-        # See https://github.com/ray-project/kuberay/blob/master/docs/guidance/rayStartParams.md for the default settings of `rayStartParams` in KubeRay.
-        # See https://docs.ray.io/en/latest/cluster/cli.html#ray-start for all available options in `rayStartParams`.
         rayStartParams: {}
         #pod template
         template:
@@ -83,7 +76,6 @@ spec:
             runtimeClassName: nvidia #microk8s addition
             containers:
               - name: ray-worker # must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc'
-                #image: 178.62.13.8:32000/ray:2.8.0-py39-gpu # question does the head need gpu?
                 image: rayproject/ray:2.8.0-py39-gpu # question does the head need gpu?
                 lifecycle:
                   preStop:
@@ -91,8 +83,8 @@ spec:
                       command: ["/bin/sh","-c","ray stop"]
                 resources:
                   limits:
-                    nvidia.com/gpu: 1
-                    cpu: "1"
+                    nvidia.com/gpu: $num_gpus
+                    cpu: "$num_cpus" # why is this in quotes?
                     memory: "8Gi"
                   requests:
                     cpu: "500m"
