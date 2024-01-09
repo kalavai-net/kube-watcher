@@ -1,6 +1,7 @@
 import json
 import time
 import yaml
+from typing import Optional, Dict
 from collections import defaultdict
 
 from kubernetes import config, client, utils
@@ -187,8 +188,11 @@ class KubeAPI():
         namespace,
         num_cpus=1,
         num_gpus=1,
-        num_replicas=1
-        # TODO ADD ARGS DICTS
+        num_replicas=1,
+        tokenizer_args: Optional[Dict] = None,
+        tokenizing_args: Optional[Dict] = None,
+        generation_args: Optional[Dict] = None,
+        model_args: Optional[Dict] = None
     ):
         
         try:
@@ -211,7 +215,11 @@ class KubeAPI():
                 "namespace": namespace,
                 "num_cpus": num_cpus,
                 "num_gpus": num_gpus,
-                "num_replicas":num_replicas
+                "num_replicas":num_replicas,
+                "tokenizer_args": json.dumps(tokenizer_args),
+                "tokenizing_args": json.dumps(tokenizing_args),
+                "generation_args": json.dumps(generation_args),
+                "model_args": json.dumps(model_args)
             },            
             default_values= DEFAULT_RAY_VALUES,
             template_file = RAY_DEPLOYMENT_TEMPLATE

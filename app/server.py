@@ -116,8 +116,11 @@ async def deploy_ray_model(request: RayDeploymentRequest):
         model_id=request.ray_model_id,
         num_cpus=request.num_cpus,
         num_gpus=request.num_gpus,
-        num_replicas=request.num_replicas
-        # TODO ADD ARGS DICTS
+        num_replicas=request.num_replicas,
+        tokenizer_args = request.tokenizer_args,
+        tokenizing_args = request.tokenizing_args,
+        generation_args = request.generation_args,
+        model_args = request.ray_model_args
     )
     return model_response
 

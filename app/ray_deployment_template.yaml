@@ -23,10 +23,10 @@ spec:
           env_vars:
             MODEL_ID: "$model_id"
             TOKENIZER_ID: "$tokenizer_id"
-            TOKENIZER_ARGS: "$TOKENIZER_ARGS"
-            TOKENIZING_ARGS: "$TOKENIZING_ARGS"
-            MODEL_ARGS: "$MODEL_ARGS"
-            GENERATE_ARGS: "$GENERATE_ARGS"
+            TOKENIZER_ARGS: "$tokenizer_args"
+            TOKENIZING_ARGS: "$tokenizing_args"
+            MODEL_ARGS: "$model_args"
+            GENERATE_ARGS: "$generate_args"
         deployments:
           - name: PredictDeployment
             num_replicas: $num_replicas

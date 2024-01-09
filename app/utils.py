@@ -13,10 +13,10 @@ RAY_DEPLOYMENT_TEMPLATE = "app/ray_deployment_template.yaml"
 DEFAULT_RAY_VALUES = {
     "model_id": "facebook/opt-125m",
     "tokenizer_id": "facebook/opt-125m",
-    "TOKENIZER_ARGS":None,
-    "TOKENIZING_ARGS":None,
-    "MODEL_ARGS":None,
-    "GENERATE_ARGS":None,
+    "tokenizer_args":None,
+    "tokenizing_args":None,
+    "model_args":None,
+    "generate_args":None,
 }
 
 

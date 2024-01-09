@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 
 class NodeStatusRequest(BaseModel):
@@ -51,7 +51,12 @@ class RayDeploymentRequest(BaseModel):
     num_cpus: int
     num_gpus: int
     num_replicas: int
-    # TODO Add Arg Dicts
+    tokenizer_id: Optional[str] = None
+    tokenizer_args: Optional[Dict] = None
+    tokenizing_args: Optional[Dict] = None
+    generation_args: Optional[Dict] = None
+    ray_model_args: Optional[Dict] = None
+
 
 class RayDeploymentDeleteRequest(BaseModel):
     namespace: Optional[str] = None
