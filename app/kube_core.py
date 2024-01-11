@@ -175,12 +175,15 @@ class KubeAPI():
 
     def scale_model_deployment(self, namespace, deployment_name, replicas):
         k8s_apps = client.AppsV1Api()
-        res = k8s_apps.patch_namespaced_deployment(
-            deployment_name,
-            namespace,
-            {'spec': {'replicas': replicas}})
-        
-        return res
+        try:
+            res = k8s_apps.patch_namespaced_deployment(
+                deployment_name,
+                namespace,
+                {'spec': {'replicas': replicas}})
+
+            return {"status": True}
+        except Exception as e:
+            return {"error": str(e) }
     
     def delete_deepsparse_model(
         self,
