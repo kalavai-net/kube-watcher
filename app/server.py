@@ -11,7 +11,8 @@ from app.models import (
     NamespacesCostRequest,
     DeepsparseDeploymentRequest,
     DeepsparseDeploymentDeleteRequest,
-    DeepsparseDeploymentListRequest
+    DeepsparseDeploymentListRequest,
+    DeepsparseDeploymentScaleRequest
 )
 from app.kube_core import (
     KubeAPI
@@ -75,7 +76,7 @@ async def namespace_cost(request: NamespacesCostRequest):
 
 # Create model deployment with deepsparse
 @app.get("/v1/deploy_deepsparse_model")
-async def namespace_cost(request: DeepsparseDeploymentRequest):
+async def deploy_model(request: DeepsparseDeploymentRequest):
     model_response = kube_api.deploy_deepsparse_model(
         deployment_name=request.deployment_name,
         model_id=request.deepsparse_model_id,
@@ -89,15 +90,24 @@ async def namespace_cost(request: DeepsparseDeploymentRequest):
     return model_response
 
 @app.get("/v1/delete_deepsparse_model")
-async def namespace_cost(request: DeepsparseDeploymentDeleteRequest):
+async def delete_model(request: DeepsparseDeploymentDeleteRequest):
     model_response = kube_api.delete_deepsparse_model(
         deployment_name=request.deployment_name,
         namespace=request.namespace,
     )
     return model_response
 
+@app.get("/v1/scale_deepsparse_model")
+async def scale_model(request: DeepsparseDeploymentScaleRequest):
+    model_response = kube_api.scale_model_deployment(
+        deployment_name=request.deployment_name,
+        namespace=request.namespace,
+        replicas=request.replicas
+    )
+    return model_response
+
 @app.get("/v1/list_deepsparse_deployments")
-async def namespace_cost(request: DeepsparseDeploymentListRequest):
+async def list_models(request: DeepsparseDeploymentListRequest):
     model_response = kube_api.list_deepsparse_deployments(
         namespace=request.namespace
     )

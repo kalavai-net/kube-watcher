@@ -40,6 +40,11 @@ class DeepsparseDeploymentDeleteRequest(BaseModel):
     namespace: str
     deployment_name: str
 
+class DeepsparseDeploymentScaleRequest(BaseModel):
+    namespace: str
+    deployment_name: str
+    replicas: int
+
 class DeepsparseDeploymentListRequest(BaseModel):
     namespace: str
     

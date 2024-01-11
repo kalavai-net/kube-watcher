@@ -172,6 +172,15 @@ class KubeAPI():
             model_deployments[service.metadata.name]["cluster_ip"] = service.spec.cluster_ip
             model_deployments[service.metadata.name]["ports"] = [(port.node_port, port.target_port) for port in service.spec.ports]
         return model_deployments
+
+    def scale_model_deployment(self, namespace, deployment_name, replicas):
+        k8s_apps = client.AppsV1Api()
+        res = k8s_apps.patch_namespaced_deployment(
+            deployment_name,
+            namespace,
+            {'spec': {'replicas': replicas}})
+        
+        return res
     
     def delete_deepsparse_model(
         self,
@@ -236,8 +245,10 @@ class KubeAPI():
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
     
-    res = api.list_deepsparse_deployments("kube-watcher")
-    print(res)
+    api.scale_model_deployment(
+        namespace="kube-watcher",
+        deployment_name="kube-watcher-api",
+        replicas=2)
     exit()
     result = api.create_ray_cluster(
         namespace="carlos-ray",
