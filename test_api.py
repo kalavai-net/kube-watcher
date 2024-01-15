@@ -12,7 +12,7 @@ if __name__ == "__main__":
         namespace="default"
     )
     
-    response = requests.get(
+    response = requests.post(
         f"{URL}/v1/list_deepsparse_deployments",
         json=params
     )
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     #         "window": formatted_window
     #     }
     # )
-    # response = requests.get(
+    # response = requests.post(
     #     f"{URL}/v1/get_namespaces_cost",
     #     json=params
     # )
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         task="chat",
         replicas=1
     )
-    response = requests.get(
+    response = requests.post(
         f"{URL}/v1/deploy_deepsparse_model",
         json=params
     )
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         deployment_name="my-sparse-model",
         namespace="carlosfm"
     )
-    response = requests.get(
+    response = requests.post(
         f"{URL}/v1/delete_deepsparse_model",
         json=params
     )
