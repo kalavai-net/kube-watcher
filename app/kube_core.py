@@ -232,6 +232,9 @@ class KubeAPI():
         # - return connection details via the nodeport
         return result
         
+    def deploy_generic_model(self, config: str):
+        # Deploy a generic config
+        return self.kube_deploy(config)
 
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)

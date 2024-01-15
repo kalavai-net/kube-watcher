@@ -45,3 +45,6 @@ class DeepsparseDeploymentListRequest(BaseModel):
     
 class NodeLabelsRequest(BaseModel):
     node_names: List[str] = None
+
+class GenericDeploymentRequest(BaseModel):
+    config: str

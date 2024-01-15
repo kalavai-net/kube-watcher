@@ -11,7 +11,8 @@ from app.models import (
     NamespacesCostRequest,
     DeepsparseDeploymentRequest,
     DeepsparseDeploymentDeleteRequest,
-    DeepsparseDeploymentListRequest
+    DeepsparseDeploymentListRequest,
+    GenericDeploymentRequest
 )
 from app.kube_core import (
     KubeAPI
@@ -37,13 +38,13 @@ async def cluster_labels():
     labels = kube_api.extract_cluster_labels()
     return labels
 
-@app.get("/v1/get_node_labels")
+@app.post("/v1/get_node_labels")
 async def node_labels(request: NodeLabelsRequest):
     labels = kube_api.get_node_labels(node_names=request.node_names)
     return labels
 
 
-@app.get("/v1/get_node_stats")
+@app.post("/v1/get_node_stats")
 async def node_stats(request: NodeStatusRequest):
     client = PrometheusAPI(url=PROMETHEUS_ENDPOINT, disable_ssl=True) # works as long as we are port forwarding from control plane
     
@@ -55,7 +56,7 @@ async def node_stats(request: NodeStatusRequest):
     )
 
 
-@app.get("/v1/get_nodes_cost")
+@app.post("/v1/get_nodes_cost")
 async def node_cost(request: NodeCostRequest):
     opencost = OpenCostAPI(base_url=OPENCOST_ENDPOINT)
 
@@ -64,7 +65,7 @@ async def node_cost(request: NodeCostRequest):
         **request.kubecost_params.model_dump())
 
 
-@app.get("/v1/get_namespaces_cost")
+@app.post("/v1/get_namespaces_cost")
 async def namespace_cost(request: NamespacesCostRequest):
     opencost = OpenCostAPI(base_url=OPENCOST_ENDPOINT)
 
@@ -74,7 +75,7 @@ async def namespace_cost(request: NamespacesCostRequest):
 
 
 # Create model deployment with deepsparse
-@app.get("/v1/deploy_deepsparse_model")
+@app.post("/v1/deploy_deepsparse_model")
 async def namespace_cost(request: DeepsparseDeploymentRequest):
     model_response = kube_api.deploy_deepsparse_model(
         deployment_name=request.deployment_name,
@@ -88,7 +89,7 @@ async def namespace_cost(request: DeepsparseDeploymentRequest):
     )
     return model_response
 
-@app.get("/v1/delete_deepsparse_model")
+@app.post("/v1/delete_deepsparse_model")
 async def namespace_cost(request: DeepsparseDeploymentDeleteRequest):
     model_response = kube_api.delete_deepsparse_model(
         deployment_name=request.deployment_name,
@@ -96,10 +97,16 @@ async def namespace_cost(request: DeepsparseDeploymentDeleteRequest):
     )
     return model_response
 
-@app.get("/v1/list_deepsparse_deployments")
+@app.post("/v1/list_deepsparse_deployments")
 async def namespace_cost(request: DeepsparseDeploymentListRequest):
     model_response = kube_api.list_deepsparse_deployments(
         namespace=request.namespace
     )
     return model_response
 
+
+#### GENERIC_DEPLOYMENT
+# Deploy a model from a config
+@app.post("/v1/deploy_generic_model")
+async def deploy_ray_model(request: GenericDeploymentRequest):
+    return kube_api.deploy_generic_model(request.config) 
