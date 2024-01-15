@@ -7,21 +7,15 @@ import time
 URL = "http://0.0.0.0:8000"
 
 if __name__ == "__main__":
-    
-    params = dict(
-        namespace="default"
-    )
-    
-    response = requests.get(
-        f"{URL}/v1/list_deepsparse_deployments",
-        json=params
-    )
+    params = dict(namespace="default")
+
+    response = requests.get(f"{URL}/v1/list_deepsparse_deployments", json=params)
     print(json.dumps(response.json(), indent=3))
     exit()
     # print(json.dumps(response.json(), indent=3))
-    
+
     # exit()
-    
+
     # now_time = datetime.date(2023, 12, 31)
     # start = (now_time - datetime.timedelta(days=13)).strftime('%Y-%m-%dT%H:%M:%SZ')
     # now = now_time.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -38,7 +32,7 @@ if __name__ == "__main__":
     #     json=params
     # )
     # print(json.dumps(response.json(), indent=3))
-    
+
     params = dict(
         deployment_name="mpt-7b",
         namespace="carlosfm",
@@ -47,26 +41,13 @@ if __name__ == "__main__":
         ram_memory="12Gi",
         num_cores=4,
         task="chat",
-        replicas=1
+        replicas=1,
     )
-    response = requests.get(
-        f"{URL}/v1/deploy_deepsparse_model",
-        json=params
-    )
+    response = requests.get(f"{URL}/v1/deploy_deepsparse_model", json=params)
     print(json.dumps(response.json(), indent=3))
-    
+
     time.sleep(15)
-    
-    params = dict(
-        deployment_name="my-sparse-model",
-        namespace="carlosfm"
-    )
-    response = requests.get(
-        f"{URL}/v1/delete_deepsparse_model",
-        json=params
-    )
+
+    params = dict(deployment_name="my-sparse-model", namespace="carlosfm")
+    response = requests.get(f"{URL}/v1/delete_deepsparse_model", json=params)
     print(json.dumps(response.json(), indent=3))
-    
-    
-    
-    

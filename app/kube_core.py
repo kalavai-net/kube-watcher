@@ -7,13 +7,16 @@ from collections import defaultdict
 from kubernetes import config, client, utils
 from kubernetes.dynamic import DynamicClient
 
-from app.utils import create_deployment_yaml, RAY_DEPLOYMENT_TEMPLATE, DEFAULT_RAY_VALUES
-
+from app.utils import (
+    create_deployment_yaml,
+    RAY_DEPLOYMENT_TEMPLATE,
+    DEFAULT_RAY_VALUES,
+)
 
 
 def cast_resource_value(value):
     """Cast string returned from reported node allocatable/capacity to int.
-    
+
     Examples:
     - '12'
     - '121509440008'
@@ -32,9 +35,9 @@ def cast_resource_value(value):
 def parse_resource_value(resources, out_data_dict=None):
     """Parse values reported by Kube API and get int amounts.
     If it is not an int, ignore
-    
+
     Example
-    
+
     {
         'cpu': '12',
         'ephemeral-storage': '121509440008',
@@ -47,7 +50,7 @@ def parse_resource_value(resources, out_data_dict=None):
     """
     if out_data_dict is None:
         out_data_dict = defaultdict(int)
-    
+
     for resource, value in resources.items():
         parsed_value = cast_resource_value(value)
         if parsed_value is not None:
@@ -55,8 +58,7 @@ def parse_resource_value(resources, out_data_dict=None):
     return out_data_dict
 
 
-
-class KubeAPI():
+class KubeAPI:
     def __init__(self, in_cluster=False):
         if in_cluster:
             config.load_incluster_config()
@@ -68,28 +70,28 @@ class KubeAPI():
         # CRD handling for
         self.k8s_client = client.api_client.ApiClient()
         self.dyn_client = DynamicClient(self.k8s_client)
-    
-    
+
     def extract_node_readiness(self, node):
         """Extract the readiness of a node from its status information (from extract_node_status)"""
         for condition in node.status.conditions:
             if condition.type == "Ready":
                 return condition
         return None
-    
+
     def _extract_resources(self, fn):
         """Generalisation to extract values in dict form"""
         nodes = self.core_api.list_node()
         data = {"online": defaultdict(int), "total": defaultdict(int)}
         for node in nodes.items:
-            status = True if self.extract_node_readiness(node).status == "True" else False
+            status = (
+                True if self.extract_node_readiness(node).status == "True" else False
+            )
             if status:
                 data["online"]["n_nodes"] += 1
                 parse_resource_value(resources=fn(node), out_data_dict=data["online"])
             data["total"]["n_nodes"] += 1
             parse_resource_value(resources=fn(node), out_data_dict=data["total"])
         return data
-
 
     def extract_cluster_capacity(self):
         """Extract total cluster capacity (from all nodes from get_nodes_status).
@@ -98,7 +100,7 @@ class KubeAPI():
         """
         fn = lambda node: node.status.capacity
         return self._extract_resources(fn=fn)
-    
+
     def extract_cluster_labels(self):
         """Similar to extract_cluster_capacity but with node labels.
         - total --> nodes labels as reported in node labels
@@ -122,7 +124,7 @@ class KubeAPI():
         yamls = yaml_strs.split("---")
         result = True
         for yaml_str in yamls:
-            yaml_obj =  yaml.safe_load(yaml_str)
+            yaml_obj = yaml.safe_load(yaml_str)
             # load kubernetes client
             k8s_client = client.api_client.ApiClient()
             # create pods from yaml object
@@ -131,28 +133,34 @@ class KubeAPI():
                     k8s_client,
                     yaml_objects=[yaml_obj],
                 )
+                print(res)
             except Exception as e:
+                print(e)
                 result = False
         return result
-    
 
     def crd_kube_deploy(self, yaml_strs):
         yamls = yaml_strs.split("---")
         result = True
         k8s_client = client.api_client.ApiClient()
         dyn_client = DynamicClient(k8s_client)
-        
+
         for yaml_str in yamls:
             yaml_obj = yaml.safe_load(yaml_str)
             try:
-                gvr = dyn_client.resources.get(api_version=yaml_obj["apiVersion"], kind=yaml_obj["kind"])
-                res = gvr.create(body=yaml_obj, namespace=yaml_obj.get("metadata", {}).get("namespace", "default"))
+                gvr = dyn_client.resources.get(
+                    api_version=yaml_obj["apiVersion"], kind=yaml_obj["kind"]
+                )
+                res = gvr.create(
+                    body=yaml_obj,
+                    namespace=yaml_obj.get("metadata", {}).get("namespace", "default"),
+                )
                 print(res)
             except Exception as e:
                 print(e)
                 result = False
         return result
-    
+
     def deploy_deepsparse_model(
         self,
         deployment_name,
@@ -162,7 +170,7 @@ class KubeAPI():
         ephemeral_memory,
         ram_memory,
         task,
-        replicas
+        replicas,
     ):
         # Deploy a deepsparse model
         yaml = create_deployment_yaml(
@@ -174,13 +182,95 @@ class KubeAPI():
                 "ephemeral_memory": ephemeral_memory,
                 "ram_memory": ram_memory,
                 "task": task,
-                "replicas": replicas
+                "replicas": replicas,
             },
         )
         return self.kube_deploy(yaml)
-    
 
-        
+    def deploy_generic_model(self, config: str):
+        # Deploy a deepsparse model
+        return self.kube_deploy(config)
+
+    def list_deepsparse_deployments(self, namespace):
+        k8s_apps = client.AppsV1Api()
+        deployments = k8s_apps.list_namespaced_deployment(namespace)
+        model_deployments = defaultdict(dict)
+        for deployment in deployments.items:
+            model_deployments[deployment.metadata.name] = {
+                "replicas": deployment.spec.replicas,
+                "available_replicas": deployment.status.available_replicas,
+                "unavailable_replicas": deployment.status.unavailable_replicas,
+                "ready_replicas": deployment.status.ready_replicas,
+                "paused": deployment.spec.paused,
+            }
+        # get nodeport services
+        services = self.core_api.list_namespaced_service(namespace)
+        for service in services.items:
+            model_deployments[service.metadata.name][
+                "cluster_ip"
+            ] = service.spec.cluster_ip
+            model_deployments[service.metadata.name]["ports"] = [
+                (port.node_port, port.target_port) for port in service.spec.ports
+            ]
+        return model_deployments
+
+    def delete_deepsparse_model(self, namespace, deployment_name):
+        k8s_apps = client.AppsV1Api()
+        try:
+            k8s_apps.delete_namespaced_deployment(f"{deployment_name}", namespace)
+            self.core_api.delete_namespaced_service(f"{deployment_name}", namespace)
+            return True
+        except Exception as e:
+            print(
+                "Exception when calling CoreV1Api->delete_namespaced_service: %s\n" % e
+            )
+            return False
+
+    def create_ray_cluster(self, namespace, cluster_config=None, nodeport_config=None):
+        # TODO:
+        # - Create a ray cluster in the user namespace
+        try:
+            print("Creating namespace...")
+            result = self.core_api.create_namespace(
+                body=client.V1Namespace(metadata={"name": namespace})
+            )
+            print(result)
+        except:
+            # skip if already present
+            pass
+
+        if cluster_config:
+            print("Creating ray cluster...")
+            with open(cluster_config, "r") as yaml_in:
+                yaml_object = yaml.safe_load(
+                    yaml_in
+                )  # yaml_object will be a list or a dict
+
+            result = client.CustomObjectsApi().create_namespaced_custom_object(
+                group="ray.io",
+                version="v1alpha1",
+                namespace=namespace,
+                plural="rayclusters",
+                body=yaml_object,
+                pretty=True,
+            )
+            print(result)
+
+        # - create a nodeport service to access the cluster
+        if nodeport_config:
+            print("Creating ray nodeport...")
+            with open(nodeport_config, "r") as yaml_in:
+                yaml_object = yaml.safe_load(
+                    yaml_in
+                )  # yaml_object will be a list or a dict
+
+            result = api.core_api.create_namespaced_service(
+                namespace=namespace, body=yaml_object, pretty=True
+            )
+            print(result)
+        # - return connection details via the nodeport
+        return result
+
     def deploy_ray_model(
         self,
         deployment_name,
@@ -192,21 +282,18 @@ class KubeAPI():
         tokenizer_args: Optional[Dict] = None,
         tokenizing_args: Optional[Dict] = None,
         generation_args: Optional[Dict] = None,
-        model_args: Optional[Dict] = None
+        model_args: Optional[Dict] = None,
     ):
-        
         try:
             print("Creating namespace...")
             result = self.core_api.create_namespace(
-                body=client.V1Namespace(
-                    metadata={"name": namespace}
-                )
+                body=client.V1Namespace(metadata={"name": namespace})
             )
             print(result)
         except:
             # skip if already present
             pass
-        
+
         # Deploy a deepsparse model
         yaml = create_deployment_yaml(
             values={
@@ -215,98 +302,17 @@ class KubeAPI():
                 "namespace": namespace,
                 "num_cpus": num_cpus,
                 "num_gpus": num_gpus,
-                "num_replicas":num_replicas,
+                "num_replicas": num_replicas,
                 "tokenizer_args": json.dumps(tokenizer_args),
                 "tokenizing_args": json.dumps(tokenizing_args),
                 "generation_args": json.dumps(generation_args),
-                "model_args": json.dumps(model_args)
-            },            
-            default_values= DEFAULT_RAY_VALUES,
-            template_file = RAY_DEPLOYMENT_TEMPLATE
-
+                "model_args": json.dumps(model_args),
+            },
+            default_values=DEFAULT_RAY_VALUES,
+            template_file=RAY_DEPLOYMENT_TEMPLATE,
         )
         return self.crd_kube_deploy(yaml)
 
-
-    
-    def list_deepsparse_deployments(self, namespace):
-        k8s_apps = client.AppsV1Api()
-        deployments = k8s_apps.list_namespaced_deployment(namespace)
-        model_deployments = defaultdict(dict)
-        for deployment in deployments.items:
-            model_deployments[deployment.metadata.name] = {
-                "replicas": deployment.spec.replicas,
-                "available_replicas": deployment.status.available_replicas,
-                "unavailable_replicas": deployment.status.unavailable_replicas,
-                "ready_replicas": deployment.status.ready_replicas,
-                "paused": deployment.spec.paused
-            }
-        # get nodeport services
-        services = self.core_api.list_namespaced_service(namespace)
-        for service in services.items:
-            model_deployments[service.metadata.name]["cluster_ip"] = service.spec.cluster_ip
-            model_deployments[service.metadata.name]["ports"] = [(port.node_port, port.target_port) for port in service.spec.ports]
-        return model_deployments
-    
-    def delete_deepsparse_model(
-        self,
-        namespace,
-        deployment_name
-    ):
-        k8s_apps = client.AppsV1Api()
-        try:
-            k8s_apps.delete_namespaced_deployment(f"{deployment_name}", namespace)
-            self.core_api.delete_namespaced_service(f"{deployment_name}", namespace)
-            return True
-        except Exception as e:
-            print("Exception when calling CoreV1Api->delete_namespaced_service: %s\n" % e)
-            return False
-    
-    def create_ray_cluster(self, namespace, cluster_config=None, nodeport_config=None):
-        # TODO:
-        # - Create a ray cluster in the user namespace
-        try:
-            print("Creating namespace...")
-            result = self.core_api.create_namespace(
-                body=client.V1Namespace(
-                    metadata={"name": namespace}
-                )
-            )
-            print(result)
-        except:
-            # skip if already present
-            pass
-
-        if cluster_config:
-            print("Creating ray cluster...")
-            with open(cluster_config, 'r') as yaml_in:
-                yaml_object = yaml.safe_load(yaml_in) # yaml_object will be a list or a dict
-            
-            result = client.CustomObjectsApi().create_namespaced_custom_object(
-                group="ray.io", 
-                version="v1alpha1",
-                namespace=namespace,
-                plural="rayclusters",
-                body=yaml_object,
-                pretty=True
-            )
-            print(result)
-        
-        # - create a nodeport service to access the cluster
-        if nodeport_config:
-            print("Creating ray nodeport...")
-            with open(nodeport_config, 'r') as yaml_in:
-                yaml_object = yaml.safe_load(yaml_in) # yaml_object will be a list or a dict
-            
-            result = api.core_api.create_namespaced_service(
-                namespace=namespace,
-                body=yaml_object,
-                pretty=True
-            )
-            print(result)
-        # - return connection details via the nodeport
-        return result
-    
     def list_ray_deployments(self, namespace=None):
         """
         Lists Ray model deployments deployed as CRDs.
@@ -319,7 +325,9 @@ class KubeAPI():
 
         try:
             # Define the GVR for RayService
-            ray_service_gvr = self.dyn_client.resources.get(api_version="ray.io/v1alpha1", kind="RayService")
+            ray_service_gvr = self.dyn_client.resources.get(
+                api_version="ray.io/v1alpha1", kind="RayService"
+            )
 
             # List all RayService CRD instances in the specified namespace
             crd_instances = ray_service_gvr.get(namespace=namespace)
@@ -337,19 +345,21 @@ class KubeAPI():
             print(f"Error listing Ray deployments: {e}")
 
         return ray_deployments
-    
+
     def delete_ray_model(self, deployment_name, namespace=None):
         """
         Deletes a Ray CRD model.
 
         :param crd_name: The name of the Ray CRD model to delete.
-        :param namespace: The namespace of the Ray CRD model.        
+        :param namespace: The namespace of the Ray CRD model.
 
         :return: True if the deletion was successful, False otherwise.
         """
         try:
             # Define the GVR for RayService
-            ray_service_gvr = self.dyn_client.resources.get(api_version="ray.io/v1alpha1", kind="RayService")
+            ray_service_gvr = self.dyn_client.resources.get(
+                api_version="ray.io/v1alpha1", kind="RayService"
+            )
 
             # Delete the RayService CRD instance
             ray_service_gvr.delete(name=deployment_name, namespace=namespace)
@@ -357,35 +367,32 @@ class KubeAPI():
         except Exception as e:
             print(f"Exception when trying to delete Ray CRD model: {e}")
             return False
-        
+
 
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
-    
+
     res = api.list_deepsparse_deployments("kube-watcher")
     print(res)
     exit()
     result = api.create_ray_cluster(
         namespace="carlos-ray",
         cluster_config="data/ray_cluster.yaml",
-        nodeport_config="data/ray_nodeport.yaml"
+        nodeport_config="data/ray_nodeport.yaml",
     )
-    
+
     # Get custom objects that match:
-    #apiVersion: ray.io/v1alpha1
-    #kind: RayCluster
+    # apiVersion: ray.io/v1alpha1
+    # kind: RayCluster
     clusters = client.CustomObjectsApi().list_cluster_custom_object(
-        group="ray.io", 
-        version="v1alpha1",
-        plural="rayclusters")
+        group="ray.io", version="v1alpha1", plural="rayclusters"
+    )
     for item in clusters["items"]:
         print(json.dumps(item, indent=3))
     exit()
-    
+
     values = api.extract_cluster_labels()
     print(json.dumps(values, indent=3))
-    
+
     labels = api.get_node_labels()
     print(json.dumps(labels, indent=3))
-
-    

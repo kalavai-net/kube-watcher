@@ -24,13 +24,13 @@ logger = logging.getLogger("prometheus_api")
 logging.basicConfig(level=logging.INFO)
 
 
-class PrometheusAPI():
+class PrometheusAPI:
     def __init__(self, url, **kwargs):
-      self.prom = PrometheusConnect(url=url, **kwargs)
+        self.prom = PrometheusConnect(url=url, **kwargs)
 
     def query(self, query):
         return self.prom.custom_query(query=query)
-    
+
     def get_node_stats(self, node_id, start_time, end_time, chunk_size):
         start_time = parse_datetime(start_time)
         end_time = parse_datetime(end_time)
@@ -39,19 +39,20 @@ class PrometheusAPI():
             metric_name=f'kube_node_status_condition{{condition="Ready", status="true", node="{node_id}"}}',
             start_time=start_time,
             end_time=end_time,
-            chunk_size=chunk_size
+            chunk_size=chunk_size,
         )
         metric_df = MetricRangeDataFrame(metric).reset_index()
         return metric_df.to_dict(orient="list")
 
 
 if __name__ == "__main__":
-    client = PrometheusAPI(url="http://10.152.183.108:9090", disable_ssl=True) # works as long as we are port forwarding from control plane
-    
+    client = PrometheusAPI(
+        url="http://10.152.183.108:9090", disable_ssl=True
+    )  # works as long as we are port forwarding from control plane
+
     logger.info("connected")
 
     result = client.query("""kube_pod_info{node="carlosfm-desktop-1"}""")
     for r in result:
         print("*" * 100)
         print(r)
-    
