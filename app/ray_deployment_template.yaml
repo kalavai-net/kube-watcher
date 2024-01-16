@@ -1,0 +1,91 @@
+apiVersion: ray.io/v1alpha1
+kind: RayService
+metadata:
+  name: $deployment_name
+  namespace: $namespace 
+
+spec:
+  serviceUnhealthySecondThreshold: 900 
+  deploymentUnhealthySecondThreshold: 300 
+  serveConfigV2: |
+    applications:
+      - name: llm 
+        import_path: serve.huggingface.llms.parameterized_model.deployment 
+        route_prefix: /
+        runtime_env:
+          working_dir: "https://github.com/kalavai-net/ray-examples/archive/refs/heads/main.zip"
+          pip:
+            - accelerate>=0.16.0
+            - transformers>=4.26.0
+            - numpy<1.24
+            - torch
+            - bitsandbytes
+          env_vars:
+            MODEL_ID: "$model_id"
+            TOKENIZER_ID: "$tokenizer_id"
+            TOKENIZER_ARGS: "$tokenizer_args"
+            TOKENIZING_ARGS: "$tokenizing_args"
+            MODEL_ARGS: "$model_args"
+            GENERATE_ARGS: "$generate_args"
+        deployments:
+          - name: PredictDeployment
+            num_replicas: $num_replicas
+            ray_actor_options:
+              num_cpus: $num_cpus
+              num_gpus: $num_gpus
+  rayClusterConfig:
+    rayVersion: '2.8.0'
+    headGroupSpec:
+      rayStartParams:
+        dashboard-host: '0.0.0.0'
+      #pod template
+      template:
+        spec:
+          runtimeClassName: nvidia # microk8s addition
+          containers:
+            - name: ray-head
+              image: rayproject/ray:2.8.0-py39-gpu 
+              resources:
+                limits:
+                  nvidia.com/gpu: 0
+                  cpu: 1
+                  memory: 8Gi
+                requests:
+                  cpu: 1
+                  memory: 1Gi
+              ports:
+                - containerPort: 6379
+                  name: gcs-server
+                - containerPort: 8265 # Ray dashboard
+                  name: dashboard
+                - containerPort: 10001
+                  name: client
+                - containerPort: 8000
+                  name: serve
+    workerGroupSpecs:
+      # the pod replicas in this group typed worker
+      - replicas: $num_replicas
+        minReplicas: $num_replicas
+        maxReplicas: 5
+        # logical group name, for this called small-group, also can be functional
+        groupName: small-group
+        rayStartParams: {}
+        #pod template
+        template:
+          spec:
+            runtimeClassName: nvidia #microk8s addition
+            containers:
+              - name: ray-worker # must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc'
+                image: rayproject/ray:2.8.0-py39-gpu # question does the head need gpu?
+                lifecycle:
+                  preStop:
+                    exec:
+                      command: ["/bin/sh","-c","ray stop"]
+                resources:
+                  limits:
+                    nvidia.com/gpu: $num_gpus
+                    cpu: "$num_cpus" # why is this in quotes?
+                    memory: "8Gi"
+                  requests:
+                    cpu: "500m"
+                    memory: "8Gi"
