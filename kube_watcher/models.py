@@ -48,3 +48,8 @@ class NodeLabelsRequest(BaseModel):
 
 class GenericDeploymentRequest(BaseModel):
     config: str
+
+class DeleteLabelledResourcesRequest(BaseModel):
+    namespace:str
+    label:str
+

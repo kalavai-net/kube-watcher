@@ -2,9 +2,9 @@ import os
 from typing import List
 
 from fastapi import FastAPI
-from app.cost_core import OpenCostAPI
+from kube_watcher.cost_core import OpenCostAPI
 
-from app.models import (
+from kube_watcher.models import (
     NodeStatusRequest,
     NodeLabelsRequest,
     NodeCostRequest,
@@ -12,13 +12,21 @@ from app.models import (
     DeepsparseDeploymentRequest,
     DeepsparseDeploymentDeleteRequest,
     DeepsparseDeploymentListRequest,
-    GenericDeploymentRequest
+    GenericDeploymentRequest,
+    DeleteLabelledResourcesRequest
 )
-from app.kube_core import (
+from kube_watcher.kube_core import (
     KubeAPI
 )
-from app.prometheus_core import PrometheusAPI
+from kube_watcher.prometheus_core import PrometheusAPI
+import logging
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 IN_CLUSTER = "True" == os.getenv("IN_CLUSTER", "True")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://10.43.164.196:9090")
@@ -26,7 +34,6 @@ OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.43.53.194:9003")
 
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
-
 
 @app.get("/v1/get_cluster_capacity")
 async def cluster_capacity():
@@ -110,3 +117,8 @@ async def namespace_cost(request: DeepsparseDeploymentListRequest):
 @app.post("/v1/deploy_generic_model")
 async def deploy_ray_model(request: GenericDeploymentRequest):
     return kube_api.deploy_generic_model(request.config) 
+
+# delete_labeled_resources(self, namespace, label):
+@app.post("/v1/delete_labeled_resources")
+async def delete_labeled_resources(request: DeleteLabelledResourcesRequest):
+    return kube_api.delete_labeled_resources(request.namespace, request.config)

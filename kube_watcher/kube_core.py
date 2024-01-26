@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from kubernetes import config, client, utils
 
-from app.utils import create_deployment_yaml
+from kube_watcher.utils import create_deployment_yaml
 
 
 def cast_resource_value(value):
@@ -128,6 +128,32 @@ class KubeAPI():
                 result = False
         return result
     
+
+    def kube_deploy_plus(self, yaml_strs):
+        yamls = yaml_strs.split("---")
+        deployment_results = {
+            "successful": [],
+            "failed": []
+        }
+
+        for yaml_str in yamls:
+            if yaml_str.strip():  # Check if the yaml_str is not just whitespace
+                yaml_obj = yaml.safe_load(yaml_str)
+                k8s_client = client.api_client.ApiClient()
+
+                try:
+                    res = utils.create_from_yaml(
+                        k8s_client,
+                        yaml_objects=[yaml_obj],
+                    )
+                    # Assuming res contains some identifiable information about the resource
+                    deployment_results["successful"].append(str(res))
+                except Exception as e:
+                    # Append the yaml that failed and the exception message for clarity
+                    deployment_results["failed"].append({"yaml": yaml_str, "error": str(e)})
+
+        return deployment_results
+    
     def deploy_deepsparse_model(
         self,
         deployment_name,
@@ -155,6 +181,10 @@ class KubeAPI():
         return self.kube_deploy(yaml)
     
     def list_deepsparse_deployments(self, namespace):
+        return self.list_deployments(namespace=namespace)
+
+    def list_deployments(self, namespace):
+        """ A Clone to deepsparse list, to allow separation of concerns"""
         k8s_apps = client.AppsV1Api()
         deployments = k8s_apps.list_namespaced_deployment(namespace)
         model_deployments = defaultdict(dict)
@@ -166,14 +196,25 @@ class KubeAPI():
                 "ready_replicas": deployment.status.ready_replicas,
                 "paused": deployment.spec.paused
             }
-        # get nodeport services
+        
         services = self.core_api.list_namespaced_service(namespace)
         for service in services.items:
             model_deployments[service.metadata.name]["cluster_ip"] = service.spec.cluster_ip
             model_deployments[service.metadata.name]["ports"] = [(port.node_port, port.target_port) for port in service.spec.ports]
+
         return model_deployments
     
     def delete_deepsparse_model(
+        self,
+        namespace,
+        deployment_name
+    ):
+       return self.delete_deployment(
+            namespace=namespace,
+            deployment_name=deployment_name
+       )
+
+    def delete_deployment(
         self,
         namespace,
         deployment_name
@@ -234,7 +275,85 @@ class KubeAPI():
         
     def deploy_generic_model(self, config: str):
         # Deploy a generic config
-        return self.kube_deploy(config)
+        return self.kube_deploy_plus(config)
+
+    def delete_labeled_resources(self, namespace, label_key: str, label_value: str = None):
+        """Delete all resources in a namespace with a given label"""
+
+        core_api = client.CoreV1Api()
+        apps_api = client.AppsV1Api()
+        batch_v1_api = client.BatchV1Api()
+
+        deleted_resources = []
+        failed_resources = []
+
+        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+
+        resource_types = {
+            'pod': (core_api.list_namespaced_pod, core_api.delete_namespaced_pod),
+            'service': (core_api.list_namespaced_service, core_api.delete_namespaced_service),
+            'daemonset': (apps_api.list_namespaced_daemon_set, apps_api.delete_namespaced_daemon_set),
+            'deployment': (apps_api.list_namespaced_deployment, apps_api.delete_namespaced_deployment),
+            'replicaset': (apps_api.list_namespaced_replica_set, apps_api.delete_namespaced_replica_set),
+            'statefulset': (apps_api.list_namespaced_stateful_set, apps_api.delete_namespaced_stateful_set),
+            'job': (batch_v1_api.list_namespaced_job, batch_v1_api.delete_namespaced_job),
+            'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim)
+ 
+        }
+
+        for resource_type, (list_func, delete_func) in resource_types.items():
+            try:
+                resources = list_func(namespace, label_selector=label_selector)
+                for resource in resources.items:
+                    try:
+                        delete_func(name=resource.metadata.name, namespace=namespace)
+                        deleted_resources.append(f"{resource_type}/{resource.metadata.name}")
+                    except Exception as e:
+                        failed_resources.append(f"{resource_type}/{resource.metadata.name}: {str(e)}")
+            except Exception as e:
+                print(f"Exception when listing {resource_type}: {e}")
+
+        return {
+            "deleted_resources": deleted_resources,
+            "failures": failed_resources
+        }
+
+
+    
+
+    def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
+        core_api = client.CoreV1Api()
+        apps_api = client.AppsV1Api()
+        batch_v1_api = client.BatchV1Api()
+        #batch_v1beta1_api = client.BatchV1beta1Api()
+
+        resources_found = {}
+
+        resource_types = {
+            'pod': core_api.list_namespaced_pod,
+            'service': core_api.list_namespaced_service,
+            'daemonset': apps_api.list_namespaced_daemon_set,
+            'deployment': apps_api.list_namespaced_deployment,
+            'replicaset': apps_api.list_namespaced_replica_set,
+            'statefulset': apps_api.list_namespaced_stateful_set,
+            'job': batch_v1_api.list_namespaced_job,
+            'persistentvolumeclaim': core_api.list_namespaced_persistent_volume_claim
+        }
+
+        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+
+        for resource_type, list_func in resource_types.items():
+            try:
+                resources = list_func(namespace, label_selector=label_selector)
+                if resources.items:
+                    resources_found[resource_type] = [resource.metadata.name for resource in resources.items]
+            except Exception as e:
+                print(f"Exception when checking for {resource_type}: {e}")
+
+        return resources_found
+
+
+
 
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
