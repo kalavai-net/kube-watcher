@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from kube_watcher.cost_core import OpenCostAPI
 
 from kube_watcher.models import (
@@ -13,7 +13,8 @@ from kube_watcher.models import (
     DeepsparseDeploymentDeleteRequest,
     DeepsparseDeploymentListRequest,
     GenericDeploymentRequest,
-    DeleteLabelledResourcesRequest
+    DeleteLabelledResourcesRequest,
+    GetLabelledResourcesRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -113,12 +114,24 @@ async def namespace_cost(request: DeepsparseDeploymentListRequest):
 
 
 #### GENERIC_DEPLOYMENT
-# Deploy a model from a config
 @app.post("/v1/deploy_generic_model")
 async def deploy_ray_model(request: GenericDeploymentRequest):
     return kube_api.deploy_generic_model(request.config) 
 
-# delete_labeled_resources(self, namespace, label):
 @app.post("/v1/delete_labeled_resources")
 async def delete_labeled_resources(request: DeleteLabelledResourcesRequest):
-    return kube_api.delete_labeled_resources(request.namespace, request.config)
+    return kube_api.delete_labeled_resources(request.namespace, request.label, request.value)
+
+@app.post("/v1/get_resources_with_label")
+async def get_resources_with_label(request: GetLabelledResourcesRequest):
+    return kube_api.find_resources_with_label(request.namespace, request.label, request.value)
+
+@app.post("/v1/find_nodeport_url")
+async def find_nodeport_url(request: GetLabelledResourcesRequest):
+    return kube_api.find_nodeport_url(request.namespace, request.label, request.value)
+
+# Endpoint to check health
+@app.get("/v1/health")
+async def health():
+    return HTTPException(status_code=200, detail="OK")
+

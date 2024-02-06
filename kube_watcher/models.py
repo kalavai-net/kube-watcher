@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 class NodeStatusRequest(BaseModel):
@@ -52,4 +52,9 @@ class GenericDeploymentRequest(BaseModel):
 class DeleteLabelledResourcesRequest(BaseModel):
     namespace:str
     label:str
+    value:Optional[str] = None
 
+class GetLabelledResourcesRequest(BaseModel):
+    namespace:str
+    label:str
+    value:Optional[str] = None

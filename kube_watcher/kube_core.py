@@ -346,12 +346,92 @@ class KubeAPI():
             try:
                 resources = list_func(namespace, label_selector=label_selector)
                 if resources.items:
-                    resources_found[resource_type] = [resource.metadata.name for resource in resources.items]
+                    resources_found[resource_type] = {resource.metadata.name: resource.metadata.to_dict() for resource in resources.items}
             except Exception as e:
                 print(f"Exception when checking for {resource_type}: {e}")
 
         return resources_found
 
+
+    def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
+        core_api = client.CoreV1Api()
+        apps_api = client.AppsV1Api()
+        batch_v1_api = client.BatchV1Api()
+        #batch_v1beta1_api = client.BatchV1beta1Api()
+
+        resources_found = []
+
+        resource_types = {
+            'pod': core_api.list_namespaced_pod,
+            'service': core_api.list_namespaced_service,
+            'daemonset': apps_api.list_namespaced_daemon_set,
+            'deployment': apps_api.list_namespaced_deployment,
+            'replicaset': apps_api.list_namespaced_replica_set,
+            'statefulset': apps_api.list_namespaced_stateful_set,
+            'job': batch_v1_api.list_namespaced_job,
+            'persistentvolumeclaim': core_api.list_namespaced_persistent_volume_claim
+        }
+
+        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+
+        for resource_type, list_func in resource_types.items():
+            try:
+                resources = list_func(namespace, label_selector=label_selector)
+                if resources.items:
+                    #resources_found[resource_type] = {resource.metadata.name: resource.metadata.to_dict() for resource in resources.items}
+                    for resource in resources.items:
+                        node_ports = []
+                        if resource.spec.type == "NodePort":
+                            for port in resource.spec.ports:
+                                # Check if the port is a NodePort and add it to the list
+                                if port.node_port:
+                                    node_ports.append(port.node_port)
+
+                        
+
+                        resource = {
+                            "type": resource_type,
+                            "namespace": namespace,
+                            "name": resource.metadata.name,
+                            "labels": resource.metadata.labels,
+                            "metadata": resource.metadata.to_dict(),
+                            "spec": resource.spec.to_dict(),
+                            "node_ports": node_ports,
+                            "label_key": label_key,
+                            "label_value": resource.metadata.labels.get(label_key, None)
+                        }
+                        resources_found.append(resource)
+
+            except Exception as e:
+                print(f"Exception when checking for {resource_type}: {e}")
+
+        return resources_found
+
+
+
+
+    def find_nodeport_url(self, namespace:str, label_key:str, label_value=None):
+        """ Termporary Way to find the nodeport url for a service with a given label"""
+
+        core_api = client.CoreV1Api()
+    
+        # pull only the service with the given label
+        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+
+        service_ports = {}        
+
+        resources = core_api.list_namespaced_service(namespace, label_selector=label_selector)
+        if resources.items:
+            for service in resources.items:
+                node_ports = []
+                if service.spec.type == "NodePort":
+                    for port in service.spec.ports:
+                        # Check if the port is a NodePort and add it to the list
+                        if port.node_port:
+                            node_ports.append(port.node_port)
+                service_ports[service.metadata.name] = max(node_ports)
+
+        return service_ports
 
 
 
