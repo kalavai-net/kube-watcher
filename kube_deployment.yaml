@@ -79,15 +79,15 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v16
+        image: bundenth/kube_watcher:v20
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
         env:
         - name: PROMETHEUS_ENDPOINT
-          value: "http://10.43.164.196"
+          value: "http://10.43.100.250"
         - name: OPENCOST_ENDPOINT
-          value: "http://10.43.53.194:9003"
+          value: "http://10.43.140.3:9003"
         - name: IN_CLUSTER
           value: "True"
       serviceAccountName: api-service-account  # Service account with cluster permissions
@@ -95,13 +95,39 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kube-watcher-nodeport
+  name: kube-watcher-service
   namespace: kalavai-system
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
-  - port: 8000
+  - port: 80
     targetPort: 8000
-    nodePort: 30873
   selector:
     app: kube-watcher-api
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tools-library-ingress
+  namespace: kalavai-system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/tls-acme: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    # Add a DNS record to match this URL to the IP of the cluster
+    - host: kubeapi.test.k8s.mvp.kalavai.net
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: kube-watcher-service
+                port:
+                  number: 80
+            path: /
+  tls:
+  - hosts:
+    - kubeapi.test.k8s.mvp.kalavai.net
+    secretName: kubeapi.test.k8s.mvp.kalavai.net-tls
