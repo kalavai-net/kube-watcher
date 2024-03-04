@@ -79,7 +79,7 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v20
+        image: bundenth/kube_watcher:v23
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
@@ -90,6 +90,10 @@ spec:
           value: "http://10.43.140.3:9003"
         - name: IN_CLUSTER
           value: "True"
+        - name: KW_USE_AUTH
+          value: "True"
+        - name: KW_MASTER_KEY
+          value: "CARLOS_ANNIE_ADAM_KALAVAI"
       serviceAccountName: api-service-account  # Service account with cluster permissions
 ---
 apiVersion: v1
