@@ -16,10 +16,9 @@ class KubeWatcherClient:
     def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url
         self.api_key = api_key
-        if self.api_key:
-            self.headers = {"Authorization": f"Bearer {api_key}"}
-        else:
-            self.headers = {}
+        self.headers = {}
+        if api_key:
+            self.headers['X-API-KEY'] = self.api_key
 
         self.client = httpx.Client()
 

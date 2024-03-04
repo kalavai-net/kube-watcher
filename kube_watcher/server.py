@@ -1,8 +1,10 @@
 import os
 from typing import List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from kube_watcher.cost_core import OpenCostAPI
+
+from starlette.requests import Request
 
 from kube_watcher.models import (
     NodeStatusRequest,
@@ -33,27 +35,46 @@ IN_CLUSTER = "True" == os.getenv("IN_CLUSTER", "True")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://10.43.164.196:9090")
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.43.53.194:9003")
 
+USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
+MASTER_KEY = os.getenv("KW_MASTER_KEY")
+
+if USE_AUTH:
+    assert MASTER_KEY is not None, "If you are using auth, you must set a master key using the 'KW_MASTER_KEY' environment variable."
+else:
+    logger.warning("Warning: Authentication is disabled. This should only be used for testing.")
+
+# API Key Validation
+async def verify_api_key(request: Request):
+    if not USE_AUTH:
+        return
+    api_key = request.headers.get("X-API-KEY")
+    if api_key != MASTER_KEY:
+        print(api_key, MASTER_KEY)
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    return api_key
+
+
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
 
 @app.get("/v1/get_cluster_capacity")
-async def cluster_capacity():
+async def cluster_capacity(api_key: str = Depends(verify_api_key)):
     cluster_capacity = kube_api.extract_cluster_capacity()
     return cluster_capacity
 
 @app.get("/v1/get_cluster_labels")
-async def cluster_labels():
+async def cluster_labels(api_key: str = Depends(verify_api_key)):
     labels = kube_api.extract_cluster_labels()
     return labels
 
 @app.post("/v1/get_node_labels")
-async def node_labels(request: NodeLabelsRequest):
+async def node_labels(request: NodeLabelsRequest, api_key: str = Depends(verify_api_key)):
     labels = kube_api.get_node_labels(node_names=request.node_names)
     return labels
 
 
 @app.post("/v1/get_node_stats")
-async def node_stats(request: NodeStatusRequest):
+async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_api_key)):
     client = PrometheusAPI(url=PROMETHEUS_ENDPOINT, disable_ssl=True) # works as long as we are port forwarding from control plane
     
     return client.get_node_stats(
@@ -65,7 +86,7 @@ async def node_stats(request: NodeStatusRequest):
 
 
 @app.post("/v1/get_nodes_cost")
-async def node_cost(request: NodeCostRequest):
+async def node_cost(request: NodeCostRequest, api_key: str = Depends(verify_api_key)):
     opencost = OpenCostAPI(base_url=OPENCOST_ENDPOINT)
 
     return opencost.get_nodes_computation(
@@ -74,7 +95,7 @@ async def node_cost(request: NodeCostRequest):
 
 
 @app.post("/v1/get_namespaces_cost")
-async def namespace_cost(request: NamespacesCostRequest):
+async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(verify_api_key)):
     opencost = OpenCostAPI(base_url=OPENCOST_ENDPOINT)
 
     return opencost.get_namespaces_cost(
@@ -84,7 +105,7 @@ async def namespace_cost(request: NamespacesCostRequest):
 
 # Create model deployment with deepsparse
 @app.post("/v1/deploy_deepsparse_model")
-async def namespace_cost(request: DeepsparseDeploymentRequest):
+async def namespace_cost(request: DeepsparseDeploymentRequest, api_key: str = Depends(verify_api_key)):
     model_response = kube_api.deploy_deepsparse_model(
         deployment_name=request.deployment_name,
         model_id=request.deepsparse_model_id,
@@ -98,7 +119,7 @@ async def namespace_cost(request: DeepsparseDeploymentRequest):
     return model_response
 
 @app.post("/v1/delete_deepsparse_model")
-async def namespace_cost(request: DeepsparseDeploymentDeleteRequest):
+async def namespace_cost(request: DeepsparseDeploymentDeleteRequest, api_key: str = Depends(verify_api_key)):
     model_response = kube_api.delete_deepsparse_model(
         deployment_name=request.deployment_name,
         namespace=request.namespace,
@@ -106,7 +127,7 @@ async def namespace_cost(request: DeepsparseDeploymentDeleteRequest):
     return model_response
 
 @app.post("/v1/list_deepsparse_deployments")
-async def namespace_cost(request: DeepsparseDeploymentListRequest):
+async def namespace_cost(request: DeepsparseDeploymentListRequest, api_key: str = Depends(verify_api_key)):
     model_response = kube_api.list_deepsparse_deployments(
         namespace=request.namespace
     )
@@ -115,19 +136,19 @@ async def namespace_cost(request: DeepsparseDeploymentListRequest):
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model")
-async def deploy_ray_model(request: GenericDeploymentRequest):
+async def deploy_ray_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_api_key)):
     return kube_api.deploy_generic_model(request.config) 
 
 @app.post("/v1/delete_labeled_resources")
-async def delete_labeled_resources(request: DeleteLabelledResourcesRequest):
+async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
     return kube_api.delete_labeled_resources(request.namespace, request.label, request.value)
 
 @app.post("/v1/get_resources_with_label")
-async def get_resources_with_label(request: GetLabelledResourcesRequest):
+async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
     return kube_api.find_resources_with_label(request.namespace, request.label, request.value)
 
 @app.post("/v1/find_nodeport_url")
-async def find_nodeport_url(request: GetLabelledResourcesRequest):
+async def find_nodeport_url(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
     return kube_api.find_nodeport_url(request.namespace, request.label, request.value)
 
 # Endpoint to check health
