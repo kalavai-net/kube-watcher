@@ -221,12 +221,11 @@ class KubeAPI():
     ):
         k8s_apps = client.AppsV1Api()
         try:
-            k8s_apps.delete_namespaced_deployment(f"{deployment_name}", namespace)
-            self.core_api.delete_namespaced_service(f"{deployment_name}", namespace)
+            k8s_apps.delete_namespaced_deployment(deployment_name, namespace)
+            self.core_api.delete_namespaced_service(deployment_name, namespace)
             return True
         except Exception as e:
-            print("Exception when calling CoreV1Api->delete_namespaced_service: %s\n" % e)
-            return False
+            print(f"Exception when calling CoreV1Api->delete_namespaced_service: {str(e)}")
     
     def create_ray_cluster(self, namespace, cluster_config=None, nodeport_config=None):
         # TODO:
