@@ -354,6 +354,8 @@ class KubeAPI():
 
 
     def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
+        # TODO: Update to give Cluster IP
+        
         core_api = client.CoreV1Api()
         apps_api = client.AppsV1Api()
         batch_v1_api = client.BatchV1Api()
