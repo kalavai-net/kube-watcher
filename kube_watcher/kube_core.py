@@ -118,7 +118,9 @@ class KubeAPI():
         yamls = yaml_strs.split("---")
         result = True
         for yaml_str in yamls:
+            print("DEPLOYING YAML")
             yaml_obj =  yaml.safe_load(yaml_str)
+            print(yaml_obj)
             # load kubernetes client
             k8s_client = client.api_client.ApiClient()
             # create pods from yaml object
@@ -127,8 +129,10 @@ class KubeAPI():
                     k8s_client,
                     yaml_objects=[yaml_obj],
                 )
+                print(res)
             except Exception as e:
                 result = False
+                print(str(e))
         return result
     
 
@@ -483,9 +487,9 @@ class KubeAPI():
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
     
-    #res = api.delete_flow(deployment_name="na", namespace="carlosfm")
-    #print(res)
-    #exit()
+    res = api.delete_flow(deployment_name="na", namespace="carlosfm")
+    print(res)
+    exit()
     with open("Chatbot.json", "r") as f:
         flow = json.load(f)
     res = api.deploy_flow(
