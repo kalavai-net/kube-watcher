@@ -5,7 +5,10 @@ from collections import defaultdict
 
 from kubernetes import config, client, utils
 
-from kube_watcher.utils import create_deployment_yaml
+from kube_watcher.utils import (
+    create_deepsparse_yaml,
+    create_flow_deployment_yaml
+)
 
 
 def cast_resource_value(value):
@@ -154,6 +157,68 @@ class KubeAPI():
 
         return deployment_results
     
+    def deploy_flow(
+        self,
+        deployment_name,
+        namespace,
+        flow,
+        num_cores=2,
+        ram_memory="2Gi",
+        replicas=1
+    ):
+        # Deploy a deepsparse model
+        yaml = create_flow_deployment_yaml(
+            values={
+                "deployment_name": deployment_name,
+                "username": namespace,
+                "flow": json.dumps(flow),
+                "num_cores": num_cores,
+                "ram_memory": ram_memory,
+                "replicas": replicas
+            }
+        )
+        return self.kube_deploy(yaml)
+    
+    def delete_flow(
+        self,
+        deployment_name,
+        namespace
+    ):
+        """Delete a flow deployment within a namespace.
+        
+        TODO: at the moment it deletes everything within the namespace. Be more surgical
+        """
+        try:
+            self.core_api.delete_namespace(name=namespace)
+            return True
+        except Exception as e:
+            print(f"Exception when calling CoreV1Api->delete_namespace: {str(e)}")
+
+    def list_deployments(self, namespace, inspect_services=False):
+        """ List deployments in a namespace"""
+        k8s_apps = client.AppsV1Api()
+        deployments = k8s_apps.list_namespaced_deployment(namespace)
+        model_deployments = defaultdict(dict)
+        for deployment in deployments.items:
+            model_deployments[deployment.metadata.name] = {
+                "replicas": deployment.spec.replicas,
+                "available_replicas": deployment.status.available_replicas,
+                "unavailable_replicas": deployment.status.unavailable_replicas,
+                "ready_replicas": deployment.status.ready_replicas,
+                "paused": deployment.spec.paused
+            }
+        
+        if inspect_services:
+            services = self.core_api.list_namespaced_service(namespace)
+            for service in services.items:
+                model_deployments[service.metadata.name]["cluster_ip"] = service.spec.cluster_ip
+                model_deployments[service.metadata.name]["ports"] = [(port.node_port, port.target_port) for port in service.spec.ports]
+
+        return model_deployments
+    
+    
+    ## DEPRECATED ##
+    
     def deploy_deepsparse_model(
         self,
         deployment_name,
@@ -166,7 +231,7 @@ class KubeAPI():
         replicas
     ):
         # Deploy a deepsparse model
-        yaml = create_deployment_yaml(
+        yaml = create_deepsparse_yaml(
             values={
                 "deployment_name": deployment_name,
                 "model_id": model_id,
@@ -181,29 +246,8 @@ class KubeAPI():
         return self.kube_deploy(yaml)
     
     def list_deepsparse_deployments(self, namespace):
-        return self.list_deployments(namespace=namespace)
+        return self.list_deployments(namespace=namespace, inspect_services=True)
 
-    def list_deployments(self, namespace):
-        """ A Clone to deepsparse list, to allow separation of concerns"""
-        k8s_apps = client.AppsV1Api()
-        deployments = k8s_apps.list_namespaced_deployment(namespace)
-        model_deployments = defaultdict(dict)
-        for deployment in deployments.items:
-            model_deployments[deployment.metadata.name] = {
-                "replicas": deployment.spec.replicas,
-                "available_replicas": deployment.status.available_replicas,
-                "unavailable_replicas": deployment.status.unavailable_replicas,
-                "ready_replicas": deployment.status.ready_replicas,
-                "paused": deployment.spec.paused
-            }
-        
-        services = self.core_api.list_namespaced_service(namespace)
-        for service in services.items:
-            model_deployments[service.metadata.name]["cluster_ip"] = service.spec.cluster_ip
-            model_deployments[service.metadata.name]["ports"] = [(port.node_port, port.target_port) for port in service.spec.ports]
-
-        return model_deployments
-    
     def delete_deepsparse_model(
         self,
         namespace,
@@ -439,8 +483,17 @@ class KubeAPI():
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
     
-    res = api.list_deepsparse_deployments("kube-watcher")
+    #res = api.delete_flow(deployment_name="na", namespace="carlosfm")
+    #print(res)
+    #exit()
+    with open("Chatbot.json", "r") as f:
+        flow = json.load(f)
+    res = api.deploy_flow(
+        deployment_name="my-deployment-flow",
+        namespace="carlosfm",
+        flow=flow)
     print(res)
+    
     exit()
     result = api.create_ray_cluster(
         namespace="carlos-ray",

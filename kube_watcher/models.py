@@ -58,3 +58,11 @@ class GetLabelledResourcesRequest(BaseModel):
     namespace:str
     label:str
     value:Optional[str] = None
+
+class FlowDeploymentRequest(BaseModel):
+    deployment_name: str
+    namespace: str
+    flow: dict = {}
+    num_cores: int = 2
+    replicas: int = 1
+    ram_memory: str = "2Gi"

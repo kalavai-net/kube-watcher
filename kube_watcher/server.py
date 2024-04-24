@@ -16,7 +16,8 @@ from kube_watcher.models import (
     DeepsparseDeploymentListRequest,
     GenericDeploymentRequest,
     DeleteLabelledResourcesRequest,
-    GetLabelledResourcesRequest
+    GetLabelledResourcesRequest,
+    FlowDeploymentRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -101,8 +102,39 @@ async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(
     return opencost.get_namespaces_cost(
         namespaces=request.namespace_names,
         **request.kubecost_params.model_dump())
+    
+
+@app.post("/v1/deploy_flow")
+async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_api_key)):
+    """Todo"""
+    response = kube_api.deploy_flow(
+        deployment_name=request.deployment_name,
+        namespace=request.namespace,
+        flow=request.flow,
+        num_cores=request.num_cores,
+        ram_memory=request.ram_memory,
+        replicas=request.replicas
+    )
+    return response
+
+@app.post("/v1/delete_flow")
+async def delete_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_api_key)):
+    """Todo"""
+    response = kube_api.delete_flow(
+        deployment_name=request.deployment_name,
+        namespace=request.namespace,
+    )
+    return response
+
+@app.post("/v1/list_flows")
+async def list_flows(namespace: str, api_key: str = Depends(verify_api_key)):
+    response = kube_api.list_deployments(
+        namespace=namespace
+    )
+    return response
 
 
+## DEPRECATED ##
 # Create model deployment with deepsparse
 @app.post("/v1/deploy_deepsparse_model")
 async def namespace_cost(request: DeepsparseDeploymentRequest, api_key: str = Depends(verify_api_key)):

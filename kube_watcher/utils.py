@@ -1,25 +1,41 @@
 from string import Template
 
 
-DEFAULT_DEEPSPARSE_VALUES = {
+DEEPSPARSE_DEFAULT_VALUES = {
     'num_cores': '4',
     "ram_memory": "14Gi",
     "ephemeral_memory": "48Gi"
 }
-DEPLOYMENT_TEMPLATE = "app/deployment_template.yaml"
+DEEPSPARSE_DEPLOYMENT_TEMPLATE = "deployments/deepsparse_deployment_template.yaml"
+FLOW_DEPLOYMENT_TEMPLATE = "deployments/flow_deployment_template.yaml"
 
 
-def create_deployment_yaml(values, template_file=DEPLOYMENT_TEMPLATE):
+def create_deployment_yaml(values, template_file, default_values=None):
     """
-    generates a yaml deployment file for a deepsparse model serving
+    generates a yaml deployment file for a templated deployment
     """
-    for key, value in DEFAULT_DEEPSPARSE_VALUES.items():
-        if key not in values:
-            values[key] = value
-            print(f"{key} not found, using default value {value}")
-    
+    if default_values is not None:
+        for key, value in default_values.items():
+            if key not in values:
+                values[key] = value
+                print(f"{key} not found, using default value {value}")
     with open(template_file, 'r') as f:
         src = Template(f.read())
         result = src.substitute(values)
-        print(result)
     return result
+
+
+def create_deepsparse_yaml(values, template_file=DEEPSPARSE_DEPLOYMENT_TEMPLATE, default_values=DEEPSPARSE_DEFAULT_VALUES):
+    """
+    generates a yaml deployment file for a deepsparse model serving
+    """
+    
+    return create_deployment_yaml(values, template_file=template_file, default_values=default_values)
+
+
+def create_flow_deployment_yaml(values, template_file=FLOW_DEPLOYMENT_TEMPLATE, default_values=None):
+    """
+    generates a yaml deployment file for a langflow serving
+    """
+    return create_deployment_yaml(values, template_file=template_file, default_values=default_values)
+
