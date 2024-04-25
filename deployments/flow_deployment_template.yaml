@@ -35,10 +35,10 @@ spec:
         ports:
         - containerPort: 8000
         env:
-        - name: USE_AUTH
-          value: "False"
-        - name: MASTER_KEY
-          value: "None"
+        - name: FLOW_USE_AUTH
+          value: "True"
+        - name: FLOW_MASTER_KEY
+          value: "$api_key"
         - name: FLOW_RUNNER_ENDPOINT
           value: "https://runner.test.k8s.mvp.kalavai.net"
         - name: FLOW_PATH
@@ -62,7 +62,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: flow-deployer-service
+  name: $deployment_name-service
   namespace: $username
   labels:
     app: $deployment_name
@@ -93,7 +93,7 @@ spec:
           - pathType: Prefix
             backend:
               service:
-                name: flow-deployer-service
+                name: $deployment_name-service
                 port:
                   number: 80
             path: /

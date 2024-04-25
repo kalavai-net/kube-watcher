@@ -166,6 +166,7 @@ class KubeAPI():
         deployment_name,
         namespace,
         flow,
+        api_key,
         num_cores=2,
         ram_memory="2Gi",
         replicas=1
@@ -178,7 +179,8 @@ class KubeAPI():
                 "flow": json.dumps(flow),
                 "num_cores": num_cores,
                 "ram_memory": ram_memory,
-                "replicas": replicas
+                "replicas": replicas,
+                "api_key": api_key
             }
         )
         return self.kube_deploy(yaml)

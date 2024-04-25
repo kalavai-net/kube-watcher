@@ -113,7 +113,8 @@ async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(ver
         flow=request.flow,
         num_cores=request.num_cores,
         ram_memory=request.ram_memory,
-        replicas=request.replicas
+        replicas=request.replicas,
+        api_key=request.api_key
     )
     return response
 

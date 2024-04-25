@@ -62,6 +62,7 @@ class GetLabelledResourcesRequest(BaseModel):
 class FlowDeploymentRequest(BaseModel):
     deployment_name: str
     namespace: str
+    api_key: str = ""
     flow: dict = {}
     num_cores: int = 2
     replicas: int = 1
