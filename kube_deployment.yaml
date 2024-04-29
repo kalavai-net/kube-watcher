@@ -95,7 +95,14 @@ spec:
           value: "True"
         - name: KW_MASTER_KEY
           value: "CARLOS_ANNIE_ADAM_KALAVAI"
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 30
       serviceAccountName: api-service-account  # Service account with cluster permissions
+
 ---
 apiVersion: v1
 kind: Service
