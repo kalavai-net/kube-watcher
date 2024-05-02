@@ -43,6 +43,12 @@ spec:
           value: "https://runner.test.k8s.mvp.kalavai.net"
         - name: FLOW_PATH
           value: "/etc/config/flow.json"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 30
         resources:
           limits:
             cpu: $num_cores
