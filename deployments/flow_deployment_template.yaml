@@ -16,7 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: $username
-  name: $deployment_name-flow
+  name: $deployment_name
 spec:
   replicas: $replicas
   selector:

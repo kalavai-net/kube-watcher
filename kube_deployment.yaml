@@ -80,7 +80,7 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v30
+        image: bundenth/kube_watcher:v31
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
@@ -112,7 +112,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80
+  - port: 8000
     targetPort: 8000
   selector:
     app: kube-watcher-api
@@ -126,7 +126,7 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     kubernetes.io/tls-acme: "true"
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     # Add a DNS record to match this URL to the IP of the cluster
     - host: kubeapi.test.k8s.mvp.kalavai.net
@@ -137,7 +137,7 @@ spec:
               service:
                 name: kube-watcher-service
                 port:
-                  number: 80
+                  number: 8000
             path: /
   tls:
   - hosts:
