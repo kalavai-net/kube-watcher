@@ -201,10 +201,10 @@ class KubeAPI():
             # service
             self.core_api.delete_namespaced_service(name=f"{deployment_name}-service", namespace=namespace)
             # deployment
-            apps_api = client.AppsV1Api(client.api_client.ApiClient())
+            apps_api = apps_api = client.AppsV1Api()
             apps_api.delete_namespaced_deployment(name=f"{deployment_name}-flow", namespace=namespace)
             # ingress
-            network_api = client.NetworkingV1Api(client.api_client.ApiClient())
+            network_api = apps_api = client.NetworkingV1Api()
             network_api.delete_namespaced_ingress(name=f"{deployment_name}-ingress", namespace=namespace)
             return True
         except Exception as e:
@@ -499,14 +499,14 @@ class KubeAPI():
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
     
-    res = api.delete_flow(deployment_name="my-deployment-flow", namespace="carlosfm")
+    res = api.delete_flow(deployment_name="my-deployment", namespace="carlosfm2")
     print(res)
     exit()
     with open("Chatbot.json", "r") as f:
         flow = json.load(f)
     res = api.deploy_flow(
-        deployment_name="my-deployment-flow",
-        namespace="carlosfm",
+        deployment_name="my-deployment",
+        namespace="carlosfm2",
         flow=flow,
         api_key="None")
     print(res)
