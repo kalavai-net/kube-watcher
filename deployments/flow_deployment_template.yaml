@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: json-configmap
+  name: $deployment_name-configmap
   namespace: $username
 data:
   flow.json: |
@@ -16,7 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: $username
-  name: $deployment_name
+  name: $deployment_name-flow
 spec:
   replicas: $replicas
   selector:
@@ -84,7 +84,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: $username-ingress
+  name: $deployment_name-ingress
   namespace: $username
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod

@@ -195,7 +195,17 @@ class KubeAPI():
         TODO: at the moment it deletes everything within the namespace. Be more surgical
         """
         try:
-            self.core_api.delete_namespace(name=namespace)
+            # TODO create a CRD for flow deployments so we don't have to delete individual components
+            # config map
+            self.core_api.delete_namespaced_config_map(name=f"{deployment_name}-configmap", namespace=namespace)
+            # service
+            self.core_api.delete_namespaced_service(name=f"{deployment_name}-service", namespace=namespace)
+            # deployment
+            apps_api = client.AppsV1Api(client.api_client.ApiClient())
+            apps_api.delete_namespaced_deployment(name=f"{deployment_name}-flow", namespace=namespace)
+            # ingress
+            network_api = client.NetworkingV1Api(client.api_client.ApiClient())
+            network_api.delete_namespaced_ingress(name=f"{deployment_name}-ingress", namespace=namespace)
             return True
         except Exception as e:
             print(f"Exception when calling CoreV1Api->delete_namespace: {str(e)}")
@@ -489,7 +499,7 @@ class KubeAPI():
 if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
     
-    res = api.delete_flow(deployment_name="na", namespace="carlosfm")
+    res = api.delete_flow(deployment_name="my-deployment-flow", namespace="carlosfm")
     print(res)
     exit()
     with open("Chatbot.json", "r") as f:
@@ -497,7 +507,8 @@ if __name__ == "__main__":
     res = api.deploy_flow(
         deployment_name="my-deployment-flow",
         namespace="carlosfm",
-        flow=flow)
+        flow=flow,
+        api_key="None")
     print(res)
     
     exit()
