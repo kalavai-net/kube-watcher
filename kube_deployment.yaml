@@ -1,20 +1,20 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: kalavai-system
+  name: developer-mvp
 ---
 # Cluster roles and service account permissions
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: api-service-account
-  namespace: kalavai-system
+  namespace: developer-mvp
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: api-cluster-role
-  namespace: kalavai-system
+  namespace: developer-mvp
 rules:
   - apiGroups:
         - ""
@@ -54,7 +54,7 @@ kind: ClusterRoleBinding
 metadata:
   name: api-cluster-role-binding
 subjects:
-- namespace: kalavai-system 
+- namespace: developer-mvp 
   kind: ServiceAccount
   name: api-service-account 
 roleRef:
@@ -67,7 +67,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-watcher-api
-  namespace: kalavai-system
+  namespace: developer-mvp
 spec:
   replicas: 2 # ensure there is minimal downtime if node goes down
   selector:
@@ -80,7 +80,7 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v29
+        image: bundenth/kube_watcher:v30
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
@@ -108,7 +108,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kube-watcher-service
-  namespace: kalavai-system
+  namespace: developer-mvp
 spec:
   type: ClusterIP
   ports:
@@ -121,7 +121,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: tools-library-ingress
-  namespace: kalavai-system
+  namespace: developer-mvp
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     kubernetes.io/tls-acme: "true"
