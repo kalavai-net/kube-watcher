@@ -8,6 +8,7 @@ DEEPSPARSE_DEFAULT_VALUES = {
 }
 DEEPSPARSE_DEPLOYMENT_TEMPLATE = "deployments/deepsparse_deployment_template.yaml"
 FLOW_DEPLOYMENT_TEMPLATE = "deployments/flow_deployment_template.yaml"
+AGENT_BUILDER_TEMPLATE = "deployments/agent_builder_template.yaml"
 
 
 def create_deployment_yaml(values, template_file, default_values=None):
@@ -34,6 +35,13 @@ def create_deepsparse_yaml(values, template_file=DEEPSPARSE_DEPLOYMENT_TEMPLATE,
 
 
 def create_flow_deployment_yaml(values, template_file=FLOW_DEPLOYMENT_TEMPLATE, default_values=None):
+    """
+    generates a yaml deployment file for a langflow serving
+    """
+    return create_deployment_yaml(values, template_file=template_file, default_values=default_values)
+
+
+def create_agent_builder_deployment_yaml(values, template_file=AGENT_BUILDER_TEMPLATE, default_values=None):
     """
     generates a yaml deployment file for a langflow serving
     """

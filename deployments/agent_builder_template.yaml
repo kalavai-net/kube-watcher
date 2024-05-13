@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: $namespace
+---
+apiVersion: v1
+kind: Secret
+metadata:  
+  name: buildersecret
+  namespace: $namespace
+type: Opaque
+data:
+  username: $username
+  password: $password
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: $namespace
+  name: agent-builder-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-builder-app
+  template:
+    metadata:
+      labels:
+        app: agent-builder-app
+    spec:
+      containers:
+      - name: agent-builder-container
+        image: bundenth/agent_builder:v3
+        env:
+        ports:
+        - containerPort: 7860
+        env:
+        - name: LANGFLOW_AUTO_LOGIN
+          value: "False"
+        - name: LANGFLOW_NEW_USER_IS_ACTIVE
+          value: "True"
+        - name: LANGFLOW_STORE
+          value: "False"
+        - name: LANGFLOW_LANGCHAIN_CACHE
+          value: "SQLiteCache"
+        - name: LANGFLOW_DATABASE_URL
+          value: "sqlite:////agent_builder/.langflow.db"
+        - name: LANGFLOW_SUPERUSER
+          valueFrom: 
+            secretKeyRef: 
+              name: buildersecret
+              key: username 
+        - name: LANGFLOW_SUPERUSER_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: buildersecret
+              key: password
+        - name: LANGFLOW_COMPONENTS_PATH
+          value: '["/usr/src/app/agent_builder/custom_components"]'
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          # liveness probe
+          touch /tmp/healthy
+          langflow run --host 0.0.0.0 --port 7860 --no-open-browser --no-store
+          rm /tmp/healthy
+        livenessProbe:
+          exec:
+            command:
+            - cat
+            - /tmp/healthy
+          initialDelaySeconds: 20
+          periodSeconds: 30
+        resources:
+          limits:
+            cpu: $num_cores
+            memory: "$ram_memory"
+          requests:
+            cpu: $num_cores
+            memory: "$ram_memory"
+        volumeMounts:
+        - name: agent-builder-storage
+          mountPath: "/agent_builder"
+      restartPolicy: Always
+      volumes:
+      - name: agent-builder-storage
+        persistentVolumeClaim:
+          claimName: agent-builder-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-builder-service
+  namespace: $namespace
+  labels:
+    app: agent-builder-app
+spec:
+  selector:
+    app: agent-builder-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 7860
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agent-builder-pvc
+  namespace: $namespace
+spec:
+  storageClassName: longhorn-nr
+  accessModes:
+   - ReadWriteOnce
+  resources:
+   requests:
+    storage: $storage_memory
+---
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agent-builder-ingress
+  namespace: $namespace
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/tls-acme: "true"
+spec:
+  ingressClassName: traefik
+  rules:
+    # Add a DNS record to match this URL to the IP of the cluster
+    - host: $namespace.agentbuilder.test.k8s.mvp.kalavai.net
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: agent-builder-service
+                port:
+                  number: 80
+            path: /
+  tls:
+  - hosts:
+    - $namespace.agentbuilder.test.k8s.mvp.kalavai.net
+    secretName: $namespace.agentbuilder.test.k8s.mvp.kalavai.net-tls
+

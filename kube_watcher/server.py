@@ -17,7 +17,8 @@ from kube_watcher.models import (
     GenericDeploymentRequest,
     DeleteLabelledResourcesRequest,
     GetLabelledResourcesRequest,
-    FlowDeploymentRequest
+    FlowDeploymentRequest,
+    AgentBuilderDeploymentRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -131,6 +132,20 @@ async def delete_flow(request: FlowDeploymentRequest, api_key: str = Depends(ver
 async def list_flows(namespace: str, api_key: str = Depends(verify_api_key)):
     response = kube_api.list_deployments(
         namespace=namespace
+    )
+    return response
+
+@app.post("/v1/deploy_agent_builder")
+async def deploy_flow(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_api_key)):
+    """Todo"""
+    response = kube_api.deploy_agent_builder(
+        username=request.username,
+        namespace=request.namespace,
+        password=request.password,
+        num_cores=request.num_cores,
+        ram_memory=request.ram_memory,
+        storage_memory=request.storage_memory,
+        replicas=request.replicas
     )
     return response
 

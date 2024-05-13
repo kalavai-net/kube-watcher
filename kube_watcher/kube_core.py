@@ -7,7 +7,8 @@ from kubernetes import config, client, utils
 
 from kube_watcher.utils import (
     create_deepsparse_yaml,
-    create_flow_deployment_yaml
+    create_flow_deployment_yaml,
+    create_agent_builder_deployment_yaml
 )
 
 
@@ -191,8 +192,6 @@ class KubeAPI():
         namespace
     ):
         """Delete a flow deployment within a namespace.
-        
-        TODO: at the moment it deletes everything within the namespace. Be more surgical
         """
         try:
             # TODO create a CRD for flow deployments so we don't have to delete individual components
@@ -201,11 +200,9 @@ class KubeAPI():
             # service
             self.core_api.delete_namespaced_service(name=f"{deployment_name}-service", namespace=namespace)
             # deployment
-            apps_api = apps_api = client.AppsV1Api()
-            apps_api.delete_namespaced_deployment(name=f"{deployment_name}-flow", namespace=namespace)
+            client.AppsV1Api().delete_namespaced_deployment(name=f"{deployment_name}", namespace=namespace)
             # ingress
-            network_api = apps_api = client.NetworkingV1Api()
-            network_api.delete_namespaced_ingress(name=f"{deployment_name}-ingress", namespace=namespace)
+            client.NetworkingV1Api().delete_namespaced_ingress(name=f"{deployment_name}-ingress", namespace=namespace)
             return True
         except Exception as e:
             print(f"Exception when calling CoreV1Api->delete_namespace: {str(e)}")
@@ -231,6 +228,31 @@ class KubeAPI():
                 model_deployments[service.metadata.name]["ports"] = [(port.node_port, port.target_port) for port in service.spec.ports]
 
         return model_deployments
+    
+    
+    def deploy_agent_builder(
+        self,
+        namespace,
+        username,
+        password,
+        num_cores=1,
+        ram_memory="1Gi",
+        storage_memory="0.5Gi",
+        replicas=1
+    ):
+        # Deploy a deepsparse model
+        yaml = create_agent_builder_deployment_yaml(
+            values={
+                "namespace": namespace,
+                "username": base64.b64encode(username.encode("ascii")).decode("ascii"),
+                "password": password,
+                "num_cores": num_cores,
+                "ram_memory": ram_memory,
+                "storage_memory": storage_memory,
+                "replicas": replicas
+            }
+        )
+        return self.kube_deploy(yaml)
     
     
     ## DEPRECATED ##
@@ -497,19 +519,18 @@ class KubeAPI():
 
 
 if __name__ == "__main__":
+    import base64
     api = KubeAPI(in_cluster=False)
     
-    res = api.delete_flow(deployment_name="my-deployment", namespace="carlosfm2")
-    print(res)
-    exit()
-    with open("Chatbot.json", "r") as f:
-        flow = json.load(f)
-    res = api.deploy_flow(
-        deployment_name="my-deployment",
-        namespace="carlosfm2",
-        flow=flow,
-        api_key="None")
-    print(res)
+    # res = api.delete_flow(deployment_name="my-deployment", namespace="carlosfm2")
+    # print(res)
+    # exit()
+    username = "carlosfm"
+    password = "password"
+    res = api.deploy_agent_builder(
+        namespace=username,
+        username=username,
+        password=base64.b64encode(password.encode("ascii")).decode("ascii"))
     
     exit()
     result = api.create_ray_cluster(

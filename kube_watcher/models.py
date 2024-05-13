@@ -67,3 +67,13 @@ class FlowDeploymentRequest(BaseModel):
     num_cores: int = 2
     replicas: int = 1
     ram_memory: str = "2Gi"
+    
+
+class AgentBuilderDeploymentRequest(BaseModel):
+    namespace: str
+    password: str
+    username: str
+    num_cores: int = 1
+    replicas: int = 1
+    ram_memory: str = "1Gi"
+    storage_memory: str = "0.5Gi"
