@@ -70,9 +70,10 @@ class FlowDeploymentRequest(BaseModel):
     
 
 class AgentBuilderDeploymentRequest(BaseModel):
+    deployment_name: str
     namespace: str
-    password: str
     username: str
+    password: str
     num_cores: int = 1
     replicas: int = 1
     ram_memory: str = "1Gi"

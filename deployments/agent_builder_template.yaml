@@ -17,16 +17,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: $namespace
-  name: agent-builder-app
+  name: $deployment_name-agent-builder
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: agent-builder-app
+      app: $deployment_name-agent-builder
   template:
     metadata:
       labels:
-        app: agent-builder-app
+        app: $deployment_name-agent-builder
     spec:
       containers:
       - name: agent-builder-container
@@ -91,13 +91,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: agent-builder-service
+  name: $deployment_name-agent-builder-service
   namespace: $namespace
   labels:
-    app: agent-builder-app
+    app: $deployment_name-agent-builder
 spec:
   selector:
-    app: agent-builder-app
+    app: $deployment_name-agent-builder
   ports:
     - name: http
       port: 80
@@ -107,7 +107,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: agent-builder-pvc
+  name: $deployment_name-agent-builder-pvc
   namespace: $namespace
 spec:
   storageClassName: longhorn-nr
@@ -121,7 +121,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: agent-builder-ingress
+  name: $deployment_name-agent-builder-ingress
   namespace: $namespace
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod

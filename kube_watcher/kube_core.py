@@ -232,6 +232,7 @@ class KubeAPI():
     
     def deploy_agent_builder(
         self,
+        deployment_name,
         namespace,
         username,
         password,
@@ -243,6 +244,7 @@ class KubeAPI():
         # Deploy a deepsparse model
         yaml = create_agent_builder_deployment_yaml(
             values={
+                "deployment_name": deployment_name,
                 "namespace": namespace,
                 "username": base64.b64encode(username.encode("ascii")).decode("ascii"),
                 "password": password,
@@ -253,6 +255,27 @@ class KubeAPI():
             }
         )
         return self.kube_deploy(yaml)
+    
+    def delete_agent_builder(
+        self,
+        deployment_name,
+        namespace
+    ):
+        """Delete an agent builder deployment within a namespace.
+        """
+        try:
+            # TODO create a CRD for flow deployments so we don't have to delete individual components
+            # service
+            self.core_api.delete_namespaced_service(name=f"{deployment_name}-agent-builder-service", namespace=namespace)
+            # deployment
+            client.AppsV1Api().delete_namespaced_deployment(name=f"{deployment_name}-agent-builder", namespace=namespace)
+            # ingress
+            client.NetworkingV1Api().delete_namespaced_ingress(name=f"{deployment_name}-agent-builder-ingress", namespace=namespace)
+            # pvc
+            self.core_api.delete_namespaced_persistent_volume_claim(name=f"{deployment_name}-agent-builder-pvc", namespace=namespace)
+            return True
+        except Exception as e:
+            print(f"Exception when calling delete agent builder: {str(e)}")
     
     
     ## DEPRECATED ##
@@ -522,12 +545,14 @@ if __name__ == "__main__":
     import base64
     api = KubeAPI(in_cluster=False)
     
-    # res = api.delete_flow(deployment_name="my-deployment", namespace="carlosfm2")
-    # print(res)
-    # exit()
     username = "carlosfm"
     password = "password"
+    deployment_name = "my-agent-1"
+    res = api.delete_agent_builder(deployment_name=deployment_name, namespace=username)
+    print(res)
+    exit()
     res = api.deploy_agent_builder(
+        deployment_name=deployment_name,
         namespace=username,
         username=username,
         password=base64.b64encode(password.encode("ascii")).decode("ascii"))

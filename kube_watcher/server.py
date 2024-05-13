@@ -136,7 +136,7 @@ async def list_flows(namespace: str, api_key: str = Depends(verify_api_key)):
     return response
 
 @app.post("/v1/deploy_agent_builder")
-async def deploy_flow(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_api_key)):
+async def deploy_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_api_key)):
     """Todo"""
     response = kube_api.deploy_agent_builder(
         username=request.username,
@@ -146,6 +146,16 @@ async def deploy_flow(request: AgentBuilderDeploymentRequest, api_key: str = Dep
         ram_memory=request.ram_memory,
         storage_memory=request.storage_memory,
         replicas=request.replicas
+    )
+    return response
+
+
+@app.post("/v1/delete_agent_builder")
+async def delete_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_api_key)):
+    """Todo"""
+    response = kube_api.delete_agent_builder(
+        deployment_name=request.deployment_name,
+        namespace=request.namespace,
     )
     return response
 
