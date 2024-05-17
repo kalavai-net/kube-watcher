@@ -1,5 +1,6 @@
 import json
 import time
+import base64
 import yaml
 from collections import defaultdict
 
@@ -542,8 +543,12 @@ class KubeAPI():
 
 
 if __name__ == "__main__":
-    import base64
+    
     api = KubeAPI(in_cluster=False)
+    
+    res = api.list_deployments(namespace="carlosfm")
+    print(res)
+    exit()
     
     username = "carlosfm"
     password = "password"

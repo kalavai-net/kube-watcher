@@ -18,8 +18,8 @@ pip install -e .
 Build docker image:
 ```bash
 docker build -t kube_watcher .
-docker tag kube_watcher:latest bundenth/kube_watcher:v31
-docker push bundenth/kube_watcher:v31
+docker tag kube_watcher:latest bundenth/kube_watcher:v39
+docker push bundenth/kube_watcher:v39
 ```
 
 ### Configure endpoints
@@ -229,3 +229,14 @@ faas-cli store deploy figlet \
 ### Check valid username/password
 
 RESULT=$(curl -X GET http://localhost:8009/v1/validate_user -H 'Content-Type: application/json' -d '{"username":"EMAIL", "password":"PASSWORD"}')
+
+
+
+## Langflow API
+
+Get flows:
+
+curl -X 'GET' \
+  'https://carlosfm.playground.test.k8s.mvp.kalavai.net/api/v1/api_key/' \
+  -H 'accept: application/json'\
+  -H 'x-api-key: sk-v_y7ppXDC6xieH2N4Zpn_GaOAoyjDdQuKVzyYGv8YGw'

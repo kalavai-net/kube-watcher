@@ -139,6 +139,7 @@ async def list_flows(namespace: str, api_key: str = Depends(verify_api_key)):
 async def deploy_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_api_key)):
     """Todo"""
     response = kube_api.deploy_agent_builder(
+        deployment_name=request.deployment_name,
         username=request.username,
         namespace=request.namespace,
         password=request.password,
@@ -146,6 +147,14 @@ async def deploy_agent_builder(request: AgentBuilderDeploymentRequest, api_key: 
         ram_memory=request.ram_memory,
         storage_memory=request.storage_memory,
         replicas=request.replicas
+    )
+    return response
+
+@app.post("/v1/list_agent_builders")
+async def list_agent_builders(namespace: str, api_key: str = Depends(verify_api_key)):
+    """Todo: now just returns any deployment"""
+    response = kube_api.list_deployments(
+        namespace=namespace
     )
     return response
 
