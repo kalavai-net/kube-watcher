@@ -76,5 +76,5 @@ class AgentBuilderDeploymentRequest(BaseModel):
     password: str
     num_cores: int = 1
     replicas: int = 1
-    ram_memory: str = "1Gi"
+    ram_memory: str = "1.5Gi"
     storage_memory: str = "0.5Gi"

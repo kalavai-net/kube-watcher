@@ -5,6 +5,19 @@ metadata:
 ---
 apiVersion: v1
 kind: Secret
+metadata:
+  name: config-data
+  namespace: $namespace
+stringData:
+  embeddings-url: "https://embeddings.test.k8s.mvp.kalavai.net"
+  llm-endpoints.json: |
+    {
+      "meta-llama/Meta-Llama-3-8B-Instruct": "https://api.runpod.ai/v2/vllm-e8vlc46h35wead/openai/v1",
+      "Equall/Saul-Instruct-v1": "https://api.runpod.ai/v2/vllm-8ckdz9zakc661s/openai/v1"
+    }   
+---
+apiVersion: v1
+kind: Secret
 metadata:  
   name: buildersecret
   namespace: $namespace
@@ -36,7 +49,10 @@ spec:
         - containerPort: 7860
         env:
         - name: EMBEDDING_API_URL
-          value: "https://embeddings.test.k8s.mvp.kalavai.net"
+          valueFrom:
+            secretKeyRef:
+              name: config-data
+              key: embeddings-url
         - name: LANGFLOW_AUTO_LOGIN
           value: "False"
         - name: LANGFLOW_NEW_USER_IS_ACTIVE
@@ -94,7 +110,6 @@ spec:
         volumeMounts:
         - name: $deployment_name-agent-builder-storage
           mountPath: "/agent_builder"
-      restartPolicy: Always
       volumes:
       - name: config-volume
         secret:
@@ -102,7 +117,7 @@ spec:
       - name: $deployment_name-agent-builder-storage
         persistentVolumeClaim:
           claimName: $deployment_name-agent-builder-pvc
-
+      restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service
