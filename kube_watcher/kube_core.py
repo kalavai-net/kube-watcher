@@ -546,16 +546,16 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     
-    res = api.list_deployments(namespace="carlosfm")
-    print(res)
-    exit()
+    # res = api.list_deployments(namespace="carlosfm2")
+    # print(res)
+    # exit()
     
-    username = "carlosfm"
+    username = "carlosfm2"
     password = "password"
     deployment_name = "my-agent-1"
-    res = api.delete_agent_builder(deployment_name=deployment_name, namespace=username)
-    print(res)
-    exit()
+    # res = api.delete_agent_builder(deployment_name=deployment_name, namespace=username)
+    # print(res)
+    # exit()
     res = api.deploy_agent_builder(
         deployment_name=deployment_name,
         namespace=username,

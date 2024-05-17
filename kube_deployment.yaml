@@ -70,7 +70,7 @@ metadata:
   name: kube-watcher-api
   namespace: developer-mvp
 spec:
-  replicas: 2 # ensure there is minimal downtime if node goes down
+  replicas: 1 # ensure there is minimal downtime if node goes down
   selector:
     matchLabels:
       app: kube-watcher-api
@@ -81,7 +81,7 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v39
+        image: bundenth/kube_watcher:v42
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000

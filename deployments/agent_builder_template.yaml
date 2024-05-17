@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: config-data
+  name: $deployment_name-config-data
   namespace: $namespace
 stringData:
   embeddings-url: "https://embeddings.test.k8s.mvp.kalavai.net"
@@ -43,7 +43,7 @@ spec:
     spec:
       containers:
       - name: agent-builder-container
-        image: bundenth/agent_builder:v5
+        image: bundenth/agent_builder:v7
         env:
         ports:
         - containerPort: 7860
@@ -51,7 +51,7 @@ spec:
         - name: EMBEDDING_API_URL
           valueFrom:
             secretKeyRef:
-              name: config-data
+              name: $deployment_name-config-data
               key: embeddings-url
         - name: LANGFLOW_AUTO_LOGIN
           value: "False"
@@ -87,11 +87,11 @@ spec:
           langflow run --host 0.0.0.0 --port 7860 --no-open-browser --no-store
           rm /tmp/healthy
         volumeMounts:
-        - name: config-volume
+        - name: $deployment_name-config-volume
           mountPath: "/etc/config/llm-endpoints.json"
           subPath: llm-endpoints.json
           readOnly: true
-        - name: agent-builder-storage
+        - name: $deployment_name-agent-builder-storage
           mountPath: "/usr/src/persistent"
         livenessProbe:
           exec:
@@ -107,13 +107,10 @@ spec:
           requests:
             cpu: $num_cores
             memory: "$ram_memory"
-        volumeMounts:
-        - name: $deployment_name-agent-builder-storage
-          mountPath: "/agent_builder"
       volumes:
-      - name: config-volume
+      - name: $deployment_name-config-volume
         secret:
-          secretName: config-data
+          secretName: $deployment_name-config-data
       - name: $deployment_name-agent-builder-storage
         persistentVolumeClaim:
           claimName: $deployment_name-agent-builder-pvc
