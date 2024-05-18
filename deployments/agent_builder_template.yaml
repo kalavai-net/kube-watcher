@@ -43,7 +43,7 @@ spec:
     spec:
       containers:
       - name: agent-builder-container
-        image: bundenth/agent_builder:v7
+        image: bundenth/agent_builder:v9
         env:
         ports:
         - containerPort: 7860
@@ -62,7 +62,11 @@ spec:
         - name: LANGFLOW_LANGCHAIN_CACHE
           value: "SQLiteCache"
         - name: LANGFLOW_DATABASE_URL
-          value: "sqlite:////usr/src/persistent/.langflow.db"
+          value: sqlite:////usr/src/persistent/langflow.db
+        - name: LANGFLOW_LOG_FILE
+          value: "/usr/src/persistent/langflow.log"
+        - name: LANGFLOW_CONFIG_DIR
+          value: "/usr/src/persistent/"
         - name: LANGFLOW_SUPERUSER
           valueFrom: 
             secretKeyRef: 
@@ -84,6 +88,7 @@ spec:
         - |
           # liveness probe
           touch /tmp/healthy
+          cp /usr/src/app/data/database/langflow.db.rag /usr/src/persistent/langflow.db
           langflow run --host 0.0.0.0 --port 7860 --no-open-browser --no-store
           rm /tmp/healthy
         volumeMounts:
