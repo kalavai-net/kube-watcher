@@ -167,22 +167,22 @@ class KubeAPI():
         self,
         deployment_name,
         namespace,
-        flow,
+        flow_id,
+        flow_url,
         api_key,
-        num_cores=2,
-        ram_memory="2Gi",
-        replicas=1
+        num_cores=1,
+        ram_memory="1Gi"
     ):
         # Deploy a deepsparse model
         yaml = create_flow_deployment_yaml(
             values={
                 "deployment_name": deployment_name,
                 "username": namespace,
-                "flow": json.dumps(flow),
                 "num_cores": num_cores,
                 "ram_memory": ram_memory,
-                "replicas": replicas,
-                "api_key": api_key
+                "api_key": api_key,
+                "flow_id": flow_id,
+                "flow_url": flow_url
             }
         )
         return self.kube_deploy(yaml)
@@ -196,8 +196,6 @@ class KubeAPI():
         """
         try:
             # TODO create a CRD for flow deployments so we don't have to delete individual components
-            # config map
-            self.core_api.delete_namespaced_config_map(name=f"{deployment_name}-configmap", namespace=namespace)
             # service
             self.core_api.delete_namespaced_service(name=f"{deployment_name}-service", namespace=namespace)
             # deployment
@@ -546,44 +544,20 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     
-    # res = api.list_deployments(namespace="carlosfm2")
-    # print(res)
-    # exit()
-    
     username = "carlosfm2"
-    password = "password"
     deployment_name = "my-agent-1"
-    # res = api.delete_agent_builder(deployment_name=deployment_name, namespace=username)
-    # print(res)
-    # exit()
-    res = api.deploy_agent_builder(
+    flow_id = "8fa8c401-7c10-417b-bd19-e84ea6236a4f"
+    flow_url = "https://carlosfm.playground.test.k8s.mvp.kalavai.net/api/v1/process"
+    api_key = "sk-Qn4Ns14yHy1UUacq9cwfe6k9jeDyvE9zVepTENeQAaw"
+    
+    # api.deploy_flow(
+    #     deployment_name=deployment_name,
+    #     namespace=username,
+    #     flow_id=flow_id,
+    #     flow_url=flow_url,
+    #     api_key=api_key
+    # )
+    api.delete_flow(
         deployment_name=deployment_name,
-        namespace=username,
-        username=username,
-        password=base64.b64encode(password.encode("ascii")).decode("ascii"))
-    
-    exit()
-    result = api.create_ray_cluster(
-        namespace="carlos-ray",
-        cluster_config="data/ray_cluster.yaml",
-        nodeport_config="data/ray_nodeport.yaml"
+        namespace=username
     )
-    
-    # Get custom objects that match:
-    #apiVersion: ray.io/v1alpha1
-    #kind: RayCluster
-    clusters = client.CustomObjectsApi().list_cluster_custom_object(
-        group="ray.io", 
-        version="v1alpha1",
-        plural="rayclusters")
-    for item in clusters["items"]:
-        print(json.dumps(item, indent=3))
-    exit()
-    
-    values = api.extract_cluster_labels()
-    print(json.dumps(values, indent=3))
-    
-    labels = api.get_node_labels()
-    print(json.dumps(labels, indent=3))
-
-    

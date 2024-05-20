@@ -3,22 +3,13 @@ kind: Namespace
 metadata:
   name: $username
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: $deployment_name-configmap
-  namespace: $username
-data:
-  flow.json: |
-    $flow
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: $username
   name: $deployment_name
 spec:
-  replicas: $replicas
+  replicas: 1
   selector:
     matchLabels:
       app: $deployment_name
@@ -30,7 +21,7 @@ spec:
       restartPolicy: Always
       containers:
       - name: flow-deployer-container
-        image: bundenth/flow_deployer:v3
+        image: bundenth/flow_deployer:v4
         env:
         ports:
         - containerPort: 8000
@@ -39,10 +30,10 @@ spec:
           value: "True"
         - name: FLOW_MASTER_KEY
           value: "$api_key"
-        - name: FLOW_RUNNER_ENDPOINT
-          value: "https://runner.test.k8s.mvp.kalavai.net"
-        - name: FLOW_PATH
-          value: "/etc/config/flow.json"
+        - name: FLOW_ID
+          value: "$flow_id"
+        - name: FLOW_URL
+          value: "$flow_url"
         livenessProbe:
           httpGet:
             path: /health
@@ -56,14 +47,6 @@ spec:
           requests:
             cpu: $num_cores
             memory: "$ram_memory"
-        volumeMounts:
-        - mountPath: /etc/config
-          name: json-configmap-volume
-      volumes:
-        - name: json-configmap-volume
-          #
-          configMap:
-            name: json-configmap
 ---
 apiVersion: v1
 kind: Service

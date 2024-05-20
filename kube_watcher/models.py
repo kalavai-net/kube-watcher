@@ -62,11 +62,11 @@ class GetLabelledResourcesRequest(BaseModel):
 class FlowDeploymentRequest(BaseModel):
     deployment_name: str
     namespace: str
-    api_key: str = ""
-    flow: dict = {}
-    num_cores: int = 2
-    replicas: int = 1
-    ram_memory: str = "2Gi"
+    api_key: str
+    flow_id: str
+    flow_url: str
+    num_cores: int = 0.5
+    ram_memory: str = "0.5Gi"
     
 
 class AgentBuilderDeploymentRequest(BaseModel):

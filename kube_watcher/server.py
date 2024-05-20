@@ -111,10 +111,10 @@ async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(ver
     response = kube_api.deploy_flow(
         deployment_name=request.deployment_name,
         namespace=request.namespace,
-        flow=request.flow,
+        flow_id=request.flow_id,
+        flow_url=request.flow_url,
         num_cores=request.num_cores,
         ram_memory=request.ram_memory,
-        replicas=request.replicas,
         api_key=request.api_key
     )
     return response
