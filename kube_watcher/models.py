@@ -62,9 +62,9 @@ class GetLabelledResourcesRequest(BaseModel):
 class FlowDeploymentRequest(BaseModel):
     deployment_name: str
     namespace: str
-    api_key: str
-    flow_id: str
-    flow_url: str
+    api_key: str = ""
+    flow_id: str = ""
+    flow_url: str = ""
     num_cores: int = 0.5
     ram_memory: str = "0.5Gi"
     
