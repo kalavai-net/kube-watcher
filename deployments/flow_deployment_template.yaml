@@ -21,7 +21,7 @@ spec:
       restartPolicy: Always
       containers:
       - name: flow-deployer-container
-        image: bundenth/flow_deployer:v4
+        image: bundenth/flow_deployer:v5
         env:
         ports:
         - containerPort: 8000
@@ -34,6 +34,10 @@ spec:
           value: "$flow_id"
         - name: FLOW_URL
           value: "$flow_url"
+        - name: USER_MONITORING_BACKEND_API
+          value: "https://monitoring.test.k8s.mvp.kalavai.net"
+        - name: USER_MONITORING_BACKEND_API_KEY
+          value: "CARLOS_ANNIE_ADAM_KALAVAI"
         livenessProbe:
           httpGet:
             path: /health
