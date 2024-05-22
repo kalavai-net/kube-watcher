@@ -13,8 +13,9 @@ stringData:
   llm-endpoints.json: |
     {
       "meta-llama/Meta-Llama-3-8B-Instruct": "https://api.runpod.ai/v2/vllm-e8vlc46h35wead/openai/v1",
-      "Equall/Saul-Instruct-v1": "https://api.runpod.ai/v2/vllm-8ckdz9zakc661s/openai/v1"
-    }   
+      "Equall/Saul-Instruct-v1": "https://api.runpod.ai/v2/vllm-8ckdz9zakc661s/openai/v1",
+      "meta-llama/Meta-Llama-3-8B": "https://api.runpod.ai/v2/vllm-xzcigxzstaisb4/openai/v1"
+    }
 ---
 apiVersion: v1
 kind: Secret
@@ -43,7 +44,7 @@ spec:
     spec:
       containers:
       - name: agent-builder-container
-        image: bundenth/agent_builder:v9
+        image: bundenth/agent_builder:v10
         env:
         ports:
         - containerPort: 7860
