@@ -12,9 +12,8 @@ stringData:
   embeddings-url: "https://embeddings.test.k8s.mvp.kalavai.net"
   llm-endpoints.json: |
     {
-      "meta-llama/Meta-Llama-3-8B-Instruct": "https://api.runpod.ai/v2/vllm-e8vlc46h35wead/openai/v1",
-      "Equall/Saul-Instruct-v1": "https://api.runpod.ai/v2/vllm-8ckdz9zakc661s/openai/v1",
-      "meta-llama/Meta-Llama-3-8B": "https://api.runpod.ai/v2/vllm-xzcigxzstaisb4/openai/v1"
+      "meta-llama/Meta-Llama-3-8B-Instruct": "https://api.runpod.ai/v2/vllm-m7mnidcyucg82e/openai/v1",
+      "Equall/Saul-Instruct-v1": "https://api.runpod.ai/v2/vllm-8ckdz9zakc661s/openai/v1"
     }
 ---
 apiVersion: v1
@@ -44,7 +43,7 @@ spec:
     spec:
       containers:
       - name: agent-builder-container
-        image: bundenth/agent_builder:v10
+        image: bundenth/agent_builder:v14
         env:
         ports:
         - containerPort: 7860
@@ -89,8 +88,8 @@ spec:
         - |
           # liveness probe
           touch /tmp/healthy
-          cp /usr/src/app/data/database/langflow.db.rag /usr/src/persistent/langflow.db
-          langflow run --host 0.0.0.0 --port 7860 --no-open-browser --no-store
+          cp /usr/src/app/data/database/langflow-base.db /usr/src/persistent/langflow.db
+          langflow run --host 0.0.0.0 --port 7860 --no-open-browser
           rm /tmp/healthy
         volumeMounts:
         - name: $deployment_name-config-volume
