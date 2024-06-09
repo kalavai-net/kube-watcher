@@ -545,10 +545,18 @@ if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
     
     username = "carlosfm2"
+    password = "password"
     deployment_name = "my-agent-1"
     flow_id = "8fa8c401-7c10-417b-bd19-e84ea6236a4f"
     flow_url = "https://carlosfm.playground.test.k8s.mvp.kalavai.net/api/v1/process"
     api_key = "sk-Qn4Ns14yHy1UUacq9cwfe6k9jeDyvE9zVepTENeQAaw"
+    
+    api.deploy_agent_builder(
+        deployment_name="builder",
+        namespace="carlosfm",
+        username="carlosfm",
+        password=base64.b64encode(password.encode("ascii")).decode("ascii")
+    )
     
     # api.deploy_flow(
     #     deployment_name=deployment_name,
@@ -557,7 +565,7 @@ if __name__ == "__main__":
     #     flow_url=flow_url,
     #     api_key=api_key
     # )
-    api.delete_flow(
-        deployment_name=deployment_name,
-        namespace=username
-    )
+    # api.delete_flow(
+    #     deployment_name=deployment_name,
+    #     namespace=username
+    # )

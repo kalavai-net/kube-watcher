@@ -78,3 +78,7 @@ class AgentBuilderDeploymentRequest(BaseModel):
     replicas: int = 1
     ram_memory: str = "1.5Gi"
     storage_memory: str = "0.5Gi"
+    
+class UserRequest(BaseModel):
+    email: str
+    password: str

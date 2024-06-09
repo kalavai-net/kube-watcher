@@ -1,10 +1,13 @@
 import os
 from typing import List
-
-from fastapi import FastAPI, HTTPException, Depends
-from kube_watcher.cost_core import OpenCostAPI
+import logging
 
 from starlette.requests import Request
+from fastapi import FastAPI, HTTPException, Depends
+import anvil.server
+import anvil.users
+
+from kube_watcher.cost_core import OpenCostAPI
 
 from kube_watcher.models import (
     NodeStatusRequest,
@@ -18,13 +21,16 @@ from kube_watcher.models import (
     DeleteLabelledResourcesRequest,
     GetLabelledResourcesRequest,
     FlowDeploymentRequest,
-    AgentBuilderDeploymentRequest
+    AgentBuilderDeploymentRequest,
+    UserRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
 )
 from kube_watcher.prometheus_core import PrometheusAPI
-import logging
+
+
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -36,6 +42,7 @@ logging.basicConfig(
 IN_CLUSTER = "True" == os.getenv("IN_CLUSTER", "True")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://10.43.164.196:9090")
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.43.53.194:9003")
+ANVIL_UPLINK_KEY = os.getenv("ANVIL_UPLINK_KEY", "")
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
 MASTER_KEY = os.getenv("KW_MASTER_KEY")
@@ -55,9 +62,19 @@ async def verify_api_key(request: Request):
         raise HTTPException(status_code=401, detail="Invalid API Key")
     return api_key
 
+anvil.server.connect(ANVIL_UPLINK_KEY)
 
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
+
+@app.post("/v1/validate_user")
+async def login(request: UserRequest):
+    try:
+        user = anvil.users.login_with_email(request.email, request.password, remember=False)
+        return {"username": user["username"], "error": None}
+    except Exception as e:
+        return {"error": str(e)}
+
 
 @app.get("/v1/get_cluster_capacity")
 async def cluster_capacity(api_key: str = Depends(verify_api_key)):
