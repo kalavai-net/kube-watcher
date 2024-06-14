@@ -81,7 +81,7 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v51
+        image: bundenth/kube_watcher:v52
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
@@ -104,6 +104,16 @@ spec:
           value: "CARLOS_ANNIE_ADAM_KALAVAI"
         - name: ANVIL_UPLINK_KEY
           value: "client_AOPKTWK227ZV3R4ENTMOQRIY-ADMVMYW5OIRPH75P"
+        - name: CLUSTER_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: config-data
+              key: cluster-endpoint
+        - name: CLUSTER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: config-data
+              key: cluster-token
         livenessProbe:
           httpGet:
             path: /v1/health

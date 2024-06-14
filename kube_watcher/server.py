@@ -43,6 +43,8 @@ IN_CLUSTER = "True" == os.getenv("IN_CLUSTER", "True")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://10.43.164.196:9090")
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.43.53.194:9003")
 ANVIL_UPLINK_KEY = os.getenv("ANVIL_UPLINK_KEY", "")
+CLUSTER_ENDPOINT = os.getenv("CLUSTER_ENDPOINT", "")
+CLUSTER_TOKEN = os.getenv("CLUSTER_TOKEN", "")
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
 MASTER_KEY = os.getenv("KW_MASTER_KEY")
@@ -74,6 +76,10 @@ async def login(request: UserRequest):
         return {"username": user["username"], "error": None}
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/v1/get_cluster_info")
+async def get_cluster_info(username):
+    return {"endpoint": CLUSTER_ENDPOINT, "token": CLUSTER_TOKEN}
 
 
 @app.get("/v1/get_cluster_capacity")
