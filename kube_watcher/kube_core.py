@@ -7,55 +7,11 @@ from collections import defaultdict
 from kubernetes import config, client, utils
 
 from kube_watcher.utils import (
-    create_deepsparse_yaml,
     create_flow_deployment_yaml,
-    create_agent_builder_deployment_yaml
+    create_agent_builder_deployment_yaml,
+    cast_resource_value,
+    parse_resource_value
 )
-
-
-def cast_resource_value(value):
-    """Cast string returned from reported node allocatable/capacity to int.
-    
-    Examples:
-    - '12'
-    - '121509440008'
-    - '16288096Ki'
-    """
-    try:
-        if "Ki" in value:
-            value = int(value.replace("Ki", "")) * 1000
-            return value
-        else:
-            return int(value)
-    except:
-        return None
-
-
-def parse_resource_value(resources, out_data_dict=None):
-    """Parse values reported by Kube API and get int amounts.
-    If it is not an int, ignore
-    
-    Example
-    
-    {
-        'cpu': '12',
-        'ephemeral-storage': '121509440008',
-        'hugepages-1Gi': '0',
-        'hugepages-2Mi': '0',
-        'memory': '16288096Ki',
-        'nvidia.com/gpu': '1',
-        'pods': '110'
-    }
-    """
-    if out_data_dict is None:
-        out_data_dict = defaultdict(int)
-    
-    for resource, value in resources.items():
-        parsed_value = cast_resource_value(value)
-        if parsed_value is not None:
-            out_data_dict[resource] += parsed_value
-    return out_data_dict
-
 
 
 class KubeAPI():
@@ -66,15 +22,7 @@ class KubeAPI():
             # Only works if this script is run by K8s as a POD
             config.load_kube_config()
         self.core_api = client.CoreV1Api()
-    
-    
-    def extract_node_readiness(self, node):
-        """Extract the readiness of a node from its status information (from extract_node_status)"""
-        for condition in node.status.conditions:
-            if condition.type == "Ready":
-                return condition
-        return None
-    
+
     def _extract_resources(self, fn):
         """Generalisation to extract values in dict form"""
         nodes = self.core_api.list_node()
@@ -87,15 +35,14 @@ class KubeAPI():
             data["total"]["n_nodes"] += 1
             parse_resource_value(resources=fn(node), out_data_dict=data["total"])
         return data
-
-
-    def extract_cluster_capacity(self):
-        """Extract total cluster capacity (from all nodes from get_nodes_status).
-        - total --> nodes capacity as reported in capacity
-        - online --> nodes capacity (for those with status Ready) as reported in capacity
-        """
-        fn = lambda node: node.status.capacity
-        return self._extract_resources(fn=fn)
+    
+    
+    def extract_node_readiness(self, node):
+        """Extract the readiness of a node from its status information (from extract_node_status)"""
+        for condition in node.status.conditions:
+            if condition.type == "Ready":
+                return condition
+        return None
     
     def extract_cluster_labels(self):
         """Similar to extract_cluster_capacity but with node labels.
@@ -104,6 +51,101 @@ class KubeAPI():
         """
         fn = lambda node: node.metadata.labels
         return self._extract_resources(fn=fn)
+    
+    def extract_node_conditions(self, node, conditions=None):
+        """Extract the readiness of a node from its status information (from extract_node_status)"""
+        all_conditions = {}
+        for c in node.status.conditions:
+            if conditions is not None:
+                if c.type not in conditions:
+                    continue
+            all_conditions[c.type] = c.status == "True"
+        return all_conditions
+    
+    def get_nodes_states(self, conditions=None):
+        """Get the status of nodes on certain conditions (default all)"""
+        nodes = self.core_api.list_node()
+        node_status = {}
+        for node in nodes.items:
+            node_status[node.metadata.name] = self.extract_node_conditions(node=node, conditions=conditions)
+        
+        return node_status
+    
+    def get_nodes_with_pressure(self, pressures=["DiskPressure", "MemoryPressure", "PIDPressure"]):
+        """Get nodes with pressure signals"""
+        nodes = self.core_api.list_node()
+        all_pressures = {}
+        for node in nodes.items:
+            pressures = { key: value for key, value in self.extract_node_conditions(node=node, conditions=pressures).items() if value }
+            if pressures:
+                all_pressures[node.metadata.name] = pressures
+        return all_pressures
+    
+    def get_pods_with_status(self, node_name, statuses=["Failed", "Unknown"]): # Failed, Running, Succeeded, Pending, Unknown
+        """Get pods with failing statuses (or any other specific status)"""
+        pods = self.core_api.list_pod_for_all_namespaces(watch=False)
+        pods_on_node = [pod for pod in pods.items if pod.spec.node_name == node_name]
+        all_pods = {}
+        for pod in pods_on_node:
+            if pod.status.phase in statuses:
+                all_pods[pod.metadata.name] = pod.status.phase
+        return all_pods
+    
+    def get_unschedulable_pods(self):
+        """Get pods that cannot be scheduled due to lack of resources"""
+        pods = self.core_api.list_pod_for_all_namespaces(watch=False)
+        # Filter for pending pods due to insufficient resources
+        pending_pods = []
+        for pod in pods.items:
+            if pod.status.phase == 'Pending':
+                for condition in pod.status.conditions or []:
+                    if condition.reason == 'Unschedulable':
+                        if 'Insufficient' in condition.message:
+                            pending_pods.append(pod)
+                            break
+        # Print the pending pods
+        unschedulable = {}
+        for pod in pending_pods:
+            unschedulable[pod.metadata.name] = {
+                "namespace": pod.metadata.namespace,
+                "reason": pod.status.conditions[-1].message
+            }
+        return unschedulable
+    
+    def get_total_allocatable_resources(self):
+        """Get total allocatable resources (available and used) in the cluster"""
+        nodes = self.core_api.list_node().items
+        
+        allocatable = defaultdict(int)
+        for node in nodes:
+            parse_resource_value(node.status.allocatable, allocatable)
+
+        return allocatable
+    
+    def get_available_resources(self):
+        """Gets available resources (not currently used) in the cluster:
+        - cpu
+        - memory
+        - gpus
+        - pods
+        """
+        total_resources = self._extract_resources(fn=lambda node: node.status.allocatable)
+        available_resources = total_resources["online"]
+
+        # remove requested (and used) resources
+        pods = self.core_api.list_pod_for_all_namespaces(watch=False).items
+        for pod in pods:
+            node_name = pod.spec.node_name
+            if node_name and pod.status.phase == 'Running':
+                available_resources["pods"] -= 1
+                for container in pod.spec.containers:
+                    requests = container.resources.requests
+                    if requests:
+                        for resource in available_resources.keys():
+                            if resource in requests:
+                                available_resources[resource] -= cast_resource_value(requests[resource])
+
+        return available_resources
 
     def get_node_labels(self, node_names=None):
         nodes = self.api.list_node()
@@ -276,105 +318,7 @@ class KubeAPI():
         except Exception as e:
             print(f"Exception when calling delete agent builder: {str(e)}")
     
-    
     ## DEPRECATED ##
-    
-    def deploy_deepsparse_model(
-        self,
-        deployment_name,
-        model_id,
-        namespace,
-        num_cores,
-        ephemeral_memory,
-        ram_memory,
-        task,
-        replicas
-    ):
-        # Deploy a deepsparse model
-        yaml = create_deepsparse_yaml(
-            values={
-                "deployment_name": deployment_name,
-                "model_id": model_id,
-                "namespace": namespace,
-                "num_cores": num_cores,
-                "ephemeral_memory": ephemeral_memory,
-                "ram_memory": ram_memory,
-                "task": task,
-                "replicas": replicas
-            }
-        )
-        return self.kube_deploy(yaml)
-    
-    def list_deepsparse_deployments(self, namespace):
-        return self.list_deployments(namespace=namespace, inspect_services=True)
-
-    def delete_deepsparse_model(
-        self,
-        namespace,
-        deployment_name
-    ):
-       return self.delete_deployment(
-            namespace=namespace,
-            deployment_name=deployment_name
-       )
-
-    def delete_deployment(
-        self,
-        namespace,
-        deployment_name
-    ):
-        k8s_apps = client.AppsV1Api()
-        try:
-            k8s_apps.delete_namespaced_deployment(deployment_name, namespace)
-            self.core_api.delete_namespaced_service(deployment_name, namespace)
-            return True
-        except Exception as e:
-            print(f"Exception when calling CoreV1Api->delete_namespaced_service: {str(e)}")
-    
-    def create_ray_cluster(self, namespace, cluster_config=None, nodeport_config=None):
-        # TODO:
-        # - Create a ray cluster in the user namespace
-        try:
-            print("Creating namespace...")
-            result = self.core_api.create_namespace(
-                body=client.V1Namespace(
-                    metadata={"name": namespace}
-                )
-            )
-            print(result)
-        except:
-            # skip if already present
-            pass
-
-        if cluster_config:
-            print("Creating ray cluster...")
-            with open(cluster_config, 'r') as yaml_in:
-                yaml_object = yaml.safe_load(yaml_in) # yaml_object will be a list or a dict
-            
-            result = client.CustomObjectsApi().create_namespaced_custom_object(
-                group="ray.io", 
-                version="v1alpha1",
-                namespace=namespace,
-                plural="rayclusters",
-                body=yaml_object,
-                pretty=True
-            )
-            print(result)
-        
-        # - create a nodeport service to access the cluster
-        if nodeport_config:
-            print("Creating ray nodeport...")
-            with open(nodeport_config, 'r') as yaml_in:
-                yaml_object = yaml.safe_load(yaml_in) # yaml_object will be a list or a dict
-            
-            result = api.core_api.create_namespaced_service(
-                namespace=namespace,
-                body=yaml_object,
-                pretty=True
-            )
-            print(result)
-        # - return connection details via the nodeport
-        return result
         
     def deploy_generic_model(self, config: str):
         # Deploy a generic config
@@ -421,9 +365,6 @@ class KubeAPI():
             "failures": failed_resources
         }
 
-
-    
-
     def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
         core_api = client.CoreV1Api()
         apps_api = client.AppsV1Api()
@@ -454,7 +395,6 @@ class KubeAPI():
                 print(f"Exception when checking for {resource_type}: {e}")
 
         return resources_found
-
 
     def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
         # TODO: Update to give Cluster IP
@@ -512,9 +452,6 @@ class KubeAPI():
 
         return resources_found
 
-
-
-
     def find_nodeport_url(self, namespace:str, label_key:str, label_value=None):
         """ Termporary Way to find the nodeport url for a service with a given label"""
 
@@ -543,6 +480,11 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
+
+    print(
+        api.get_available_resources()
+    )
+    exit()
     
     username = "carlosfm2"
     password = "password"

@@ -7,9 +7,11 @@ Python kubernetes API reference https://github.com/kubernetes-client/python/blob
 
 ## Install
 
+Python must be < 3.12 (AttributeError: module 'ssl' has no attribute 'wrap_socket')
+
 ```bash
-virtualenv -p python3 env
-source env/bin/activate
+conda create --name kube-watcher python=3.9
+conda activate kube-watcher
 pip install -e .
 ```
 
@@ -18,8 +20,8 @@ pip install -e .
 Build docker image:
 ```bash
 docker build -t kube_watcher .
-docker tag kube_watcher:latest bundenth/kube_watcher:v52
-docker push bundenth/kube_watcher:v52
+docker tag kube_watcher:latest bundenth/kube_watcher:v53
+docker push bundenth/kube_watcher:v53
 ```
 
 ### Configure endpoints
