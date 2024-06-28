@@ -114,13 +114,9 @@ class KubeAPI():
     
     def get_total_allocatable_resources(self):
         """Get total allocatable resources (available and used) in the cluster"""
-        nodes = self.core_api.list_node().items
         
-        allocatable = defaultdict(int)
-        for node in nodes:
-            parse_resource_value(node.status.allocatable, allocatable)
-
-        return allocatable
+        total_resources = self._extract_resources(fn=lambda node: node.status.allocatable)
+        return total_resources["total"]
     
     def get_available_resources(self):
         """Gets available resources (not currently used) in the cluster:
