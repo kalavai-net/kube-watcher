@@ -144,7 +144,7 @@ class KubeAPI():
         return available_resources
 
     def get_node_labels(self, node_names=None):
-        nodes = self.api.list_node()
+        nodes = self.core_api.list_node()
         node_labels = {}
         for node in nodes.items:
             name = node.metadata.name
