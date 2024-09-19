@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-watcher-api
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1 # ensure there is minimal downtime if node goes down
   selector:
@@ -21,9 +21,9 @@ spec:
         - containerPort: 8000
         env:
         - name: IN_CLUSTER
-          value: {{ .Values.deployment.in_cluster }}
+          value: "{{ .Values.deployment.in_cluster }}"
         - name: KW_USE_AUTH
-          value: {{ .Values.deployment.use_auth_key }}
+          value: "{{ .Values.deployment.use_auth_key }}"
         - name: KW_MASTER_KEY
           value: {{ .Values.deployment.auth_key }}
         livenessProbe:

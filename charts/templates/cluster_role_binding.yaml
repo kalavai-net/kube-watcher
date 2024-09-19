@@ -3,7 +3,7 @@ kind: ClusterRoleBinding
 metadata:
   name: api-cluster-role-binding
 subjects:
-- namespace: {{ .Values.namespace }}
+- namespace: {{ .Release.Namespace }}
   kind: ServiceAccount
   name: api-service-account 
 roleRef:
