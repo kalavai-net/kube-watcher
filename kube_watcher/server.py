@@ -22,7 +22,8 @@ from kube_watcher.models import (
     GetLabelledResourcesRequest,
     FlowDeploymentRequest,
     AgentBuilderDeploymentRequest,
-    UserRequest
+    UserRequest,
+    CustomObjectDeploymentRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -196,6 +197,16 @@ async def delete_agent_builder(request: AgentBuilderDeploymentRequest, api_key: 
 @app.post("/v1/deploy_generic_model")
 async def deploy_ray_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_api_key)):
     return kube_api.deploy_generic_model(request.config) 
+
+@app.post("/v1/deploy_custom_object")
+async def deploy_custom_objectl(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_api_key)):
+    response = kube_api.kube_deploy_custom_object(
+        group=request.group,
+        api_version=request.api_version,
+        namespace=request.namespace,
+        plural=request.plural,
+        body=request.body) 
+    return response
 
 @app.post("/v1/delete_labeled_resources")
 async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):

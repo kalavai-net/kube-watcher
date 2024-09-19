@@ -201,6 +201,30 @@ class KubeAPI():
 
         return deployment_results
     
+    def kube_deploy_custom_object(self, group, api_version, namespace, plural, body):
+        deployment_results = {
+            "successful": [],
+            "failed": []
+        }
+        api = client.CustomObjectsApi(client.api_client.ApiClient())
+        if body.strip():
+            yaml_obj = yaml.safe_load(body)
+            try:
+                res = api.create_namespaced_custom_object(
+                    group,
+                    api_version,
+                    namespace,
+                    plural,
+                    yaml_obj
+                )
+                # Assuming res contains some identifiable information about the resource
+                deployment_results["successful"].append(str(res))
+            except Exception as e:
+                # Append the yaml that failed and the exception message for clarity
+                deployment_results["failed"].append({"yaml": body, "error": str(e)})
+
+        return deployment_results
+    
     def deploy_flow(
         self,
         deployment_name,
@@ -477,9 +501,34 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    print(
-        api.get_available_resources()
+    res = api.kube_deploy_custom_object(
+        group="leaderworkerset.x-k8s.io",
+        api_version="v1",
+        namespace="default",
+        plural="leaderworkersets",
+        body="""
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+  name: leaderworkerset-sample
+spec:
+  replicas: 3
+  leaderWorkerTemplate:
+    size: 4
+    workerTemplate:
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:1.14.2
+          resources:
+            limits:
+              cpu: "100m"
+            requests:
+              cpu: "50m"
+          ports:
+          - containerPort: 8080"""
     )
+    print(res)
     exit()
     
     username = "carlosfm2"
