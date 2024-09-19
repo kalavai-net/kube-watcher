@@ -2,3 +2,6 @@ deployment:
   in_cluster: "True"
   use_auth_key: "True"
   auth_key: "somerandomkey"
+
+service:
+  nodePort: 31000
