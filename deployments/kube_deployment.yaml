@@ -1,20 +1,20 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: developer-mvp
+  name: kalavai
 ---
 # Cluster roles and service account permissions
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: api-service-account
-  namespace: developer-mvp
+  namespace: kalavai
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: api-cluster-role
-  namespace: developer-mvp
+  namespace: kalavai
 rules:
   - apiGroups:
         - ""
@@ -55,7 +55,7 @@ kind: ClusterRoleBinding
 metadata:
   name: api-cluster-role-binding
 subjects:
-- namespace: developer-mvp 
+- namespace: kalavai 
   kind: ServiceAccount
   name: api-service-account 
 roleRef:
@@ -68,7 +68,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-watcher-api
-  namespace: developer-mvp
+  namespace: kalavai
 spec:
   replicas: 1 # ensure there is minimal downtime if node goes down
   selector:
@@ -81,39 +81,17 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v53
+        image: bundenth/kube_watcher:v1.0
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
         env:
-        - name: PROMETHEUS_ENDPOINT
-          valueFrom:
-            secretKeyRef:
-              name: config-data
-              key: prometheus-url
-        - name: OPENCOST_ENDPOINT
-          valueFrom:
-            secretKeyRef:
-              name: config-data
-              key: opencost-url
         - name: IN_CLUSTER
           value: "True"
         - name: KW_USE_AUTH
           value: "True"
         - name: KW_MASTER_KEY
           value: "CARLOS_ANNIE_ADAM_KALAVAI"
-        - name: ANVIL_UPLINK_KEY
-          value: "client_AOPKTWK227ZV3R4ENTMOQRIY-ADMVMYW5OIRPH75P"
-        - name: CLUSTER_ENDPOINT
-          valueFrom:
-            secretKeyRef:
-              name: config-data
-              key: cluster-endpoint
-        - name: CLUSTER_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: config-data
-              key: cluster-token
         livenessProbe:
           httpGet:
             path: /v1/health
@@ -126,38 +104,39 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kube-watcher-service
-  namespace: developer-mvp
+  namespace: kalavai
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
   - port: 8000
     targetPort: 8000
+    nodePort: 31000
   selector:
     app: kube-watcher-api
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: tools-library-ingress
-  namespace: developer-mvp
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    kubernetes.io/tls-acme: "true"
-spec:
-  ingressClassName: traefik
-  rules:
-    # Add a DNS record to match this URL to the IP of the cluster
-    - host: kubeapi.test.k8s.mvp.kalavai.net
-      http:
-        paths:
-          - pathType: Prefix
-            backend:
-              service:
-                name: kube-watcher-service
-                port:
-                  number: 8000
-            path: /
-  tls:
-  - hosts:
-    - kubeapi.test.k8s.mvp.kalavai.net
-    secretName: kubeapi.test.k8s.mvp.kalavai.net-tls
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: tools-library-ingress
+#   namespace: kalavai
+#   annotations:
+#     cert-manager.io/cluster-issuer: letsencrypt-prod
+#     kubernetes.io/tls-acme: "true"
+# spec:
+#   ingressClassName: traefik
+#   rules:
+#     # Add a DNS record to match this URL to the IP of the cluster
+#     - host: kubeapi.test.k8s.mvp.kalavai.net
+#       http:
+#         paths:
+#           - pathType: Prefix
+#             backend:
+#               service:
+#                 name: kube-watcher-service
+#                 port:
+#                   number: 8000
+#             path: /
+#   tls:
+#   - hosts:
+#     - kubeapi.test.k8s.mvp.kalavai.net
+#     secretName: kubeapi.test.k8s.mvp.kalavai.net-tls

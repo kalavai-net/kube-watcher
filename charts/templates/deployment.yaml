@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-watcher-api
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1 # ensure there is minimal downtime if node goes down
+  selector:
+    matchLabels:
+      app: kube-watcher-api
+  template:
+    metadata:
+      labels:
+        app: kube-watcher-api
+    spec:
+      containers:
+      - name: kube-watcher-api
+        image: bundenth/kube_watcher:v1.0
+        imagePullPolicy: "IfNotPresent"
+        ports:
+        - containerPort: 8000
+        env:
+        - name: IN_CLUSTER
+          value: {{ .Values.deployment.in_cluster }}
+        - name: KW_USE_AUTH
+          value: {{ .Values.deployment.use_auth_key }}
+        - name: KW_MASTER_KEY
+          value: {{ .Values.deployment.auth_key }}
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 30
+      serviceAccountName: api-service-account  # Service account with cluster permissions

@@ -4,8 +4,8 @@ import logging
 
 from starlette.requests import Request
 from fastapi import FastAPI, HTTPException, Depends
-import anvil.server
-import anvil.users
+# import anvil.server
+# import anvil.users
 
 from kube_watcher.cost_core import OpenCostAPI
 
@@ -42,9 +42,7 @@ logging.basicConfig(
 IN_CLUSTER = "True" == os.getenv("IN_CLUSTER", "True")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://10.43.164.196:9090")
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.43.53.194:9003")
-ANVIL_UPLINK_KEY = os.getenv("ANVIL_UPLINK_KEY", "")
-CLUSTER_ENDPOINT = os.getenv("CLUSTER_ENDPOINT", "")
-CLUSTER_TOKEN = os.getenv("CLUSTER_TOKEN", "")
+#ANVIL_UPLINK_KEY = os.getenv("ANVIL_UPLINK_KEY", "")
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
 MASTER_KEY = os.getenv("KW_MASTER_KEY")
@@ -64,7 +62,7 @@ async def verify_api_key(request: Request):
         raise HTTPException(status_code=401, detail="Invalid API Key")
     return api_key
 
-anvil.server.connect(ANVIL_UPLINK_KEY)
+#anvil.server.connect(ANVIL_UPLINK_KEY)
 
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
@@ -72,14 +70,11 @@ app = FastAPI()
 @app.post("/v1/validate_user")
 async def login(request: UserRequest):
     try:
-        user = anvil.users.login_with_email(request.email, request.password, remember=False)
+        #user = anvil.users.login_with_email(request.email, request.password, remember=False)
+        user = {"username": "User"}
         return {"username": user["username"], "error": None}
     except Exception as e:
         return {"error": str(e)}
-
-@app.get("/v1/get_cluster_info")
-async def get_cluster_info(username):
-    return {"endpoint": CLUSTER_ENDPOINT, "token": CLUSTER_TOKEN}
 
 
 @app.get("/v1/get_cluster_total_resources")
@@ -197,6 +192,28 @@ async def delete_agent_builder(request: AgentBuilderDeploymentRequest, api_key: 
     return response
 
 
+#### GENERIC_DEPLOYMENT
+@app.post("/v1/deploy_generic_model")
+async def deploy_ray_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_api_key)):
+    return kube_api.deploy_generic_model(request.config) 
+
+@app.post("/v1/delete_labeled_resources")
+async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
+    return kube_api.delete_labeled_resources(request.namespace, request.label, request.value)
+
+@app.post("/v1/get_resources_with_label")
+async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
+    return kube_api.find_resources_with_label(request.namespace, request.label, request.value)
+
+@app.post("/v1/find_nodeport_url")
+async def find_nodeport_url(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
+    return kube_api.find_nodeport_url(request.namespace, request.label, request.value)
+
+# Endpoint to check health
+@app.get("/v1/health")
+async def health():
+    return HTTPException(status_code=200, detail="OK")
+
 ## DEPRECATED ##
 # Create model deployment with deepsparse
 @app.post("/v1/deploy_deepsparse_model")
@@ -228,26 +245,4 @@ async def namespace_cost(request: DeepsparseDeploymentListRequest, api_key: str 
     )
     return model_response
 
-
-#### GENERIC_DEPLOYMENT
-@app.post("/v1/deploy_generic_model")
-async def deploy_ray_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_api_key)):
-    return kube_api.deploy_generic_model(request.config) 
-
-@app.post("/v1/delete_labeled_resources")
-async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
-    return kube_api.delete_labeled_resources(request.namespace, request.label, request.value)
-
-@app.post("/v1/get_resources_with_label")
-async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
-    return kube_api.find_resources_with_label(request.namespace, request.label, request.value)
-
-@app.post("/v1/find_nodeport_url")
-async def find_nodeport_url(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
-    return kube_api.find_nodeport_url(request.namespace, request.label, request.value)
-
-# Endpoint to check health
-@app.get("/v1/health")
-async def health():
-    return HTTPException(status_code=200, detail="OK")
 

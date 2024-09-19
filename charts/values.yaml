@@ -1,0 +1,6 @@
+namespace: kalavai
+
+deployment:
+  in_cluster: "True"
+  use_auth_key: "True"
+  auth_key: "somerandomkey"
