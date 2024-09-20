@@ -127,7 +127,7 @@ async def get_deployment_type(request: CustomObjectDeploymentRequest, api_key: s
         plural=request.plural)
     return objects
 
-@app.post("v1/get_ports_for_services")
+@app.post("/v1/get_ports_for_services")
 async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str = Depends(verify_api_key)):
     services = kube_api.get_ports_for_services(
         label_key=request.label,
