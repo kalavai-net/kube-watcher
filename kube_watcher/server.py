@@ -25,7 +25,8 @@ from kube_watcher.models import (
     UserRequest,
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
-    ServiceWithLabelRequest
+    ServiceWithLabelRequest,
+    CustomObjectRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -120,12 +121,24 @@ async def get_nodes(api_key: str = Depends(verify_api_key)):
 
 
 @app.post("/v1/get_objects_of_type")
-async def get_deployment_type(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_api_key)):
+async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depends(verify_api_key)):
     objects = kube_api.kube_get_custom_objects(
+        group=request.object.group,
+        api_version=request.object.api_version,
+        plural=request.object.plural)
+    return objects
+
+
+@app.post("/v1/get_status_for_object")
+async def get_status_for_object(request: CustomObjectRequest, api_key: str = Depends(verify_api_key)):
+    objects = kube_api.kube_get_status_custom_object(
         group=request.group,
         api_version=request.api_version,
-        plural=request.plural)
+        plural=request.plural,
+        namespace=request.namespace,
+        name=request.name)
     return objects
+
 
 @app.post("/v1/get_ports_for_services")
 async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str = Depends(verify_api_key)):
@@ -239,10 +252,10 @@ async def deploy_ray_model(request: GenericDeploymentRequest, api_key: str = Dep
 @app.post("/v1/deploy_custom_object")
 async def deploy_custom_objectl(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_api_key)):
     response = kube_api.kube_deploy_custom_object(
-        group=request.group,
-        api_version=request.api_version,
-        namespace=request.namespace,
-        plural=request.plural,
+        group=request.object.group,
+        api_version=request.object.api_version,
+        namespace=request.object.namespace,
+        plural=request.object.plural,
         body=request.body) 
     return response
 

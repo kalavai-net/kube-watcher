@@ -58,12 +58,17 @@ class NodeLabelsRequest(BaseModel):
 class GenericDeploymentRequest(BaseModel):
     config: str
 
-class CustomObjectDeploymentRequest(BaseModel):
+class CustomObjectRequest(BaseModel):
     group: str
     namespace: str
     api_version: str
     plural: str
+    name: str = ""
+
+class CustomObjectDeploymentRequest(BaseModel):
+    object: CustomObjectRequest
     body: str
+
 
 class DeleteLabelledResourcesRequest(BaseModel):
     namespace:str

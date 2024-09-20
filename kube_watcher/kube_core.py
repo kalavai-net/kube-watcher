@@ -240,6 +240,17 @@ class KubeAPI():
             label_selector=label_selector)
         
         return objects
+    
+    def kube_get_status_custom_object(self, name, group, api_version, namespace, plural):
+        api = client.CustomObjectsApi(client.api_client.ApiClient())
+        res = api.get_namespaced_custom_object_status(
+            group,
+            api_version,
+            namespace,
+            plural,
+            name
+        )
+        return res["status"]["conditions"]
 
     def kube_delete_custom_object(self, name, group, api_version, plural, namespace):
         api = client.CustomObjectsApi(client.api_client.ApiClient())
@@ -250,7 +261,6 @@ class KubeAPI():
             plural,
             name
         )
-
         return res
     
     def list_namespaced_lws(self, namespace, label_selector):
@@ -570,20 +580,15 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
-    res = api.get_ports_for_services(
-        label_key="kalavai.lws.name",
-        label_value="vllm-deployment-1",
-        types=["NodePort"]
-    )
-    print(res)
-    exit()
 
-    res = api.kube_get_custom_objects(
+    res = api.kube_get_status_custom_object(
         group="leaderworkerset.x-k8s.io",
         api_version="v1",
-        plural="leaderworkersets"
+        plural="leaderworkersets",
+        name="vllm-deployment-1",
+        namespace="default"
     )
-    print(res)
+    print(json.dumps(res, indent=3))
     exit()
     
     username = "carlosfm2"
