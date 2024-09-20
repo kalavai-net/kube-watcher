@@ -13,6 +13,7 @@ rules:
         - policy
         - rbac.authorization.k8s.io
         - networking.k8s.io
+        - leaderworkerset.x-k8s.io
     resources:
       - pods
       - componentstatuses
@@ -36,4 +37,5 @@ rules:
       - serviceaccounts
       - services
       - secrets
+      - leaderworkersets
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

@@ -23,7 +23,9 @@ from kube_watcher.models import (
     FlowDeploymentRequest,
     AgentBuilderDeploymentRequest,
     UserRequest,
-    CustomObjectDeploymentRequest
+    CustomObjectDeploymentRequest,
+    PodsWithStatusRequest,
+    ServiceWithLabelRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -97,6 +99,42 @@ async def cluster_labels(api_key: str = Depends(verify_api_key)):
 async def node_labels(request: NodeLabelsRequest, api_key: str = Depends(verify_api_key)):
     labels = kube_api.get_node_labels(node_names=request.node_names)
     return labels
+
+@app.post("/v1/get_pods_with_status")
+async def pods_with_status(request: PodsWithStatusRequest, api_key: str = Depends(verify_api_key)):
+    if request.node_names is None:
+        node_names = kube_api.get_nodes()
+    pods = []
+    for name in node_names:
+        pods.extend(
+            kube_api.get_pods_with_status(
+                node_name=name,
+                statuses=request.statuses
+            )
+        )
+    return pods
+
+@app.get("/v1/get_nodes")
+async def get_nodes(api_key: str = Depends(verify_api_key)):
+    return kube_api.get_nodes_states()
+
+
+@app.post("/v1/get_objects_of_type")
+async def get_deployment_type(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_api_key)):
+    objects = kube_api.kube_get_custom_objects(
+        group=request.group,
+        api_version=request.api_version,
+        plural=request.plural)
+    return objects
+
+@app.post("v1/get_ports_for_services")
+async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str = Depends(verify_api_key)):
+    services = kube_api.get_ports_for_services(
+        label_key=request.label,
+        label_value=request.value,
+        types=request.types
+    )
+    return services
 
 
 @app.post("/v1/get_node_stats")

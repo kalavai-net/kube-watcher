@@ -71,6 +71,13 @@ class KubeAPI():
         
         return node_status
     
+    def get_nodes(self):
+        node_list = self.core_api.list_node()
+        nodes = []
+        for spec in node_list.items:
+            nodes.append(spec.metadata.name)
+        return nodes
+    
     def get_nodes_with_pressure(self, pressures=["DiskPressure", "MemoryPressure", "PIDPressure"]):
         """Get nodes with pressure signals"""
         nodes = self.core_api.list_node()
@@ -224,6 +231,14 @@ class KubeAPI():
                 deployment_results["failed"].append({"yaml": body, "error": str(e)})
 
         return deployment_results
+    
+    def kube_get_custom_objects(self, group, api_version, plural):
+        objects =  client.CustomObjectsApi().list_cluster_custom_object(
+            group,
+            api_version,
+            plural)
+        
+        return objects
     
     def deploy_flow(
         self,
@@ -494,39 +509,41 @@ class KubeAPI():
                 service_ports[service.metadata.name] = max(node_ports)
 
         return service_ports
+    
+    def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
+        core_api = client.CoreV1Api()
+        # pull only the service with the given label
+        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+        resources = core_api.list_service_for_all_namespaces(watch=False, label_selector=label_selector)
+        service_ports = {}   
+        if resources.items:
+            for service in resources.items:
+                if service.spec.type not in types:
+                    continue
+                service_ports[service.metadata.name] = {
+                    "type": service.spec.type,
+                    "ports": service.spec.ports
+                }
 
+        return service_ports
 
 
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.kube_deploy_custom_object(
+    res = api.get_ports_for_services(
+        label_key="app.kubernetes.io/part-of",
+        label_value="lws",
+        types=["ClusterIP"]
+    )
+    print(res)
+    exit()
+
+    res = api.kube_get_custom_objects(
         group="leaderworkerset.x-k8s.io",
         api_version="v1",
-        namespace="default",
-        plural="leaderworkersets",
-        body="""
-apiVersion: leaderworkerset.x-k8s.io/v1
-kind: LeaderWorkerSet
-metadata:
-  name: leaderworkerset-sample
-spec:
-  replicas: 3
-  leaderWorkerTemplate:
-    size: 4
-    workerTemplate:
-      spec:
-        containers:
-        - name: nginx
-          image: nginx:1.14.2
-          resources:
-            limits:
-              cpu: "100m"
-            requests:
-              cpu: "50m"
-          ports:
-          - containerPort: 8080"""
+        plural="leaderworkersets"
     )
     print(res)
     exit()

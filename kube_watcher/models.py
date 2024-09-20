@@ -20,6 +20,15 @@ class KubecostParameters(BaseModel):
 class NodeCostRequest(BaseModel):
     node_names: List[str]
     kubecost_params: KubecostParameters
+
+class PodsWithStatusRequest(BaseModel):
+    node_names: List[str] = None
+    statuses: List[str]
+
+class ServiceWithLabelRequest(BaseModel):
+    label: str
+    value: str
+    types: list = ["NodePort"]
     
 
 class NamespacesCostRequest(BaseModel):
