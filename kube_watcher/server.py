@@ -123,9 +123,9 @@ async def get_nodes(api_key: str = Depends(verify_api_key)):
 @app.post("/v1/get_objects_of_type")
 async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depends(verify_api_key)):
     objects = kube_api.kube_get_custom_objects(
-        group=request.object.group,
-        api_version=request.object.api_version,
-        plural=request.object.plural)
+        group=request.group,
+        api_version=request.api_version,
+        plural=request.plural)
     return objects
 
 
