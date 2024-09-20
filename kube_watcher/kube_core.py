@@ -241,26 +241,17 @@ class KubeAPI():
         
         return objects
 
-    def kube_delete_custom_object(self, name, group, api_version, namespace, plural):
-        deployment_results = {
-            "successful": [],
-            "failed": []
-        }
+    def kube_delete_custom_object(self, name, group, api_version, plural, namespace):
         api = client.CustomObjectsApi(client.api_client.ApiClient())
-        try:
-            res = api.delete_cluster_custom_object(
-                group,
-                api_version,
-                plural,
-                name
-            )
-            # Assuming res contains some identifiable information about the resource
-            deployment_results["successful"].append(str(res))
-        except Exception as e:
-            # Append the yaml that failed and the exception message for clarity
-            deployment_results["failed"].append({"error": str(e)})
+        res = api.delete_namespaced_custom_object(
+            group,
+            api_version,
+            namespace,
+            plural,
+            name
+        )
 
-        return deployment_results
+        return res
     
     def list_namespaced_lws(self, namespace, label_selector):
         resources = self.kube_get_custom_objects(
@@ -276,7 +267,8 @@ class KubeAPI():
             group="leaderworkerset.x-k8s.io",
             api_version="v1",
             plural="leaderworkersets",
-            name=name
+            name=name,
+            namespace=namespace
         )
     
     def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
@@ -435,13 +427,15 @@ class KubeAPI():
         for resource_type, (list_func, delete_func) in resource_types.items():
             try:
                 resources = list_func(namespace, label_selector=label_selector)
-                items = resources["items"] if isinstance(resources, dict) else resources.items
+                is_dict = isinstance(resources, dict)
+                items = resources["items"] if is_dict else resources.items
                 for resource in items:
+                    name = resource["metadata"]["name"] if is_dict else resource.metadata.name
                     try:
-                        delete_func(name=resource.metadata.name, namespace=namespace)
-                        deleted_resources.append(f"{resource_type}/{resource.metadata.name}")
+                        delete_func(name=name, namespace=namespace)
+                        deleted_resources.append(f"{resource_type}/{name}")
                     except Exception as e:
-                        failed_resources.append(f"{resource_type}/{resource.metadata.name}: {str(e)}")
+                        failed_resources.append(f"{resource_type}/{name}: {str(e)}")
             except Exception as e:
                 print(f"Exception when listing {resource_type}: {e}")
 
@@ -569,7 +563,6 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
-
     res = api.delete_labeled_resources(
         namespace="default",
         label_key="kalavai.lws.name",
