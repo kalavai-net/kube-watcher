@@ -276,13 +276,20 @@ class KubeAPI():
         label_selector = label_key if label_value is None else f"{label_key}={label_value}"
         resources = self.core_api.list_service_for_all_namespaces(watch=False, label_selector=label_selector)
         service_ports = {}   
+        def to_dict(service_port):
+            return {
+                "node_port": service_port.node_port,
+                "port": service_port.port,
+                "protocol": service_port.protocol,
+                "target_port": service_port.target_port
+            }
         if resources.items:
             for service in resources.items:
                 if service.spec.type not in types:
                     continue
                 service_ports[service.metadata.name] = {
                     "type": service.spec.type,
-                    "ports": service.spec.ports
+                    "ports": [to_dict(p) for p in service.spec.ports]
                 }
 
         return service_ports
@@ -563,10 +570,10 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
-    res = api.delete_labeled_resources(
-        namespace="default",
+    res = api.get_ports_for_services(
         label_key="kalavai.lws.name",
         label_value="vllm-deployment-1",
+        types=["NodePort"]
     )
     print(res)
     exit()

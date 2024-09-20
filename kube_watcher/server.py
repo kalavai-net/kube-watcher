@@ -49,7 +49,7 @@ OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.43.53.194:9003")
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
 MASTER_KEY = os.getenv("KW_MASTER_KEY")
-
+print(USE_AUTH)
 if USE_AUTH:
     assert MASTER_KEY is not None, "If you are using auth, you must set a master key using the 'KW_MASTER_KEY' environment variable."
 else:
