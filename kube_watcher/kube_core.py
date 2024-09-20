@@ -263,6 +263,45 @@ class KubeAPI():
         )
         return res
     
+    def get_logs_for_pod(self, pod, namespace):
+        response = self.core_api.read_namespaced_pod_log(
+            name=pod,
+            namespace=namespace
+        )
+        return response
+    
+    def find_pods_with_label(self, namespace:str, label_key:str, label_value=None):
+
+        resources_found = {}
+        resource_types = {
+            'pod': self.core_api.list_namespaced_pod
+        }
+        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+
+        for resource_type, list_func in resource_types.items():
+            try:
+                resources = list_func(namespace, label_selector=label_selector)
+                if resources.items:
+                    for resource in resources.items:
+                        resources_found[resource.metadata.name] = resource.metadata.to_dict()
+            except Exception as e:
+                print(f"Exception when checking for {resource_type}: {e}")
+
+        return resources_found
+    
+    def get_logs_for_labels(self, label_key, label_value, namespace):
+        """Get logs for all pods that match a label key:value"""
+        pods = self.find_pods_with_label(
+            namespace=namespace,
+            label_key=label_key,
+            label_value=label_value
+        )
+        logs = {}
+        for pod_name in pods.keys():
+            logs[pod_name] = self.get_logs_for_pod(pod=pod_name, namespace=namespace)
+        
+        return logs
+    
     def list_namespaced_lws(self, namespace, label_selector):
         resources = self.kube_get_custom_objects(
             group="leaderworkerset.x-k8s.io",
@@ -498,62 +537,6 @@ class KubeAPI():
 
         return resources_found
 
-    def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
-        # TODO: Update to give Cluster IP
-        
-        core_api = client.CoreV1Api()
-        apps_api = client.AppsV1Api()
-        batch_v1_api = client.BatchV1Api()
-        #batch_v1beta1_api = client.BatchV1beta1Api()
-
-        resources_found = []
-
-        resource_types = {
-            'pod': core_api.list_namespaced_pod,
-            'service': core_api.list_namespaced_service,
-            'daemonset': apps_api.list_namespaced_daemon_set,
-            'deployment': apps_api.list_namespaced_deployment,
-            'replicaset': apps_api.list_namespaced_replica_set,
-            'statefulset': apps_api.list_namespaced_stateful_set,
-            'job': batch_v1_api.list_namespaced_job,
-            'persistentvolumeclaim': core_api.list_namespaced_persistent_volume_claim
-        }
-
-        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
-
-        for resource_type, list_func in resource_types.items():
-            try:
-                resources = list_func(namespace, label_selector=label_selector)
-                if resources.items:
-                    #resources_found[resource_type] = {resource.metadata.name: resource.metadata.to_dict() for resource in resources.items}
-                    for resource in resources.items:
-                        node_ports = []
-                        if resource.spec.type == "NodePort":
-                            for port in resource.spec.ports:
-                                # Check if the port is a NodePort and add it to the list
-                                if port.node_port:
-                                    node_ports.append(port.node_port)
-
-                        
-
-                        resource = {
-                            "type": resource_type,
-                            "namespace": namespace,
-                            "name": resource.metadata.name,
-                            "labels": resource.metadata.labels,
-                            "metadata": resource.metadata.to_dict(),
-                            "spec": resource.spec.to_dict(),
-                            "node_ports": node_ports,
-                            "label_key": label_key,
-                            "label_value": resource.metadata.labels.get(label_key, None)
-                        }
-                        resources_found.append(resource)
-
-            except Exception as e:
-                print(f"Exception when checking for {resource_type}: {e}")
-
-        return resources_found
-
     def find_nodeport_url(self, namespace:str, label_key:str, label_value=None):
         """ Termporary Way to find the nodeport url for a service with a given label"""
 
@@ -580,6 +563,17 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
+
+    res = api.get_logs_for_labels(
+        namespace="default",
+        label_key="kalavai.lws.name",
+        label_value=None
+    )
+    for pod, logs in res.items():
+        print("------>")
+        print(pod)
+        print(logs)
+    exit()
 
     res = api.kube_get_status_custom_object(
         group="leaderworkerset.x-k8s.io",

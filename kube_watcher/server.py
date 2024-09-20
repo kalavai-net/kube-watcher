@@ -139,6 +139,14 @@ async def get_status_for_object(request: CustomObjectRequest, api_key: str = Dep
         name=request.name)
     return objects
 
+@app.post("/v1/get_logs_for_label")
+async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
+    logs = kube_api.get_logs_for_labels(
+        namespace=request.namespace,
+        label_key=request.label,
+        label_value=request.value)
+    return logs
+
 
 @app.post("/v1/get_ports_for_services")
 async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str = Depends(verify_api_key)):
