@@ -232,13 +232,68 @@ class KubeAPI():
 
         return deployment_results
     
-    def kube_get_custom_objects(self, group, api_version, plural):
+    def kube_get_custom_objects(self, group, api_version, plural, label_selector=None):
         objects =  client.CustomObjectsApi().list_cluster_custom_object(
             group,
             api_version,
-            plural)
+            plural,
+            label_selector=label_selector)
         
         return objects
+
+    def kube_delete_custom_object(self, name, group, api_version, namespace, plural):
+        deployment_results = {
+            "successful": [],
+            "failed": []
+        }
+        api = client.CustomObjectsApi(client.api_client.ApiClient())
+        try:
+            res = api.delete_cluster_custom_object(
+                group,
+                api_version,
+                plural,
+                name
+            )
+            # Assuming res contains some identifiable information about the resource
+            deployment_results["successful"].append(str(res))
+        except Exception as e:
+            # Append the yaml that failed and the exception message for clarity
+            deployment_results["failed"].append({"error": str(e)})
+
+        return deployment_results
+    
+    def list_namespaced_lws(self, namespace, label_selector):
+        resources = self.kube_get_custom_objects(
+            group="leaderworkerset.x-k8s.io",
+            api_version="v1",
+            plural="leaderworkersets",
+            label_selector=label_selector
+        )
+        return resources
+
+    def delete_namespaced_lws(self, name, namespace):
+        return self.kube_delete_custom_object(
+            group="leaderworkerset.x-k8s.io",
+            api_version="v1",
+            plural="leaderworkersets",
+            name=name
+        )
+    
+    def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
+        # pull only the service with the given label
+        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+        resources = self.core_api.list_service_for_all_namespaces(watch=False, label_selector=label_selector)
+        service_ports = {}   
+        if resources.items:
+            for service in resources.items:
+                if service.spec.type not in types:
+                    continue
+                service_ports[service.metadata.name] = {
+                    "type": service.spec.type,
+                    "ports": service.spec.ports
+                }
+
+        return service_ports
     
     def deploy_flow(
         self,
@@ -352,12 +407,6 @@ class KubeAPI():
             return True
         except Exception as e:
             print(f"Exception when calling delete agent builder: {str(e)}")
-    
-    ## DEPRECATED ##
-        
-    def deploy_generic_model(self, config: str):
-        # Deploy a generic config
-        return self.kube_deploy_plus(config)
 
     def delete_labeled_resources(self, namespace, label_key: str, label_value: str = None):
         """Delete all resources in a namespace with a given label"""
@@ -379,14 +428,15 @@ class KubeAPI():
             'replicaset': (apps_api.list_namespaced_replica_set, apps_api.delete_namespaced_replica_set),
             'statefulset': (apps_api.list_namespaced_stateful_set, apps_api.delete_namespaced_stateful_set),
             'job': (batch_v1_api.list_namespaced_job, batch_v1_api.delete_namespaced_job),
-            'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim)
- 
+            'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim),
+            'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws)
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():
             try:
                 resources = list_func(namespace, label_selector=label_selector)
-                for resource in resources.items:
+                items = resources["items"] if isinstance(resources, dict) else resources.items
+                for resource in items:
                     try:
                         delete_func(name=resource.metadata.name, namespace=namespace)
                         deleted_resources.append(f"{resource_type}/{resource.metadata.name}")
@@ -399,6 +449,12 @@ class KubeAPI():
             "deleted_resources": deleted_resources,
             "failures": failed_resources
         }
+    
+    ## DEPRECATED ##
+        
+    def deploy_generic_model(self, config: str):
+        # Deploy a generic config
+        return self.kube_deploy_plus(config)
 
     def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
         core_api = client.CoreV1Api()
@@ -490,14 +546,13 @@ class KubeAPI():
     def find_nodeport_url(self, namespace:str, label_key:str, label_value=None):
         """ Termporary Way to find the nodeport url for a service with a given label"""
 
-        core_api = client.CoreV1Api()
     
         # pull only the service with the given label
         label_selector = label_key if label_value is None else f"{label_key}={label_value}"
 
         service_ports = {}        
 
-        resources = core_api.list_namespaced_service(namespace, label_selector=label_selector)
+        resources = self.core_api.list_namespaced_service(namespace, label_selector=label_selector)
         if resources.items:
             for service in resources.items:
                 node_ports = []
@@ -509,33 +564,16 @@ class KubeAPI():
                 service_ports[service.metadata.name] = max(node_ports)
 
         return service_ports
-    
-    def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
-        core_api = client.CoreV1Api()
-        # pull only the service with the given label
-        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
-        resources = core_api.list_service_for_all_namespaces(watch=False, label_selector=label_selector)
-        service_ports = {}   
-        if resources.items:
-            for service in resources.items:
-                if service.spec.type not in types:
-                    continue
-                service_ports[service.metadata.name] = {
-                    "type": service.spec.type,
-                    "ports": service.spec.ports
-                }
-
-        return service_ports
 
 
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_ports_for_services(
-        label_key="app.kubernetes.io/part-of",
-        label_value="lws",
-        types=["ClusterIP"]
+    res = api.delete_labeled_resources(
+        namespace="default",
+        label_key="kalavai.lws.name",
+        label_value="vllm-deployment-1",
     )
     print(res)
     exit()

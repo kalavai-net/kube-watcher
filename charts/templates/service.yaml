@@ -8,6 +8,6 @@ spec:
   ports:
   - port: 8000
     targetPort: 8000
-    nodePort: {{ .Values.service.nodeport }}
+    nodePort: {{ .Values.service.nodePort }}
   selector:
     app: kube-watcher-api
