@@ -11,7 +11,7 @@ from kube_watcher.cost_core import OpenCostAPI
 
 from kube_watcher.models import (
     NodeStatusRequest,
-    NodeLabelsRequest,
+    NodesRequest,
     NodeCostRequest,
     NamespacesCostRequest,
     DeepsparseDeploymentRequest,
@@ -97,7 +97,7 @@ async def cluster_labels(api_key: str = Depends(verify_api_key)):
     return labels
 
 @app.post("/v1/get_node_labels")
-async def node_labels(request: NodeLabelsRequest, api_key: str = Depends(verify_api_key)):
+async def node_labels(request: NodesRequest, api_key: str = Depends(verify_api_key)):
     labels = kube_api.get_node_labels(node_names=request.node_names)
     return labels
 
@@ -118,6 +118,11 @@ async def pods_with_status(request: PodsWithStatusRequest, api_key: str = Depend
 @app.get("/v1/get_nodes")
 async def get_nodes(api_key: str = Depends(verify_api_key)):
     return kube_api.get_nodes_states()
+
+
+@app.post("/v1/delete_nodes")
+async def get_nodes(request: NodesRequest, api_key: str = Depends(verify_api_key)):
+    return [kube_api.delete_node(node) for node in request.node_names]
 
 
 @app.post("/v1/get_objects_of_type")

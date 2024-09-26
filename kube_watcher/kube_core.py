@@ -160,6 +160,9 @@ class KubeAPI():
             else:
                 node_labels[name] = node.metadata.labels
         return node_labels
+    
+    def delete_node(self, node_name):
+        return self.core_api.delete_node(node_name)
 
     def kube_deploy(self, yaml_strs):
         yamls = yaml_strs.split("---")
@@ -564,15 +567,8 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_logs_for_labels(
-        namespace="default",
-        label_key="kalavai.lws.name",
-        label_value=None
-    )
-    for pod, logs in res.items():
-        print("------>")
-        print(pod)
-        print(logs)
+    res = api.delete_node("carlosfm-desktop-1")
+    print(res)
     exit()
 
     res = api.kube_get_status_custom_object(

@@ -52,7 +52,7 @@ class DeepsparseDeploymentDeleteRequest(BaseModel):
 class DeepsparseDeploymentListRequest(BaseModel):
     namespace: str
     
-class NodeLabelsRequest(BaseModel):
+class NodesRequest(BaseModel):
     node_names: List[str] = None
 
 class GenericDeploymentRequest(BaseModel):
