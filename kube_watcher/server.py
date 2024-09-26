@@ -121,7 +121,7 @@ async def get_nodes(api_key: str = Depends(verify_api_key)):
 
 
 @app.post("/v1/delete_nodes")
-async def get_nodes(request: NodesRequest, api_key: str = Depends(verify_api_key)):
+async def delete_nodes(request: NodesRequest, api_key: str = Depends(verify_api_key)):
     return [kube_api.delete_node(node) for node in request.node_names]
 
 
