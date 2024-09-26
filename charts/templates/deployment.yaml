@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v1.0.11
+        image: bundenth/kube_watcher:v1.0.12
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
