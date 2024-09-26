@@ -125,6 +125,11 @@ async def delete_nodes(request: NodesRequest, api_key: str = Depends(verify_api_
     return [kube_api.delete_node(node) for node in request.node_names]
 
 
+@app.post("/v1/set_node_schedulable")
+async def set_nodes_schedulable(request: NodesRequest, api_key: str = Depends(verify_api_key)):
+    return [kube_api.set_node_schedulable(node_name=node, state=request.schedulable) for node in request.node_names]
+
+
 @app.post("/v1/get_objects_of_type")
 async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depends(verify_api_key)):
     objects = kube_api.kube_get_custom_objects(

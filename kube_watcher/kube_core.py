@@ -163,6 +163,14 @@ class KubeAPI():
     
     def delete_node(self, node_name):
         return self.core_api.delete_node(node_name)
+    
+    def set_node_schedulable(self, node_name, state):
+        body = {
+            "spec": {
+                "unschedulable": not state
+            }
+        }
+        return self.core_api.patch_node(node_name, body)
 
     def kube_deploy(self, yaml_strs):
         yamls = yaml_strs.split("---")
@@ -567,7 +575,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.delete_node("carlosfm-desktop-1")
+    res = api.set_node_schedulable("carlosfm-desktop-1", True)
     print(res)
     exit()
 

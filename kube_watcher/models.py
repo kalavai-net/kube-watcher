@@ -54,6 +54,7 @@ class DeepsparseDeploymentListRequest(BaseModel):
     
 class NodesRequest(BaseModel):
     node_names: List[str] = None
+    schedulable: bool = True
 
 class GenericDeploymentRequest(BaseModel):
     config: str
