@@ -575,7 +575,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.set_node_schedulable("carlosfm-desktop-1", True)
+    res = api.set_node_schedulable("pop-os", True)
     print(res)
     exit()
 
