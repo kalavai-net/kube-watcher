@@ -68,6 +68,8 @@ class KubeAPI():
         node_status = {}
         for node in nodes.items:
             node_status[node.metadata.name] = self.extract_node_conditions(node=node, conditions=conditions)
+            # add schedulable state
+            node_status[node.metadata.name]["unschedulable"] = False if node.spec.unschedulable is None else node.spec.unschedulable
         
         return node_status
     
@@ -575,7 +577,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.set_node_schedulable("pop-os", True)
+    res = api.get_nodes_states()
     print(res)
     exit()
 
