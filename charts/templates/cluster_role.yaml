@@ -37,6 +37,8 @@ rules:
       - serviceaccounts
       - services
       - secrets
+      - statefulsets
+      - sstatefulsets/apps
       - leaderworkersets
       - leaderworkersets/status
       - pods/log
