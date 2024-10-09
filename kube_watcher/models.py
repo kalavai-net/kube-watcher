@@ -29,6 +29,9 @@ class ServiceWithLabelRequest(BaseModel):
     label: str
     value: str
     types: list = ["NodePort"]
+
+class DeploymentsRequest(BaseModel):
+    namespaces: List[str]
     
 
 class NamespacesCostRequest(BaseModel):

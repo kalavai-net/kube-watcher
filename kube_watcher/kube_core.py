@@ -577,7 +577,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_nodes_states()
+    res = api.list_deployments("kube-system")
     print(res)
     exit()
 

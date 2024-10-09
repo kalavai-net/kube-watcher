@@ -26,7 +26,8 @@ from kube_watcher.models import (
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
     ServiceWithLabelRequest,
-    CustomObjectRequest
+    CustomObjectRequest,
+    DeploymentsRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -169,6 +170,15 @@ async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str 
         types=request.types
     )
     return services
+
+@app.post("/v1/get_deployments")
+async def get_deployments(request: DeploymentsRequest, api_key: str = Depends(verify_api_key)):
+    namespaced_deployments = {}
+    for namespace in request.namespaces:
+        namespaced_deployments[namespace] = kube_api.list_deployments(
+            namespace=namespace
+        )
+    return namespaced_deployments
 
 
 @app.post("/v1/get_node_stats")
