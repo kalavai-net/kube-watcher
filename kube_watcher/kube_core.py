@@ -296,7 +296,7 @@ class KubeAPI():
                 resources = list_func(namespace, label_selector=label_selector)
                 if resources.items:
                     for resource in resources.items:
-                        resources_found[resource.metadata.name] = resource.metadata.to_dict()
+                        resources_found[resource.metadata.name] = resource.to_dict()
             except Exception as e:
                 print(f"Exception when checking for {resource_type}: {e}")
 
@@ -332,6 +332,17 @@ class KubeAPI():
             name=name,
             namespace=namespace
         )
+    
+    def get_pods_status_for_label(self, label_key, label_value, namespace):
+        res = self.find_pods_with_label(
+            label_key=label_key,
+            label_value=label_value,
+            namespace=namespace
+        )
+        pod_statuses = {}
+        for pod in res.values():
+            pod_statuses[pod["metadata"]["name"]] = pod["status"]["phase"]
+        return pod_statuses
     
     def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
         # pull only the service with the given label
@@ -577,18 +588,12 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.list_deployments("kube-system")
-    print(res)
-    exit()
-
-    res = api.kube_get_status_custom_object(
-        group="leaderworkerset.x-k8s.io",
-        api_version="v1",
-        plural="leaderworkersets",
-        name="vllm-deployment-1",
+    res = api.get_pods_status_for_label(
+        label_key="leaderworkerset.sigs.k8s.io/name",
+        label_value="vllm-1",
         namespace="default"
     )
-    print(json.dumps(res, indent=3))
+    print(res)
     exit()
     
     username = "carlosfm2"
