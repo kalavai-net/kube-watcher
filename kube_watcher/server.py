@@ -161,6 +161,14 @@ async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str 
         label_value=request.value)
     return logs
 
+@app.post("/v1/describe_pods_for_label")
+async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
+    logs = kube_api.describe_pods_for_labels(
+        namespace=request.namespace,
+        label_key=request.label,
+        label_value=request.value)
+    return logs
+
 @app.post("/v1/get_pods_status_for_label")
 async def get_pods_status_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_api_key)):
     logs = kube_api.get_pods_status_for_label(

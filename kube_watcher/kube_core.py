@@ -10,7 +10,8 @@ from kube_watcher.utils import (
     create_flow_deployment_yaml,
     create_agent_builder_deployment_yaml,
     cast_resource_value,
-    parse_resource_value
+    parse_resource_value,
+    force_serialisation
 )
 
 
@@ -282,6 +283,13 @@ class KubeAPI():
             namespace=namespace
         )
         return response
+
+    def describe_pod(self, pod, namespace):
+        response = self.core_api.read_namespaced_pod(
+            name=pod,
+            namespace=namespace
+        )
+        return force_serialisation(response)
     
     def find_pods_with_label(self, namespace:str, label_key:str, label_value=None):
 
@@ -312,6 +320,19 @@ class KubeAPI():
         logs = {}
         for pod_name in pods.keys():
             logs[pod_name] = self.get_logs_for_pod(pod=pod_name, namespace=namespace)
+        
+        return logs
+    
+    def describe_pods_for_labels(self, label_key, label_value, namespace):
+        """Get describe for all pods that match a label key:value"""
+        pods = self.find_pods_with_label(
+            namespace=namespace,
+            label_key=label_key,
+            label_value=label_value
+        )
+        logs = {}
+        for pod_name in pods.keys():
+            logs[pod_name] = self.describe_pod(pod=pod_name, namespace=namespace)
         
         return logs
     
@@ -588,12 +609,12 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_pods_status_for_label(
+    res = api.describe_pods_for_labels(
         label_key="leaderworkerset.sigs.k8s.io/name",
         label_value="vllm-1",
         namespace="default"
     )
-    print(res)
+    print(json.dumps(res,indent=3))
     exit()
     
     username = "carlosfm2"

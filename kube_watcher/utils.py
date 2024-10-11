@@ -1,4 +1,6 @@
 from string import Template
+import json 
+import datetime 
 from collections import defaultdict
 
 
@@ -10,6 +12,19 @@ DEEPSPARSE_DEFAULT_VALUES = {
 DEEPSPARSE_DEPLOYMENT_TEMPLATE = "deployments/deepsparse_deployment_template.yaml"
 FLOW_DEPLOYMENT_TEMPLATE = "deployments/flow_deployment_template.yaml"
 AGENT_BUILDER_TEMPLATE = "deployments/agent_builder_template.yaml"
+
+
+def serialize_datetime(obj): 
+    if isinstance(obj, datetime.datetime): 
+        return obj.isoformat() 
+    else:
+        to_dict = getattr(obj, "to_dict", None)
+        if callable(to_dict):
+            return obj.to_dict()
+    raise TypeError("Type not serializable") 
+
+def force_serialisation(data):
+    return json.loads(json.dumps(data, default=serialize_datetime))
 
 
 def cast_resource_value(value):
