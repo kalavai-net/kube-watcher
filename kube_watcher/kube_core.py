@@ -354,6 +354,24 @@ class KubeAPI():
             namespace=namespace
         )
     
+    def list_namespaced_raycluster(self, namespace, label_selector):
+        resources = self.kube_get_custom_objects(
+            group="ray.io",
+            api_version="v1",
+            plural="rayclusters",
+            label_selector=label_selector
+        )
+        return resources
+
+    def delete_namespaced_raycluster(self, name, namespace):
+        return self.kube_delete_custom_object(
+            group="ray.io",
+            api_version="v1",
+            plural="rayclusters",
+            name=name,
+            namespace=namespace
+        )
+    
     def get_pods_status_for_label(self, label_key, label_value, namespace):
         res = self.find_pods_with_label(
             label_key=label_key,
@@ -522,7 +540,8 @@ class KubeAPI():
             'statefulset': (apps_api.list_namespaced_stateful_set, apps_api.delete_namespaced_stateful_set),
             'job': (batch_v1_api.list_namespaced_job, batch_v1_api.delete_namespaced_job),
             'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim),
-            'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws)
+            'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws),
+            'leaderworkerset': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster)
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():
@@ -609,9 +628,8 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.describe_pods_for_labels(
-        label_key="leaderworkerset.sigs.k8s.io/name",
-        label_value="vllm-1",
+    res = api.delete_namespaced_raycluster(
+        name="custom-raycluster-gpu",
         namespace="default"
     )
     print(json.dumps(res,indent=3))
