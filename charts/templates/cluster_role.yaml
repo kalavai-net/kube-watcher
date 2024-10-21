@@ -14,6 +14,7 @@ rules:
         - rbac.authorization.k8s.io
         - networking.k8s.io
         - leaderworkerset.x-k8s.io
+        - ray.io
     resources:
       - pods
       - componentstatuses
@@ -38,8 +39,10 @@ rules:
       - services
       - secrets
       - statefulsets
-      - sstatefulsets/apps
+      - statefulsets/apps
       - leaderworkersets
       - leaderworkersets/status
       - pods/log
+      - rayclusters
+      - rayclusters/status
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
