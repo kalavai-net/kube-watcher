@@ -541,7 +541,7 @@ class KubeAPI():
             'job': (batch_v1_api.list_namespaced_job, batch_v1_api.delete_namespaced_job),
             'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim),
             'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws),
-            'leaderworkerset': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster)
+            'raycluster': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster)
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():
@@ -628,35 +628,9 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.delete_namespaced_raycluster(
-        name="custom-raycluster-gpu",
+    res = api.delete_labeled_resources(
+        label_key="kalavai.lws.name",
+        label_value="vllm-1",
         namespace="default"
     )
     print(json.dumps(res,indent=3))
-    exit()
-    
-    username = "carlosfm2"
-    password = "password"
-    deployment_name = "my-agent-1"
-    flow_id = "8fa8c401-7c10-417b-bd19-e84ea6236a4f"
-    flow_url = "https://carlosfm.playground.test.k8s.mvp.kalavai.net/api/v1/process"
-    api_key = "sk-Qn4Ns14yHy1UUacq9cwfe6k9jeDyvE9zVepTENeQAaw"
-    
-    api.deploy_agent_builder(
-        deployment_name="builder",
-        namespace="carlosfm",
-        username="carlosfm",
-        password=base64.b64encode(password.encode("ascii")).decode("ascii")
-    )
-    
-    # api.deploy_flow(
-    #     deployment_name=deployment_name,
-    #     namespace=username,
-    #     flow_id=flow_id,
-    #     flow_url=flow_url,
-    #     api_key=api_key
-    # )
-    # api.delete_flow(
-    #     deployment_name=deployment_name,
-    #     namespace=username
-    # )
