@@ -127,6 +127,10 @@ async def pods_with_status(request: PodsWithStatusRequest, api_key: str = Depend
 async def get_nodes(api_key: str = Depends(verify_read_key)):
     return kube_api.get_nodes_states()
 
+@app.post("/v1/get_nodes_resources")
+async def get_nodes_resources(request: NodesRequest, api_key: str = Depends(verify_read_key)):
+    return kube_api.get_nodes_resources(node_names=request.node_names)
+
 
 @app.post("/v1/delete_nodes")
 async def delete_nodes(request: NodesRequest, api_key: str = Depends(verify_write_key)):

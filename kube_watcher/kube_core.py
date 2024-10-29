@@ -164,6 +164,25 @@ class KubeAPI():
                 node_labels[name] = node.metadata.labels
         return node_labels
     
+    def read_node(self, node_names: list=None):
+        nodes = self.get_nodes()
+        nodes_info = {}
+        for node in nodes:
+            if node_names is not None and node not in node_names:
+                continue
+            nodes_info[node] = self.core_api.read_node(node)
+        
+        return force_serialisation(nodes_info)
+
+    def get_nodes_resources(self, node_names: list=None):
+        nodes_info = self.read_node(node_names=node_names)
+        nodes_resources = {}
+        for node_name, node_spec in nodes_info.items():
+            nodes_resources[node_name] = {
+                key: cast_resource_value(value) for key, value in node_spec["status"]["allocatable"].items()
+            }
+        return force_serialisation(nodes_resources)
+    
     def delete_node(self, node_name):
         return self.core_api.delete_node(node_name)
     
@@ -628,9 +647,5 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.delete_labeled_resources(
-        label_key="kalavai.lws.name",
-        label_value="vllm-1",
-        namespace="default"
-    )
+    res = api.get_nodes_resources()
     print(json.dumps(res,indent=3))
