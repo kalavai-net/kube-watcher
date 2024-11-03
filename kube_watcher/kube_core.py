@@ -164,6 +164,36 @@ class KubeAPI():
                 node_labels[name] = node.metadata.labels
         return node_labels
     
+    def get_node_annotations(self, node_names=None):
+        nodes = self.core_api.list_node()
+        node_labels = {}
+        for node in nodes.items:
+            name = node.metadata.name
+            if node_names is not None and name not in node_names:
+                pass
+            else:
+                node_labels[name] = node.metadata.annotations
+        return node_labels
+    
+    def get_node_gpus(self, node_names=None, gpu_key="hami.io/node-nvidia-register"):
+        annotations = self.get_node_annotations(node_names=node_names)
+        gpu_info = {}
+        for node, node_annotations in annotations.items():
+            if gpu_key not in node_annotations:
+                continue
+            gpus = node_annotations[gpu_key].split(":")
+            gpu_info[node] = []
+            for gpu_data in gpus:
+                data = gpu_data.split(",")
+                if len(data) < 6:
+                    continue
+                gpu_info[node].append({
+                    "id": data[5],
+                    "memory": data[2],
+                    "model": data[4]
+                })
+        return gpu_info
+    
     def read_node(self, node_names: list=None):
         nodes = self.get_nodes()
         nodes_info = {}
@@ -647,5 +677,5 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_nodes_resources()
+    res = api.get_node_gpus(node_names=["pop-os"])
     print(json.dumps(res,indent=3))

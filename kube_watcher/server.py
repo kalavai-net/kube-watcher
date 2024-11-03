@@ -109,6 +109,11 @@ async def node_labels(request: NodesRequest, api_key: str = Depends(verify_read_
     labels = kube_api.get_node_labels(node_names=request.node_names)
     return labels
 
+@app.post("/v1/get_node_gpus")
+async def node_gpus(request: NodesRequest, api_key: str = Depends(verify_read_key)):
+    labels = kube_api.get_node_gpus(node_names=request.node_names)
+    return labels
+
 @app.post("/v1/get_pods_with_status")
 async def pods_with_status(request: PodsWithStatusRequest, api_key: str = Depends(verify_read_key)):
     if request.node_names is None:
