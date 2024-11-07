@@ -43,6 +43,7 @@ rules:
       - leaderworkersets
       - leaderworkersets/status
       - pods/log
+      - pods/eviction
       - rayclusters
       - rayclusters/status
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
