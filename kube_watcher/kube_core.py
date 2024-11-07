@@ -217,6 +217,27 @@ class KubeAPI():
         return self.core_api.delete_node(node_name)
     
     def set_node_schedulable(self, node_name, state):
+        # first drain the node
+        if not state:
+            pods = self.core_api.list_pod_for_all_namespaces(watch=False)
+            for pod in pods.items:
+                if pod.spec.node_name != node_name:
+                    continue
+                print(f"******* Evicting pod {pod.metadata.name} ({pod.metadata.namespace})")
+                body = client.V1Eviction(
+                    metadata=client.V1ObjectMeta(
+                        name=pod.metadata.name,
+                        namespace=pod.metadata.namespace
+                    ),
+                    delete_options=client.V1DeleteOptions()
+                )
+                self.core_api.create_namespaced_pod_eviction(
+                    pod.metadata.name,
+                    pod.metadata.namespace,
+                    body
+                )
+
+        # then set unschedulable
         body = {
             "spec": {
                 "unschedulable": not state
@@ -676,6 +697,8 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
+
+    api.set_node_schedulable(node_name="pop-os", state=True)
 
     res = api.get_node_gpus(node_names=["pop-os"])
     print(json.dumps(res,indent=3))
