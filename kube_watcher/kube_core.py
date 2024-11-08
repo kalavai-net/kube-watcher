@@ -178,6 +178,7 @@ class KubeAPI():
     def get_node_gpus(self, node_names=None, gpu_key="hami.io/node-nvidia-register"):
         annotations = self.get_node_annotations(node_names=node_names)
         gpu_info = {}
+        node_states = self.get_nodes_states()
         for node, node_annotations in annotations.items():
             if gpu_key not in node_annotations:
                 continue
@@ -188,7 +189,7 @@ class KubeAPI():
                 if len(data) < 6:
                     continue
                 gpu_info[node].append({
-                    "id": data[5],
+                    "ready": node_states[node]["Ready"],
                     "memory": data[2],
                     "model": data[4]
                 })
@@ -697,8 +698,6 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
-
-    api.set_node_schedulable(node_name="pop-os", state=True)
 
     res = api.get_node_gpus(node_names=["pop-os"])
     print(json.dumps(res,indent=3))
