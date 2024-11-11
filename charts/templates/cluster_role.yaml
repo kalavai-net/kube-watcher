@@ -15,6 +15,7 @@ rules:
         - networking.k8s.io
         - leaderworkerset.x-k8s.io
         - ray.io
+        - storage.k8s.io
     resources:
       - pods
       - componentstatuses
@@ -40,6 +41,7 @@ rules:
       - secrets
       - statefulsets
       - statefulsets/apps
+      - storageclasses
       - leaderworkersets
       - leaderworkersets/status
       - pods/log
