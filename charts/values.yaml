@@ -1,8 +1,9 @@
 deployment:
   in_cluster: "True"
   use_auth_key: "True"
-  auth_key: "somerandomkey"
+  admin_key: "somerandomkey"
   readonly_key: "anotherkey"
+  user_key: "anotherkey2"
 
 service:
   nodePort: 31000

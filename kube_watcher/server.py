@@ -50,29 +50,41 @@ OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://10.43.53.194:9003")
 #ANVIL_UPLINK_KEY = os.getenv("ANVIL_UPLINK_KEY", "")
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
-MASTER_KEY = os.getenv("KW_MASTER_KEY")
-READ_ONLY_KEY = os.getenv("KW_READ_ONLY_KEY")
+ADMIN_KEY = os.getenv("KW_ADMIN_KEY") # all permissions
+USER_KEY = os.getenv("KW_USER_KEY") # deploy and read permissions
+READ_ONLY_KEY = os.getenv("KW_READ_ONLY_KEY") # read permissions
 
+    
 if USE_AUTH:
-    assert MASTER_KEY is not None and READ_ONLY_KEY is not None, "If you are using auth, you must set a master key using the 'KW_MASTER_KEY' and 'KW_READ_ONLY_KEY' environment variable."
+    for key in [ADMIN_KEY, USER_KEY, READ_ONLY_KEY]:
+        name = f"{key=}".split("=")[0]
+        assert key is not None, "If you are using auth, you must set {name} env var"
 else:
     logger.warning("Warning: Authentication is disabled. This should only be used for testing.")
 
 # API Key Validation
-async def verify_write_key(request: Request):
+async def verify_admin_key(request: Request):
     if not USE_AUTH:
         return
     api_key = request.headers.get("X-API-KEY")
-    if api_key != MASTER_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
+    if api_key != ADMIN_KEY:
+        raise HTTPException(status_code=401, detail="Request requires Admin API Key")
     return api_key
 
 async def verify_read_key(request: Request):
     if not USE_AUTH:
         return
     api_key = request.headers.get("X-API-KEY")
-    if api_key != READ_ONLY_KEY and api_key != MASTER_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
+    if api_key != READ_ONLY_KEY and api_key != ADMIN_KEY and api_key != USER_KEY:
+        raise HTTPException(status_code=401, detail="Request requires a Read API Key")
+    return api_key
+
+async def verify_user_key(request: Request):
+    if not USE_AUTH:
+        return
+    api_key = request.headers.get("X-API-KEY")
+    if api_key != USER_KEY and api_key != ADMIN_KEY:
+        raise HTTPException(status_code=401, detail="Request requires a User API Key")
     return api_key
 
 
@@ -138,14 +150,14 @@ async def get_nodes_resources(request: NodesRequest, api_key: str = Depends(veri
 
 
 @app.post("/v1/delete_nodes")
-async def delete_nodes(request: NodesRequest, api_key: str = Depends(verify_write_key)):
+async def delete_nodes(request: NodesRequest, api_key: str = Depends(verify_admin_key)):
     for node in request.node_names:
         kube_api.delete_node(node)
     return None
 
 
 @app.post("/v1/set_node_schedulable")
-async def set_nodes_schedulable(request: NodesRequest, api_key: str = Depends(verify_write_key)):
+async def set_nodes_schedulable(request: NodesRequest, api_key: str = Depends(verify_admin_key)):
     for node in request.node_names:
         kube_api.set_node_schedulable(node_name=node, state=request.schedulable)
     return None
@@ -244,7 +256,7 @@ async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(
     
 
 @app.post("/v1/deploy_flow")
-async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_write_key)):
+async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_user_key)):
     """Todo"""
     response = kube_api.deploy_flow(
         deployment_name=request.deployment_name,
@@ -258,7 +270,7 @@ async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(ver
     return response
 
 @app.post("/v1/delete_flow")
-async def delete_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_write_key)):
+async def delete_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_user_key)):
     """Todo"""
     response = kube_api.delete_flow(
         deployment_name=request.deployment_name,
@@ -274,7 +286,7 @@ async def list_flows(namespace: str, api_key: str = Depends(verify_read_key)):
     return response
 
 @app.post("/v1/deploy_agent_builder")
-async def deploy_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_write_key)):
+async def deploy_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_user_key)):
     """Todo"""
     response = kube_api.deploy_agent_builder(
         deployment_name=request.deployment_name,
@@ -298,7 +310,7 @@ async def list_agent_builders(namespace: str, api_key: str = Depends(verify_read
 
 
 @app.post("/v1/delete_agent_builder")
-async def delete_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_write_key)):
+async def delete_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_user_key)):
     """Todo"""
     response = kube_api.delete_agent_builder(
         deployment_name=request.deployment_name,
@@ -309,11 +321,11 @@ async def delete_agent_builder(request: AgentBuilderDeploymentRequest, api_key: 
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model")
-async def deploy_ray_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_write_key)):
+async def deploy_ray_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_user_key)):
     return kube_api.deploy_generic_model(request.config) 
 
 @app.post("/v1/deploy_custom_object")
-async def deploy_custom_objectl(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_write_key)):
+async def deploy_custom_objectl(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_user_key)):
     response = kube_api.kube_deploy_custom_object(
         group=request.object.group,
         api_version=request.object.api_version,
@@ -323,7 +335,7 @@ async def deploy_custom_objectl(request: CustomObjectDeploymentRequest, api_key:
     return response
 
 @app.post("/v1/delete_labeled_resources")
-async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_write_key)):
+async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_user_key)):
     return kube_api.delete_labeled_resources(request.namespace, request.label, request.value)
 
 @app.post("/v1/get_resources_with_label")
@@ -342,7 +354,7 @@ async def health():
 ## DEPRECATED ##
 # Create model deployment with deepsparse
 @app.post("/v1/deploy_deepsparse_model")
-async def namespace_cost(request: DeepsparseDeploymentRequest, api_key: str = Depends(verify_write_key)):
+async def namespace_cost(request: DeepsparseDeploymentRequest, api_key: str = Depends(verify_user_key)):
     model_response = kube_api.deploy_deepsparse_model(
         deployment_name=request.deployment_name,
         model_id=request.deepsparse_model_id,
@@ -356,7 +368,7 @@ async def namespace_cost(request: DeepsparseDeploymentRequest, api_key: str = De
     return model_response
 
 @app.post("/v1/delete_deepsparse_model")
-async def namespace_cost(request: DeepsparseDeploymentDeleteRequest, api_key: str = Depends(verify_read_key)):
+async def namespace_cost(request: DeepsparseDeploymentDeleteRequest, api_key: str = Depends(verify_user_key)):
     model_response = kube_api.delete_deepsparse_model(
         deployment_name=request.deployment_name,
         namespace=request.namespace,
