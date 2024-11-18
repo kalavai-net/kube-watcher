@@ -295,14 +295,14 @@ async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: 
 async def deploy_storage_claim(request: StorageClaimRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     response = kube_api.deploy_storage_claim(
         namespace=namespace,
-        **request)
+        **request.model_dump())
     return response
 
 @app.post("/v1/deploy_service")
 async def deploy_service(request: ServiceRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     response = kube_api.deploy_service(
         namespace=namespace,
-        **request)
+        **request.model_dump())
     return response
 
 @app.post("/v1/delete_labeled_resources")
