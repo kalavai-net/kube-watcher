@@ -6,6 +6,21 @@ class NodeStatusRequest(BaseModel):
     start_time: str = "1h"
     end_time: str = "now"
     chunk_size: int = 1
+
+class StorageClaimRequest(BaseModel):
+    name: str
+    labels: dict
+    access_modes: list
+    storage_class_name: str
+    storage_size: int
+
+class ServiceRequest(BaseModel):
+    name: str
+    namespace: str
+    labels: dict
+    selector_labels: dict
+    service_type: str
+    ports: list[dict]
     
 
 class KubecostParameters(BaseModel):

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: kube-watcher-api
-        image: bundenth/kube_watcher:v1.1.1
+        image: bundenth/kube_watcher:v1.1.2
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 8000
@@ -31,7 +31,7 @@ spec:
         - name: KW_READ_ONLY_KEY
           value: {{ .Values.deployment.readonly_key }}
         - name: IS_PUBLIC_POOL
-          value: {{ .Values.deployment.is_public_pool }}
+          value: "{{ .Values.deployment.is_public_pool }}"
         - name: KALAVAI_API_ENDPOINT
           value: {{ .Values.deployment.kalavai_api_endpoint }}
         livenessProbe:

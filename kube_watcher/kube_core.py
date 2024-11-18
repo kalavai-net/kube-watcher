@@ -477,6 +477,60 @@ class KubeAPI():
 
         return service_ports
     
+    def deploy_storage_claim(
+            self,
+            name: str,
+            namespace: str,
+            labels: dict,
+            access_modes: list,
+            storage_class_name: str,
+            storage_size: int
+    ):
+        body = client.V1PersistentVolumeClaim(
+            metadata=client.V1ObjectMeta(
+                name=name,
+                labels=labels
+            ),
+            spec=client.V1PersistentVolumeClaimSpec(
+                access_modes=access_modes,
+                storage_class_name=storage_class_name,
+                resources=client.V1ResourceRequirements(
+                    requests={"storage": storage_size}
+                )
+            )
+        )
+        result = self.core_api.create_namespaced_persistent_volume_claim(
+            namespace,
+            body
+        )
+        return force_serialisation(result)
+    
+    def deploy_service(
+        self,
+        name: str,
+        namespace: str,
+        labels: dict,
+        selector_labels: dict,
+        service_type: str,
+        ports: list[dict]
+    ):
+        body = client.V1Service(
+            metadata=client.V1ObjectMeta(
+                name=name,
+                labels=labels
+            ),
+            spec=client.V1ServiceSpec(
+                ports=[client.V1ServicePort(**port) for port in ports],
+                selector=selector_labels,
+                type=service_type
+            )
+        )
+        result = self.core_api.create_namespaced_service(
+            namespace,
+            body
+        )
+        return force_serialisation(result)
+    
     def deploy_flow(
         self,
         deployment_name,
@@ -699,5 +753,15 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_node_gpus(node_names=["pop-os"])
+
+    res = api.deploy_service(
+        name="mypvc",
+        namespace="kalavai",
+        labels={"kalavai.resource": "service"},
+        selector_labels={"app": "kube-watcher-api"},
+        service_type="NodePort",
+        ports=[
+            {"name": "http", "port": 80, "target_port": 8080, "node_port": 31005}
+        ]
+    )
     print(json.dumps(res,indent=3))

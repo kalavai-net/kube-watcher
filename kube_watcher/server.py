@@ -27,7 +27,9 @@ from kube_watcher.models import (
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
     ServiceWithLabelRequest,
-    CustomObjectRequest
+    CustomObjectRequest,
+    StorageClaimRequest,
+    ServiceRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -276,7 +278,7 @@ async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model")
-async def deploy_generic_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
+async def deploy_generic_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_admin_key)):
     return kube_api.deploy_generic_model(request.config) 
 
 @app.post("/v1/deploy_custom_object")
@@ -287,6 +289,20 @@ async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: 
         namespace=namespace,
         plural=request.object.plural,
         body=request.body) 
+    return response
+
+@app.post("/v1/deploy_storage_claim")
+async def deploy_storage_claim(request: StorageClaimRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
+    response = kube_api.deploy_storage_claim(
+        namespace=namespace,
+        **request)
+    return response
+
+@app.post("/v1/deploy_service")
+async def deploy_service(request: ServiceRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
+    response = kube_api.deploy_service(
+        namespace=namespace,
+        **request)
     return response
 
 @app.post("/v1/delete_labeled_resources")
