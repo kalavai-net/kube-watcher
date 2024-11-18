@@ -88,9 +88,9 @@ async def verify_write_key(request: Request):
     return api_key
 
 # User Key validation (only for public pools, permissions user-namespace)
-async def verify_user_key(request: Request):
+async def verify_namespace(request: Request):
     if not IS_PUBLIC_POOL:
-        return
+        return "default"
     api_key = request.headers.get("USER-KEY")
     user = request.headers.get("USER")
     
@@ -193,7 +193,7 @@ async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depen
 
 
 @app.post("/v1/get_status_for_object")
-async def get_status_for_object(request: CustomObjectRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def get_status_for_object(request: CustomObjectRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     objects = kube_api.kube_get_status_custom_object(
         group=request.group,
         api_version=request.api_version,
@@ -203,7 +203,7 @@ async def get_status_for_object(request: CustomObjectRequest, api_key: str = Dep
     return objects
 
 @app.post("/v1/get_logs_for_label")
-async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     logs = kube_api.get_logs_for_labels(
         namespace=namespace,
         label_key=request.label,
@@ -211,7 +211,7 @@ async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str 
     return logs
 
 @app.post("/v1/describe_pods_for_label")
-async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     logs = kube_api.describe_pods_for_labels(
         namespace=namespace,
         label_key=request.label,
@@ -219,7 +219,7 @@ async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key:
     return logs
 
 @app.post("/v1/get_pods_status_for_label")
-async def get_pods_status_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def get_pods_status_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     logs = kube_api.get_pods_status_for_label(
         namespace=namespace,
         label_key=request.label,
@@ -237,7 +237,7 @@ async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str 
     return services
 
 @app.post("/v1/get_deployments")
-async def get_deployments(api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def get_deployments(api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     deployments = kube_api.list_deployments(
         namespace=namespace
     )
@@ -276,11 +276,11 @@ async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model")
-async def deploy_generic_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_user_key)):
+async def deploy_generic_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     return kube_api.deploy_generic_model(request.config) 
 
 @app.post("/v1/deploy_custom_object")
-async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_user_key)):
+async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     response = kube_api.kube_deploy_custom_object(
         group=request.object.group,
         api_version=request.object.api_version,
@@ -290,15 +290,15 @@ async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: 
     return response
 
 @app.post("/v1/delete_labeled_resources")
-async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_user_key)):
+async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     return kube_api.delete_labeled_resources(namespace, request.label, request.value)
 
 @app.post("/v1/get_resources_with_label")
-async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     return kube_api.find_resources_with_label(namespace, request.label, request.value)
 
 @app.post("/v1/find_nodeport_url")
-async def find_nodeport_url(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def find_nodeport_url(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     return kube_api.find_nodeport_url(namespace, request.label, request.value)
 
 # Endpoint to check health
@@ -338,7 +338,7 @@ async def namespace_cost(request: DeepsparseDeploymentListRequest, api_key: str 
     return model_response
 
 @app.post("/v1/deploy_flow")
-async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_user_key)):
+async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     """Todo"""
     response = kube_api.deploy_flow(
         deployment_name=request.deployment_name,
@@ -352,7 +352,7 @@ async def deploy_flow(request: FlowDeploymentRequest, api_key: str = Depends(ver
     return response
 
 @app.post("/v1/delete_flow")
-async def delete_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_user_key)):
+async def delete_flow(request: FlowDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     """Todo"""
     response = kube_api.delete_flow(
         deployment_name=request.deployment_name,
@@ -361,14 +361,14 @@ async def delete_flow(request: FlowDeploymentRequest, api_key: str = Depends(ver
     return response
 
 @app.post("/v1/list_flows")
-async def list_flows(api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def list_flows(api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     response = kube_api.list_deployments(
         namespace=namespace
     )
     return response
 
 @app.post("/v1/deploy_agent_builder")
-async def deploy_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_user_key)):
+async def deploy_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     """Todo"""
     response = kube_api.deploy_agent_builder(
         deployment_name=request.deployment_name,
@@ -383,7 +383,7 @@ async def deploy_agent_builder(request: AgentBuilderDeploymentRequest, api_key: 
     return response
 
 @app.post("/v1/list_agent_builders")
-async def list_agent_builders(api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_user_key)):
+async def list_agent_builders(api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
     """Todo: now just returns any deployment"""
     response = kube_api.list_deployments(
         namespace=namespace
@@ -392,7 +392,7 @@ async def list_agent_builders(api_key: str = Depends(verify_read_key), namespace
 
 
 @app.post("/v1/delete_agent_builder")
-async def delete_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_user_key)):
+async def delete_agent_builder(request: AgentBuilderDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
     """Todo"""
     response = kube_api.delete_agent_builder(
         deployment_name=request.deployment_name,
