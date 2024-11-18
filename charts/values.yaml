@@ -3,7 +3,9 @@ deployment:
   use_auth_key: "True"
   admin_key: "somerandomkey"
   readonly_key: "anotherkey"
-  user_key: "anotherkey2"
+  write_key: "anotherkey2"
+  is_public_pool: "False"
+  kalavai_api_endpoint: "https://platform.kalavai.net/_/api"
 
 service:
   nodePort: 31000

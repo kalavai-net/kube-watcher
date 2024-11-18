@@ -29,9 +29,6 @@ class ServiceWithLabelRequest(BaseModel):
     label: str
     value: str
     types: list = ["NodePort"]
-
-class DeploymentsRequest(BaseModel):
-    namespaces: List[str]
     
 
 class NamespacesCostRequest(BaseModel):
@@ -64,7 +61,6 @@ class GenericDeploymentRequest(BaseModel):
 
 class CustomObjectRequest(BaseModel):
     group: str
-    namespace: str
     api_version: str
     plural: str
     name: str = ""
@@ -75,12 +71,10 @@ class CustomObjectDeploymentRequest(BaseModel):
 
 
 class DeleteLabelledResourcesRequest(BaseModel):
-    namespace:str
     label:str
     value:Optional[str] = None
 
 class GetLabelledResourcesRequest(BaseModel):
-    namespace:str
     label:str
     value:Optional[str] = None
 

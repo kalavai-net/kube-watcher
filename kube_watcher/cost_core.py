@@ -52,7 +52,7 @@ class OpenCostAPI():
 
 if __name__ == "__main__":
     
-    BASE_URL = os.getenv("OPENCOST_URL", default="http://10.43.53.194:9003")
+    BASE_URL = os.getenv("OPENCOST_URL", default="http://10.43.187.147:9003")
     opencost = OpenCostAPI(base_url=BASE_URL)
 
     result = opencost.get_namespaces_cost(
