@@ -495,7 +495,7 @@ class KubeAPI():
                 access_modes=access_modes,
                 storage_class_name=storage_class_name,
                 resources=client.V1ResourceRequirements(
-                    requests={"storage": "{storage_size}Gi"}
+                    requests={"storage": f"{storage_size}Gi"}
                 )
             )
         )
@@ -759,18 +759,13 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    api.create_namespace(namespace="carlos")
-    exit()
 
-
-    res = api.deploy_service(
+    res = api.deploy_storage_claim(
         name="mypvc",
         namespace="kalavai",
-        labels={"kalavai.resource": "service"},
-        selector_labels={"app": "kube-watcher-api"},
-        service_type="NodePort",
-        ports=[
-            {"name": "http", "port": 80, "target_port": 8080, "node_port": 31005}
-        ]
+        labels={"kalavai.resource": "storage"},
+        access_modes=["ReadWriteMany"],
+        storage_class_name="longhorn-rwx",
+        storage_size=5
     )
     print(json.dumps(res,indent=3))
