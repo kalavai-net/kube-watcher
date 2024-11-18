@@ -531,6 +531,12 @@ class KubeAPI():
         )
         return force_serialisation(result)
     
+    def create_namespace(self, name):
+        result = self.core_api.create_namespace(
+            body=client.V1Namespace(metadata=client.V1ObjectMeta(name=name))
+        )
+        return force_serialisation(result)
+    
     def deploy_flow(
         self,
         deployment_name,
@@ -752,6 +758,9 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
+
+    api.create_namespace(namespace="carlos")
+    exit()
 
 
     res = api.deploy_service(
