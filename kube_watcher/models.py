@@ -16,7 +16,6 @@ class StorageClaimRequest(BaseModel):
 
 class ServiceRequest(BaseModel):
     name: str
-    namespace: str
     labels: dict
     selector_labels: dict
     service_type: str
