@@ -495,7 +495,7 @@ class KubeAPI():
                 access_modes=access_modes,
                 storage_class_name=storage_class_name,
                 resources=client.V1ResourceRequirements(
-                    requests={"storage": storage_size}
+                    requests={"storage": "{storage_size}Gi"}
                 )
             )
         )
