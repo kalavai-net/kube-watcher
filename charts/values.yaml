@@ -1,5 +1,6 @@
 deployment:
   in_cluster: "True"
+  replicas: 2
   use_auth_key: "True"
   admin_key: "somerandomkey"
   readonly_key: "anotherkey"

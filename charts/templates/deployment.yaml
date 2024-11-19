@@ -4,7 +4,7 @@ metadata:
   name: kube-watcher-api
   namespace: {{ .Release.Namespace }}
 spec:
-  replicas: 1 # ensure there is minimal downtime if node goes down
+  replicas: {{ .Values.deployment.replicas }} # ensure there is minimal downtime if node goes down
   selector:
     matchLabels:
       app: kube-watcher-api
