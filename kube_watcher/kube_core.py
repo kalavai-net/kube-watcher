@@ -425,6 +425,24 @@ class KubeAPI():
             namespace=namespace
         )
     
+    def list_namespaced_vcjob(self, namespace, label_selector):
+        resources = self.kube_get_custom_objects(
+            group="batch.volcano.sh",
+            api_version="v1alpha1",
+            plural="jobs",
+            label_selector=label_selector
+        )
+        return resources
+
+    def delete_namespaced_vcjob(self, name, namespace):
+        return self.kube_delete_custom_object(
+            group="batch.volcano.sh",
+            api_version="v1alpha1",
+            plural="jobs",
+            name=name,
+            namespace=namespace
+        )
+    
     def list_namespaced_raycluster(self, namespace, label_selector):
         resources = self.kube_get_custom_objects(
             group="ray.io",
@@ -655,7 +673,6 @@ class KubeAPI():
 
         core_api = client.CoreV1Api()
         apps_api = client.AppsV1Api()
-        batch_v1_api = client.BatchV1Api()
 
         deleted_resources = []
         failed_resources = []
@@ -669,10 +686,10 @@ class KubeAPI():
             'deployment': (apps_api.list_namespaced_deployment, apps_api.delete_namespaced_deployment),
             'replicaset': (apps_api.list_namespaced_replica_set, apps_api.delete_namespaced_replica_set),
             'statefulset': (apps_api.list_namespaced_stateful_set, apps_api.delete_namespaced_stateful_set),
-            'job': (batch_v1_api.list_namespaced_job, batch_v1_api.delete_namespaced_job),
             'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim),
             'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws),
-            'raycluster': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster)
+            'raycluster': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster),
+            'job': (self.list_namespaced_vcjob, self.delete_namespaced_vcjob)
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():
@@ -760,12 +777,7 @@ if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
 
 
-    res = api.deploy_storage_claim(
-        name="mypvc",
-        namespace="kalavai",
-        labels={"kalavai.resource": "storage"},
-        access_modes=["ReadWriteMany"],
-        storage_class_name="longhorn-rwx",
-        storage_size=5
+    res = api.create_namespace(
+        name="test",
     )
     print(json.dumps(res,indent=3))
