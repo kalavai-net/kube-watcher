@@ -469,7 +469,11 @@ class KubeAPI():
         )
         pod_statuses = {}
         for pod in res.values():
-            pod_statuses[pod["metadata"]["name"]] = pod["status"]["phase"]
+            if pod["status"]["phase"] == "Running":
+                status = "Ready" if all([s["ready"] for s in pod["status"]["container_statuses"]]) else "Working"
+            else:
+                status = pod["status"]["phase"]
+            pod_statuses[pod["metadata"]["name"]] = status
         return pod_statuses
     
     def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
@@ -776,6 +780,9 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
+    res = api.get_pods_status_for_label(label_key="app", label_value="kube-watcher-api", namespace="kalavai")
+    print(json.dumps(res,indent=3))
+    exit()
 
     res = api.create_namespace(
         name="test",
