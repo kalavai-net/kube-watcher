@@ -25,8 +25,10 @@ class OpenCostAPI():
     def get_nodes_computation(self, nodes: list=None, **kwargs):
         # https://docs.kubecost.com/apis/apis-overview/allocation
         kwargs["aggregate"] = "node"
+        endpoint = self._form_url(endpoint="/allocation/compute")
+        print(f"Reaching external url: {endpoint}")
         result = requests.get(
-            self._form_url(endpoint="/allocation/compute"),
+            endpoint,
             params=kwargs
         )
         data = result.json()['data']
@@ -39,8 +41,10 @@ class OpenCostAPI():
     def get_namespaces_cost(self, namespaces: list=None, **kwargs):
         # https://docs.kubecost.com/apis/apis-overview/allocation
         kwargs["aggregate"] = "namespace"
+        endpoint = self._form_url(endpoint="/allocation/compute")
+        print(f"Reaching external url: {endpoint}")
         result = requests.get(
-            self._form_url(endpoint="/allocation/compute"),
+            endpoint,
             params=kwargs
         )
         data = result.json()['data']
