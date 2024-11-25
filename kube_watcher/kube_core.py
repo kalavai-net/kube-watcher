@@ -1,5 +1,7 @@
 import json
 import time
+import os
+import requests
 import base64
 import yaml
 from collections import defaultdict
@@ -13,6 +15,9 @@ from kube_watcher.utils import (
     parse_resource_value,
     force_serialisation
 )
+
+
+LONGHORN_MANAGER_ENDPOINT = os.getenv("LONGHORN_MANAGER_ENDPOINT", "http://longhorn-backend.kalavai.svc.cluster.local")
 
 
 class KubeAPI():
@@ -145,11 +150,11 @@ class KubeAPI():
             if node_name and pod.status.phase == 'Running':
                 available_resources["pods"] -= 1
                 for container in pod.spec.containers:
-                    requests = container.resources.requests
-                    if requests:
+                    reqs = container.resources.requests
+                    if reqs:
                         for resource in available_resources.keys():
-                            if resource in requests:
-                                available_resources[resource] -= cast_resource_value(requests[resource])
+                            if resource in reqs:
+                                available_resources[resource] -= cast_resource_value(reqs[resource])
 
         return available_resources
 
@@ -624,7 +629,30 @@ class KubeAPI():
 
         return model_deployments
     
-    
+    def get_storage_usage(self, target_storages: set=None):
+
+        if target_storages is None:
+            target_storages = {}
+
+        # Fetch volumes from the Longhorn API
+        response = requests.get(f"{LONGHORN_MANAGER_ENDPOINT}/v1/volumes")
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch volumes: {response.text}")
+
+        volumes = response.json()["data"]
+
+        # Extract PVC names and their used capacities
+        pvc_usage = {}
+        for volume in volumes:
+            pvc_name = volume.get("kubernetesStatus", {}).get("pvcName", "Unknown")
+            if target_storages and pvc_name not in target_storages:
+                continue
+            total_size = int(volume.get("size", 0)) / (1024 ** 2) # Total capacity in bytes
+            actual_size = int(volume.get("actualSize", 0))  / (1024 ** 2)# Used capacity in bytes
+            pvc_usage[pvc_name] = {"used_capacity": actual_size, "total_capacity": total_size}
+
+        return pvc_usage
+
     def deploy_agent_builder(
         self,
         deployment_name,
@@ -780,7 +808,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_pods_status_for_label(label_key="app", label_value="kube-watcher-api", namespace="kalavai")
+    res = api.get_storage_usage()
     print(json.dumps(res,indent=3))
     exit()
 

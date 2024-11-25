@@ -14,6 +14,9 @@ class StorageClaimRequest(BaseModel):
     storage_class_name: str
     storage_size: int
 
+class StorageRequest(BaseModel):
+    names: set = None
+
 class ServiceRequest(BaseModel):
     name: str
     labels: dict

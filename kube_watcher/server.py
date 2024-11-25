@@ -29,7 +29,8 @@ from kube_watcher.models import (
     ServiceWithLabelRequest,
     CustomObjectRequest,
     StorageClaimRequest,
-    ServiceRequest
+    ServiceRequest,
+    StorageRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -184,6 +185,11 @@ async def set_nodes_schedulable(request: NodesRequest, api_key: str = Depends(ve
     for node in request.node_names:
         kube_api.set_node_schedulable(node_name=node, state=request.schedulable)
     return None
+
+@app.post("/v1/get_storage_usage")
+async def get_storage_usage(request: StorageRequest, api_key: str = Depends(verify_read_key)):
+    objects = kube_api.get_storage_usage(target_storages=request.names)
+    return objects
 
 @app.post("/v1/get_objects_of_type")
 async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depends(verify_read_key)):
