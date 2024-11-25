@@ -629,10 +629,7 @@ class KubeAPI():
 
         return model_deployments
     
-    def get_storage_usage(self, target_storages: set=None):
-
-        if target_storages is None:
-            target_storages = {}
+    def get_storage_usage(self, target_storages: list=None):
 
         # Fetch volumes from the Longhorn API
         response = requests.get(f"{LONGHORN_MANAGER_ENDPOINT}/v1/volumes")
@@ -645,7 +642,7 @@ class KubeAPI():
         pvc_usage = {}
         for volume in volumes:
             pvc_name = volume.get("kubernetesStatus", {}).get("pvcName", "Unknown")
-            if target_storages and pvc_name not in target_storages:
+            if target_storages is not None and pvc_name not in target_storages:
                 continue
             total_size = int(volume.get("size", 0)) / (1024 ** 2) # Total capacity in bytes
             actual_size = int(volume.get("actualSize", 0))  / (1024 ** 2)# Used capacity in bytes
