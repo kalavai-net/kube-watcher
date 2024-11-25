@@ -14,6 +14,24 @@ FLOW_DEPLOYMENT_TEMPLATE = "deployments/flow_deployment_template.yaml"
 AGENT_BUILDER_TEMPLATE = "deployments/agent_builder_template.yaml"
 
 
+def extract_longhorn_metric_from_prometheus(metric_keys, metrics, map_fields):
+    objects = defaultdict(dict)
+    lines = metrics.splitlines()
+    for line in lines:
+        for m_key in metric_keys:
+            if line.startswith(m_key):
+                # Example: longhorn_volume_actual_size{volume="volume-name"} 1073741824
+                parts = line.split()
+                key = parts[0]
+                size = float(parts[1]) / (1024 ** 2)  # Actual size in MB
+                volume_name = key.split('pvc="')[1].split('"')[0]
+                if map_fields:
+                    objects[volume_name][map_fields[m_key]] = size
+                else:
+                    objects[volume_name][m_key] = size
+    
+    return objects
+
 def serialize_datetime(obj): 
     if isinstance(obj, datetime.datetime): 
         return obj.isoformat() 

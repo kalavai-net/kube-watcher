@@ -13,11 +13,12 @@ from kube_watcher.utils import (
     create_agent_builder_deployment_yaml,
     cast_resource_value,
     parse_resource_value,
-    force_serialisation
+    force_serialisation,
+    extract_longhorn_metric_from_prometheus
 )
 
 
-LONGHORN_MANAGER_ENDPOINT = os.getenv("LONGHORN_MANAGER_ENDPOINT", "http://localhost:31153")
+LONGHORN_MANAGER_ENDPOINT = os.getenv("LONGHORN_MANAGER_ENDPOINT", "http://localhost:32205")
 
 
 class KubeAPI():
@@ -631,33 +632,19 @@ class KubeAPI():
     
     def get_storage_usage(self, target_storages: list=None):
 
-        # Fetch volumes from the Longhorn API
-        response = requests.get(f"{LONGHORN_MANAGER_ENDPOINT}/v1/volumes")
+        # Fetch metrics
+        response = requests.get(f"{LONGHORN_MANAGER_ENDPOINT}/metrics")
         if response.status_code != 200:
-            raise ValueError(f"Failed to fetch volumes: {response.text}")
+            print("Failed to fetch metrics:", response.text)
+            exit()
 
-        volumes = response.json()["data"]
-
-        # Extract PVC names and their used capacities
-        pvc_usage = {}
-        for volume in volumes:
-            pvc_name = volume.get("kubernetesStatus", {}).get("pvcName", "Unknown")
-            if target_storages is not None and pvc_name not in target_storages:
-                continue
-            total_size = int(volume.get("size", 0)) / (1024 ** 2) # Total capacity in MB
-            actual_size = int(volume.get("actualSize", 0))  / (1024 ** 2)# Used capacity in MB
-            workloads = volume.get("kubernetesStatus", {}).get("workloadsStatus", [])
-            workload_name = "\n".join([w["workloadName"] for w in workloads])
-            workload_type = "\n".join([w["workloadType"] for w in workloads])
-    
-            pvc_usage[pvc_name] = {
-                "used_capacity": actual_size,
-                "total_capacity": total_size,
-                "workload_name": workload_name,
-                "workload_type": workload_type
-            }
-
-        return pvc_usage
+        # Parse metrics to extract PVC details
+        storage_capacity = extract_longhorn_metric_from_prometheus(
+            metric_keys=["longhorn_volume_actual_size", "longhorn_volume_capacity_bytes"],
+            map_fields={"longhorn_volume_actual_size": "used_capacity", "longhorn_volume_capacity_bytes": "total_capacity"},
+            metrics=response.text
+        )
+        return dict(storage_capacity)
 
     def deploy_agent_builder(
         self,
