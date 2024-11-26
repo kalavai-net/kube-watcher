@@ -20,8 +20,8 @@ pip install -e .
 Build docker image:
 ```bash
 docker build -t kube_watcher .
-docker tag kube_watcher:latest bundenth/kube_watcher:v1.1.17
-docker push bundenth/kube_watcher:v1.1.17
+docker tag kube_watcher:latest bundenth/kube_watcher:v1.1.18
+docker push bundenth/kube_watcher:v1.1.18
 ```
 
 ### Configure endpoints

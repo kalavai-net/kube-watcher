@@ -30,11 +30,13 @@ class KubeAPI():
             config.load_kube_config()
         self.core_api = client.CoreV1Api()
 
-    def _extract_resources(self, fn):
+    def _extract_resources(self, fn, node_names=None):
         """Generalisation to extract values in dict form"""
         nodes = self.core_api.list_node()
         data = {"online": defaultdict(int), "total": defaultdict(int)}
         for node in nodes.items:
+            if node_names is not None and node.metadata.name not in node_names:
+                continue
             status = True if self.extract_node_readiness(node).status == "True" else False
             if status:
                 data["online"]["n_nodes"] += 1
@@ -134,20 +136,22 @@ class KubeAPI():
         total_resources = self._extract_resources(fn=lambda node: node.status.allocatable)
         return total_resources["total"]
     
-    def get_available_resources(self):
+    def get_available_resources(self, node_names=None):
         """Gets available resources (not currently used) in the cluster:
         - cpu
         - memory
         - gpus
         - pods
         """
-        total_resources = self._extract_resources(fn=lambda node: node.status.allocatable)
+        total_resources = self._extract_resources(fn=lambda node: node.status.allocatable, node_names=node_names)
         available_resources = total_resources["online"]
 
         # remove requested (and used) resources
         pods = self.core_api.list_pod_for_all_namespaces(watch=False).items
         for pod in pods:
             node_name = pod.spec.node_name
+            if node_names is not None and node_name not in node_names:
+                continue
             if node_name and pod.status.phase == 'Running':
                 available_resources["pods"] -= 1
                 for container in pod.spec.containers:
@@ -182,15 +186,18 @@ class KubeAPI():
         return node_labels
     
     def get_node_gpus(self, node_names=None, gpu_key="hami.io/node-nvidia-register"):
+
         nodes = self.core_api.list_node().items
 
         gpu_info = {}
         for node in nodes:
-            gpu_allocatable = node.status.allocatable.get("nvidia.com/gpu", "0")
+            if node_names is not None and node.metadata.name not in node_names:
+                continue
+            resources = self.get_available_resources(node_names=[node.metadata.name])
             gpu_capacity = node.status.capacity.get("nvidia.com/gpu", "0")
 
             gpu_info[node.metadata.name] = {
-                "allocatable": gpu_allocatable,
+                "available": resources["nvidia.com/gpu"],
                 "capacity": gpu_capacity,
                 "gpus": []
             }
@@ -829,7 +836,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_node_gpus()
+    res = api.get_node_gpus(node_names=["pop-os"])
     print(json.dumps(res,indent=3))
     exit()
 
