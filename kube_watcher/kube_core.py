@@ -18,7 +18,7 @@ from kube_watcher.utils import (
 )
 
 
-LONGHORN_MANAGER_ENDPOINT = os.getenv("LONGHORN_MANAGER_ENDPOINT", "http://localhost:32205")
+LONGHORN_MANAGER_ENDPOINT = os.getenv("LONGHORN_MANAGER_ENDPOINT", "http://localhost:30132")
 
 
 class KubeAPI():
@@ -479,7 +479,9 @@ class KubeAPI():
                 status = "Ready" if all([s["ready"] for s in pod["status"]["container_statuses"]]) else "Working"
             else:
                 status = pod["status"]["phase"]
-            pod_statuses[pod["metadata"]["name"]] = status
+            pod_statuses[pod["metadata"]["name"]] = {
+                "status": status,
+                "conditions": force_serialisation(pod["status"]["container_statuses"])}
         return pod_statuses
     
     def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
@@ -630,7 +632,17 @@ class KubeAPI():
 
         return model_deployments
     
-    def get_storage_usage(self, target_storages: list=None):
+    def get_storage_usage(self, namespace, target_storages: list=None):
+
+        storages = defaultdict(dict)
+
+        # get pvc statuses
+        pvc_list = self.core_api.list_namespaced_persistent_volume_claim(namespace)
+
+        for pvc in pvc_list.items:
+            storages[pvc.metadata.name] = {
+                "status": pvc.status.phase
+            }
 
         # Fetch metrics
         response = requests.get(f"{LONGHORN_MANAGER_ENDPOINT}/metrics")
@@ -638,13 +650,18 @@ class KubeAPI():
             print("Failed to fetch metrics:", response.text)
             exit()
 
-        # Parse metrics to extract PVC details
+        # Parse metrics to extract longhorn PVC details
         storage_capacity = extract_longhorn_metric_from_prometheus(
             metric_keys=["longhorn_volume_actual_size", "longhorn_volume_capacity_bytes"],
             map_fields={"longhorn_volume_actual_size": "used_capacity", "longhorn_volume_capacity_bytes": "total_capacity"},
             metrics=response.text
         )
-        return dict(storage_capacity)
+        for pvc in storages:
+            if pvc not in storage_capacity:
+                storage_capacity[pvc] = {"used_capacity": 0, "total_capacity": 0}
+            storages[pvc] = {**storages[pvc], **storage_capacity[pvc]}
+            
+        return {name: data for name, data in storages.items() if target_storages is None or name in target_storages}
 
     def deploy_agent_builder(
         self,
@@ -801,7 +818,8 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_storage_usage()
+    res = api.get_pods_status_for_label(
+        label_key="kalavai.job.name", label_value="aphrodite-1", namespace="default")
     print(json.dumps(res,indent=3))
     exit()
 
