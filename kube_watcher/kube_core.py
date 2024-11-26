@@ -182,23 +182,34 @@ class KubeAPI():
         return node_labels
     
     def get_node_gpus(self, node_names=None, gpu_key="hami.io/node-nvidia-register"):
-        annotations = self.get_node_annotations(node_names=node_names)
+        nodes = self.core_api.list_node().items
+
         gpu_info = {}
-        node_states = self.get_nodes_states()
-        for node, node_annotations in annotations.items():
-            if gpu_key not in node_annotations:
-                continue
-            gpus = node_annotations[gpu_key].split(":")
-            gpu_info[node] = []
-            for gpu_data in gpus:
-                data = gpu_data.split(",")
-                if len(data) < 6:
+        for node in nodes:
+            gpu_allocatable = node.status.allocatable.get("nvidia.com/gpu", "0")
+            gpu_capacity = node.status.capacity.get("nvidia.com/gpu", "0")
+
+            gpu_info[node.metadata.name] = {
+                "allocatable": gpu_allocatable,
+                "capacity": gpu_capacity,
+                "gpus": []
+            }
+            # extract model information
+            annotations = self.get_node_annotations(node_names=[node.metadata.name])
+            node_states = self.get_nodes_states()
+            for node, node_annotations in annotations.items():
+                if gpu_key not in node_annotations:
                     continue
-                gpu_info[node].append({
-                    "ready": node_states[node]["Ready"],
-                    "memory": data[2],
-                    "model": data[4]
-                })
+                gpus = node_annotations[gpu_key].split(":")
+                for gpu_data in gpus:
+                    data = gpu_data.split(",")
+                    if len(data) < 6:
+                        continue
+                    gpu_info[node]["gpus"].append({
+                        "ready": node_states[node]["Ready"],
+                        "memory": data[2],
+                        "model": data[4]
+                    })
         return gpu_info
     
     def read_node(self, node_names: list=None):
@@ -818,8 +829,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_pods_status_for_label(
-        label_key="kalavai.job.name", label_value="aphrodite-1", namespace="default")
+    res = api.get_node_gpus()
     print(json.dumps(res,indent=3))
     exit()
 
