@@ -294,10 +294,9 @@ class KubeAPI():
 
     def kube_deploy_plus(self, yaml_strs):
         yamls = yaml_strs.split("---")
-        deployment_results = {
-            "successful": [],
-            "failed": []
-        }
+        deployment_results = defaultdict(list)
+        custom_api = client.CustomObjectsApi(client.api_client.ApiClient())
+        k8s_client = client.api_client.ApiClient()
         for yaml_str in yamls:
             if yaml_str.strip():  # Check if the yaml_str is not just whitespace
                 yaml_obj = yaml.safe_load(yaml_str)
@@ -310,16 +309,14 @@ class KubeAPI():
                     else:
                         namespace = "default"
                     plural = yaml_obj["kind"].lower() + "s"
-                    res = self.kube_deploy_custom_object(
-                        group=group,
-                        api_version=api_version,
-                        namespace=namespace,
-                        plural=plural,
-                        body=yaml_str)
+                    res = custom_api.create_namespaced_custom_object(
+                        group,
+                        api_version,
+                        namespace,
+                        plural,
+                        yaml_str)
                     deployment_results["successful"].append(str(res))
                 except:
-                    # attempt passing on yaml
-                    k8s_client = client.api_client.ApiClient()
                     try:
                         res = utils.create_from_yaml(
                             k8s_client,
