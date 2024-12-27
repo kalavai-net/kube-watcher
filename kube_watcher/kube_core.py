@@ -314,7 +314,7 @@ class KubeAPI():
                         api_version,
                         namespace,
                         plural,
-                        yaml_str)
+                        yaml_obj)
                     deployment_results["successful"].append(str(res))
                 except:
                     try:
