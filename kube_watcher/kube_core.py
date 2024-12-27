@@ -316,7 +316,8 @@ class KubeAPI():
                         plural,
                         yaml_obj)
                     deployment_results["successful"].append(str(res))
-                except:
+                except Exception as e:
+                    print(f"Failed automated deployment, trying default deployment. [{str(e)}")
                     try:
                         res = utils.create_from_yaml(
                             k8s_client,
