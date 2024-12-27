@@ -298,22 +298,38 @@ class KubeAPI():
             "successful": [],
             "failed": []
         }
-
         for yaml_str in yamls:
             if yaml_str.strip():  # Check if the yaml_str is not just whitespace
                 yaml_obj = yaml.safe_load(yaml_str)
-                k8s_client = client.api_client.ApiClient()
-
                 try:
-                    res = utils.create_from_yaml(
-                        k8s_client,
-                        yaml_objects=[yaml_obj],
-                    )
-                    # Assuming res contains some identifiable information about the resource
+                    # Attempt custom deployment
+                    group = yaml_obj["apiVersion"][:yaml_obj["apiVersion"].index("/")]
+                    api_version = yaml_obj["apiVersion"][yaml_obj["apiVersion"].index("/")+1:]
+                    if "metadata" in yaml_obj and "namespace" in yaml_obj["metadata"]:
+                        namespace = yaml_obj["metadata"]["namespace"]
+                    else:
+                        namespace = "default"
+                    plural = yaml_obj["kind"].lower() + "s"
+                    res = self.kube_deploy_custom_object(
+                        group=group,
+                        api_version=api_version,
+                        namespace=namespace,
+                        plural=plural,
+                        body=yaml_str)
                     deployment_results["successful"].append(str(res))
-                except Exception as e:
-                    # Append the yaml that failed and the exception message for clarity
-                    deployment_results["failed"].append({"yaml": yaml_str, "error": str(e)})
+                except:
+                    # attempt passing on yaml
+                    k8s_client = client.api_client.ApiClient()
+                    try:
+                        res = utils.create_from_yaml(
+                            k8s_client,
+                            yaml_objects=[yaml_obj],
+                        )
+                        # Assuming res contains some identifiable information about the resource
+                        deployment_results["successful"].append(str(res))
+                    except Exception as e:
+                        # Append the yaml that failed and the exception message for clarity
+                        deployment_results["failed"].append({"yaml": yaml_str, "error": str(e)})
 
         return deployment_results
     
@@ -835,8 +851,9 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
-
-    res = api.get_node_gpus(node_names=["pop-os"])
+    with open("test.yaml", "r") as f:
+        data = f.read()
+    res = api.kube_deploy_plus(yaml_strs=data)
     print(json.dumps(res,indent=3))
     exit()
 
