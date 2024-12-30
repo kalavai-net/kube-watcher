@@ -50,6 +50,7 @@ KALAVAI_API_ENDPOINT = os.getenv("KALAVAI_API_ENDPOINT", "https://platform.kalav
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "prometheus-server.prometheus-system.svc.cluster.local:80")
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "opencost.opencost.svc.cluster.local:9003")
 IS_PUBLIC_POOL = not os.getenv("IS_PUBLIC_POOL", "True").lower() in ("false", "0", "f", "no")
+FORCE_COMMON_POOL = not os.getenv("FORCE_COMMON_POOL", "True").lower() in ("false", "0", "f", "no")
 #ANVIL_UPLINK_KEY = os.getenv("ANVIL_UPLINK_KEY", "")
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
@@ -92,7 +93,7 @@ async def verify_write_key(request: Request):
 
 # User Key validation (only for public pools, permissions user-namespace)
 async def verify_namespace(request: Request):
-    if not IS_PUBLIC_POOL:
+    if not IS_PUBLIC_POOL or FORCE_COMMON_POOL:
         return "default"
     api_key = request.headers.get("USER-KEY")
     user = request.headers.get("USER")
