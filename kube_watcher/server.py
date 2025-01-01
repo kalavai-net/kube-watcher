@@ -254,7 +254,7 @@ async def get_status_for_object(request: CustomObjectRequest, api_key: str = Dep
     return ns_objects
 
 @app.post("/v1/get_logs_for_label")
-async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_key)):
+async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
     logs = kube_api.get_logs_for_labels(
         namespace=namespace,
         label_key=request.label,
@@ -262,7 +262,7 @@ async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str 
     return logs
 
 @app.post("/v1/describe_pods_for_label")
-async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_key)):
+async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
     logs = kube_api.describe_pods_for_labels(
         namespace=namespace,
         label_key=request.label,

@@ -422,7 +422,7 @@ class KubeAPI():
             except Exception as e:
                 print(f"Exception when checking for {resource_type}: {e}")
 
-        return resources_found
+        return force_serialisation(resources_found)
     
     def get_logs_for_labels(self, label_key, label_value, namespace):
         """Get logs for all pods that match a label key:value"""
@@ -862,7 +862,11 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.list_namespaces()
+    res = api.get_logs_for_labels(
+        namespace="carlosfm",
+        label_key="kalavai.job.name",
+        label_value="litellm-1"
+    )
 
     # res = api.kube_get_custom_objects(
     #     group="batch.volcano.sh",
