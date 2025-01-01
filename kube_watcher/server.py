@@ -100,15 +100,11 @@ async def verify_write_key(request: Request):
 async def verify_read_namespaces(request: Request):
     """If shared pool, all users see each other's work"""
     if IS_SHARED_POOL:
-        namespaces = kube_api.list_namespaces()
-        print(f"Verified read namespaces: {namespaces}")
-        return namespaces
+        return kube_api.list_namespaces()
+    if ALLOW_UNREGISTERED_USER:
+        return ["default"]
     api_key = request.headers.get("USER-KEY")
     user = request.headers.get("USER", None)
-    if user is None and ALLOW_UNREGISTERED_USER:
-        namespaces = ["default"]
-        print(f"Verified read namespaces: {namespaces}")
-        return namespaces
     
     try:
         response = requests.request(
@@ -130,7 +126,7 @@ async def verify_write_namespace(request: Request):
     """Users only have write access to their namespace (all default if ALLOW_UNREGISTERED_USER)"""
     api_key = request.headers.get("USER-KEY")
     user = request.headers.get("USER", None)
-    if user is None and ALLOW_UNREGISTERED_USER:
+    if ALLOW_UNREGISTERED_USER:
         return "default"
     
     try:
