@@ -355,25 +355,30 @@ class KubeAPI():
 
         return deployment_results
     
-    def kube_get_custom_objects(self, group, api_version, plural, label_selector=None):
-        objects =  client.CustomObjectsApi().list_cluster_custom_object(
+    def kube_get_custom_objects(self, group, api_version, namespace, plural, label_selector=None):
+
+        objects =  client.CustomObjectsApi().list_namespaced_custom_object(
             group,
             api_version,
+            namespace,
             plural,
             label_selector=label_selector)
         
         return objects
     
     def kube_get_status_custom_object(self, name, group, api_version, namespace, plural):
-        api = client.CustomObjectsApi(client.api_client.ApiClient())
-        res = api.get_namespaced_custom_object_status(
-            group,
-            api_version,
-            namespace,
-            plural,
-            name
-        )
-        return res["status"]["conditions"]
+        try:
+            api = client.CustomObjectsApi(client.api_client.ApiClient())
+            res = api.get_namespaced_custom_object_status(
+                group,
+                api_version,
+                namespace,
+                plural,
+                name
+            )
+            return res["status"]["conditions"]
+        except:
+            return None
 
     def kube_delete_custom_object(self, name, group, api_version, plural, namespace):
         api = client.CustomObjectsApi(client.api_client.ApiClient())
@@ -454,6 +459,7 @@ class KubeAPI():
             group="leaderworkerset.x-k8s.io",
             api_version="v1",
             plural="leaderworkersets",
+            namespace=namespace,
             label_selector=label_selector
         )
         return resources
@@ -472,6 +478,7 @@ class KubeAPI():
             group="batch.volcano.sh",
             api_version="v1alpha1",
             plural="jobs",
+            namespace=namespace,
             label_selector=label_selector
         )
         return resources
@@ -490,6 +497,7 @@ class KubeAPI():
             group="ray.io",
             api_version="v1",
             plural="rayclusters",
+            namespace=namespace,
             label_selector=label_selector
         )
         return resources

@@ -100,11 +100,15 @@ async def verify_write_key(request: Request):
 async def verify_read_namespaces(request: Request):
     """If shared pool, all users see each other's work"""
     if IS_SHARED_POOL:
-        return kube_api.list_namespaces()
+        namespaces = kube_api.list_namespaces()
+        print(f"Verified read namespaces: {namespaces}")
+        return namespaces
     api_key = request.headers.get("USER-KEY")
     user = request.headers.get("USER", None)
     if user is None and ALLOW_UNREGISTERED_USER:
-        return ["default"]
+        namespaces = ["default"]
+        print(f"Verified read namespaces: {namespaces}")
+        return namespaces
     
     try:
         response = requests.request(
@@ -116,7 +120,9 @@ async def verify_read_namespaces(request: Request):
 
         if not validated:
             raise HTTPException(status_code=401, detail="User Key is not authorised")
-        return [user.lower()]
+        namespaces = [user.lower()]
+        print(f"Verified read namespaces: {namespaces}")
+        return namespaces
     except:
         raise HTTPException(status_code=401, detail="User Key is not authorised")
 
@@ -227,6 +233,7 @@ async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depen
     for namespace in namespaces:
         ns_objects[namespace] = kube_api.kube_get_custom_objects(
             group=request.group,
+            namespace=namespace,
             api_version=request.api_version,
             plural=request.plural)
     return ns_objects
@@ -236,33 +243,31 @@ async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depen
 async def get_status_for_object(request: CustomObjectRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
     ns_objects = {}
     for namespace in namespaces:
-        ns_objects[namespace] = kube_api.kube_get_status_custom_object(
+        objects = kube_api.kube_get_status_custom_object(
             group=request.group,
             api_version=request.api_version,
             plural=request.plural,
             namespace=namespace,
             name=request.name)
+        if objects is not None:
+            ns_objects[namespace] = objects
     return ns_objects
 
 @app.post("/v1/get_logs_for_label")
-async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
-    ns_logs = {}
-    for namespace in namespaces:
-        ns_logs[namespace] = kube_api.get_logs_for_labels(
-            namespace=namespace,
-            label_key=request.label,
-            label_value=request.value)
-    return ns_logs
+async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_key)):
+    logs = kube_api.get_logs_for_labels(
+        namespace=namespace,
+        label_key=request.label,
+        label_value=request.value)
+    return logs
 
 @app.post("/v1/describe_pods_for_label")
-async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
-    ns_logs = {}
-    for namespace in namespaces:
-        ns_logs[namespace] = kube_api.describe_pods_for_labels(
-            namespace=namespace,
-            label_key=request.label,
-            label_value=request.value)
-    return ns_logs
+async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_key)):
+    logs = kube_api.describe_pods_for_labels(
+        namespace=namespace,
+        label_key=request.label,
+        label_value=request.value)
+    return logs
 
 @app.post("/v1/get_pods_status_for_label")
 async def get_pods_status_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
