@@ -49,14 +49,18 @@ IN_CLUSTER = not os.getenv("IN_CLUSTER", "True").lower() in ("false", "0", "f", 
 KALAVAI_API_ENDPOINT = os.getenv("KALAVAI_API_ENDPOINT", "https://platform.kalavai.net/_/api")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "prometheus-server.prometheus-system.svc.cluster.local:80")
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "opencost.opencost.svc.cluster.local:9003")
-IS_PUBLIC_POOL = not os.getenv("IS_PUBLIC_POOL", "True").lower() in ("false", "0", "f", "no")
-FORCE_COMMON_POOL = not os.getenv("FORCE_COMMON_POOL", "True").lower() in ("false", "0", "f", "no")
+IS_SHARED_POOL = not os.getenv("IS_SHARED_POOL", "True").lower() in ("false", "0", "f", "no")
+ALLOW_UNREGISTERED_USER = not os.getenv("ALLOW_UNREGISTERED_USER", "True").lower() in ("false", "0", "f", "no")
 #ANVIL_UPLINK_KEY = os.getenv("ANVIL_UPLINK_KEY", "")
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
 ADMIN_KEY = os.getenv("KW_ADMIN_KEY") # all permissions
 WRITE_KEY = os.getenv("KW_WRITE_KEY") # deploy and read permissions
 READ_ONLY_KEY = os.getenv("KW_READ_ONLY_KEY") # read permissions
+
+
+kube_api = KubeAPI(in_cluster=IN_CLUSTER)
+app = FastAPI()
 
     
 if USE_AUTH:
@@ -66,7 +70,9 @@ if USE_AUTH:
 else:
     logger.warning("Warning: Authentication is disabled. This should only be used for testing.")
 
-# API Key Validation
+################################
+## API Key Validation methods ##
+################################
 async def verify_admin_key(request: Request):
     if not USE_AUTH:
         return
@@ -91,12 +97,35 @@ async def verify_write_key(request: Request):
         raise HTTPException(status_code=401, detail="Request requires a User API Key")
     return api_key
 
-# User Key validation (only for public pools, permissions user-namespace)
-async def verify_namespace(request: Request):
-    if not IS_PUBLIC_POOL or FORCE_COMMON_POOL:
-        return "default"
+async def verify_read_namespaces(request: Request):
+    """If shared pool, all users see each other's work"""
+    if IS_SHARED_POOL:
+        return kube_api.list_namespaces()
     api_key = request.headers.get("USER-KEY")
-    user = request.headers.get("USER")
+    user = request.headers.get("USER", None)
+    if user is None and ALLOW_UNREGISTERED_USER:
+        return ["default"]
+    
+    try:
+        response = requests.request(
+            method="post",
+            url=f"{KALAVAI_API_ENDPOINT}/validate_user_namespace/{user}",
+            data={"key": api_key}
+        ).json()
+        validated = response["success"] in ["true", "True"]
+
+        if not validated:
+            raise HTTPException(status_code=401, detail="User Key is not authorised")
+        return [user.lower()]
+    except:
+        raise HTTPException(status_code=401, detail="User Key is not authorised")
+
+async def verify_write_namespace(request: Request):
+    """Users only have write access to their namespace (all default if ALLOW_UNREGISTERED_USER)"""
+    api_key = request.headers.get("USER-KEY")
+    user = request.headers.get("USER", None)
+    if user is None and ALLOW_UNREGISTERED_USER:
+        return "default"
     
     try:
         response = requests.request(
@@ -111,10 +140,8 @@ async def verify_namespace(request: Request):
         return user.lower()
     except:
         raise HTTPException(status_code=401, detail="User Key is not authorised")
+#############################
 
-
-kube_api = KubeAPI(in_cluster=IN_CLUSTER)
-app = FastAPI()
 
 @app.post("/v1/validate_user")
 async def login(request: UserRequest):
@@ -188,52 +215,64 @@ async def set_nodes_schedulable(request: NodesRequest, api_key: str = Depends(ve
     return None
 
 @app.post("/v1/get_storage_usage")
-async def get_storage_usage(request: StorageRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
-    objects = kube_api.get_storage_usage(namespace=namespace, target_storages=request.names)
-    return objects
+async def get_storage_usage(request: StorageRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_objects = {}
+    for namespace in namespaces:
+        ns_objects[namespace] = kube_api.get_storage_usage(namespace=namespace, target_storages=request.names)
+    return ns_objects
 
 @app.post("/v1/get_objects_of_type")
-async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depends(verify_read_key)):
-    objects = kube_api.kube_get_custom_objects(
-        group=request.group,
-        api_version=request.api_version,
-        plural=request.plural)
-    return objects
+async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_objects = {}
+    for namespace in namespaces:
+        ns_objects[namespace] = kube_api.kube_get_custom_objects(
+            group=request.group,
+            api_version=request.api_version,
+            plural=request.plural)
+    return ns_objects
 
 
 @app.post("/v1/get_status_for_object")
-async def get_status_for_object(request: CustomObjectRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
-    objects = kube_api.kube_get_status_custom_object(
-        group=request.group,
-        api_version=request.api_version,
-        plural=request.plural,
-        namespace=namespace,
-        name=request.name)
-    return objects
+async def get_status_for_object(request: CustomObjectRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_objects = {}
+    for namespace in namespaces:
+        ns_objects[namespace] = kube_api.kube_get_status_custom_object(
+            group=request.group,
+            api_version=request.api_version,
+            plural=request.plural,
+            namespace=namespace,
+            name=request.name)
+    return ns_objects
 
 @app.post("/v1/get_logs_for_label")
-async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
-    logs = kube_api.get_logs_for_labels(
-        namespace=namespace,
-        label_key=request.label,
-        label_value=request.value)
-    return logs
+async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_logs = {}
+    for namespace in namespaces:
+        ns_logs[namespace] = kube_api.get_logs_for_labels(
+            namespace=namespace,
+            label_key=request.label,
+            label_value=request.value)
+    return ns_logs
 
 @app.post("/v1/describe_pods_for_label")
-async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
-    logs = kube_api.describe_pods_for_labels(
-        namespace=namespace,
-        label_key=request.label,
-        label_value=request.value)
-    return logs
+async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_logs = {}
+    for namespace in namespaces:
+        ns_logs[namespace] = kube_api.describe_pods_for_labels(
+            namespace=namespace,
+            label_key=request.label,
+            label_value=request.value)
+    return ns_logs
 
 @app.post("/v1/get_pods_status_for_label")
-async def get_pods_status_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
-    logs = kube_api.get_pods_status_for_label(
-        namespace=namespace,
-        label_key=request.label,
-        label_value=request.value)
-    return logs
+async def get_pods_status_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_logs = {}
+    for namespace in namespaces:
+        ns_logs[namespace] = kube_api.get_pods_status_for_label(
+            namespace=namespace,
+            label_key=request.label,
+            label_value=request.value)
+    return ns_logs
 
 
 @app.post("/v1/get_ports_for_services")
@@ -246,11 +285,13 @@ async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str 
     return services
 
 @app.post("/v1/get_deployments")
-async def get_deployments(api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
-    deployments = kube_api.list_deployments(
-        namespace=namespace
-    )
-    return deployments
+async def get_deployments(api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_deployments = {}
+    for namespace in namespaces:
+        ns_deployments[namespaces] = kube_api.list_deployments(
+            namespace=namespace
+        )
+    return ns_deployments
 
 
 @app.post("/v1/get_node_stats")
@@ -283,7 +324,7 @@ async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(
         **request.kubecost_params.model_dump())
 
 @app.post("/v1/create_user_space")
-async def create_user_space(api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
+async def create_user_space(api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
     response = kube_api.create_namespace(
         name=namespace)
     return response
@@ -295,7 +336,7 @@ async def deploy_generic_model(request: GenericDeploymentRequest, api_key: str =
     return kube_api.deploy_generic_model(request.config) 
 
 @app.post("/v1/deploy_custom_object")
-async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
+async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
     response = kube_api.kube_deploy_custom_object(
         group=request.object.group,
         api_version=request.object.api_version,
@@ -305,30 +346,42 @@ async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: 
     return response
 
 @app.post("/v1/deploy_storage_claim")
-async def deploy_storage_claim(request: StorageClaimRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
+async def deploy_storage_claim(request: StorageClaimRequest, api_key: str = Depends(verify_admin_key), namespace: str = Depends(verify_write_namespace)):
     response = kube_api.deploy_storage_claim(
         namespace=namespace,
         **request.model_dump())
     return response
 
 @app.post("/v1/deploy_service")
-async def deploy_service(request: ServiceRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
+async def deploy_service(request: ServiceRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
     response = kube_api.deploy_service(
         namespace=namespace,
         **request.model_dump())
     return response
 
 @app.post("/v1/delete_labeled_resources")
-async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_namespace)):
+async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
     return kube_api.delete_labeled_resources(namespace, request.label, request.value)
 
 @app.post("/v1/get_resources_with_label")
-async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
-    return kube_api.find_resources_with_label(namespace, request.label, request.value)
+async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_resources = {}
+    for namespace in namespaces:
+        ns_resources[namespace] = kube_api.find_resources_with_label(
+            namespace,
+            request.label,
+            request.value)
+    return ns_resources
 
 @app.post("/v1/find_nodeport_url")
-async def find_nodeport_url(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_namespace)):
-    return kube_api.find_nodeport_url(namespace, request.label, request.value)
+async def find_nodeport_url(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_ports = {}
+    for namespace in namespaces:
+        ns_ports[namespace] = kube_api.find_nodeport_url(
+            namespace,
+            request.label,
+            request.value)
+    return ns_ports
 
 # Endpoint to check health
 @app.get("/v1/health")

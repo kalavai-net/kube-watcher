@@ -445,6 +445,10 @@ class KubeAPI():
         
         return logs
     
+    def list_namespaces(self):
+        namespaces = self.core_api.list_namespace()
+        return [ns["metadata"]["name"] for ns in force_serialisation(namespaces.items)]
+    
     def list_namespaced_lws(self, namespace, label_selector):
         resources = self.kube_get_custom_objects(
             group="leaderworkerset.x-k8s.io",
@@ -849,13 +853,12 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
-    with open("test.yaml", "r") as f:
-        data = f.read()
-    res = api.kube_deploy_plus(yaml_strs=data)
-    print(json.dumps(res,indent=3))
-    exit()
 
-    res = api.create_namespace(
-        name="test",
-    )
+    res = api.list_namespaces()
+
+    # res = api.kube_get_custom_objects(
+    #     group="batch.volcano.sh",
+    #     api_version="v1alpha1",
+    #     plural="jobs"
+    # )
     print(json.dumps(res,indent=3))
