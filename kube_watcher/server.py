@@ -327,8 +327,10 @@ async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(
 @app.post("/v1/create_user_space")
 async def create_user_space(request: GenericDeploymentRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
     # create namespace for user
-    response = kube_api.create_namespace(
-        name=namespace)
+    kube_api.create_namespace(
+        name=namespace,
+        labels={"monitor-pods-datasets": "enabled"})
+
     try:
         # deploy for new workspace
         kube_api.deploy_generic_model(request.config, force_namespace=namespace)
