@@ -615,8 +615,7 @@ class KubeAPI():
             return {"success": "already exists"}
         result = self.core_api.create_namespace(
             body=client.V1Namespace(
-                metadata=client.V1ObjectMeta(name=name),
-                labels=labels)
+                metadata=client.V1ObjectMeta(name=name, labels=labels))
         )
         return force_serialisation(result)
     
