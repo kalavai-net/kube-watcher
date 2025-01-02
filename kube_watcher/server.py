@@ -325,10 +325,12 @@ async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(
         **request.kubecost_params.model_dump())
 
 @app.post("/v1/create_user_space")
-async def create_user_space(api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+async def create_user_space(request: GenericDeploymentRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    # create namespace for user
     response = kube_api.create_namespace(
         name=namespace)
-    return response
+    # deploy for new workspace
+    return kube_api.deploy_generic_model(request.config, force_namespace=namespace)
 
 
 #### GENERIC_DEPLOYMENT

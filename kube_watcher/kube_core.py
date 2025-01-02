@@ -292,7 +292,7 @@ class KubeAPI():
         return result
     
 
-    def kube_deploy_plus(self, yaml_strs):
+    def kube_deploy_plus(self, yaml_strs, force_namespace=None):
         yamls = yaml_strs.split("---")
         deployment_results = defaultdict(list)
         custom_api = client.CustomObjectsApi(client.api_client.ApiClient())
@@ -304,10 +304,13 @@ class KubeAPI():
                     # Attempt custom deployment
                     group = yaml_obj["apiVersion"][:yaml_obj["apiVersion"].index("/")]
                     api_version = yaml_obj["apiVersion"][yaml_obj["apiVersion"].index("/")+1:]
-                    if "metadata" in yaml_obj and "namespace" in yaml_obj["metadata"]:
-                        namespace = yaml_obj["metadata"]["namespace"]
+                    if force_namespace is not None:
+                        namespace = force_namespace
                     else:
-                        namespace = "default"
+                        if "metadata" in yaml_obj and "namespace" in yaml_obj["metadata"]:
+                            namespace = yaml_obj["metadata"]["namespace"]
+                        else:
+                            namespace = "default"
                     plural = yaml_obj["kind"].lower() + "s"
                     res = custom_api.create_namespaced_custom_object(
                         group,
@@ -800,9 +803,11 @@ class KubeAPI():
     
     ## DEPRECATED ##
         
-    def deploy_generic_model(self, config: str):
+    def deploy_generic_model(self, config: str, force_namespace: str="default"):
         # Deploy a generic config
-        return self.kube_deploy_plus(config)
+        return self.kube_deploy_plus(
+            yaml_strs=config,
+            force_namespace=force_namespace)
 
     def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
         core_api = client.CoreV1Api()
