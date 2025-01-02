@@ -329,8 +329,12 @@ async def create_user_space(request: GenericDeploymentRequest, api_key: str = De
     # create namespace for user
     response = kube_api.create_namespace(
         name=namespace)
-    # deploy for new workspace
-    return kube_api.deploy_generic_model(request.config, force_namespace=namespace)
+    try:
+        # deploy for new workspace
+        kube_api.deploy_generic_model(request.config, force_namespace=namespace)
+    except Exception as e:
+        return {"status": str(e)}
+    return {"status": "success"}
 
 
 #### GENERIC_DEPLOYMENT

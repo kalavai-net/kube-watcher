@@ -322,9 +322,11 @@ class KubeAPI():
                 except Exception as e:
                     print(f"Failed automated deployment, trying default deployment. [{str(e)}")
                     try:
+                        namespace = force_namespace if force_namespace is not None else "default"
                         res = utils.create_from_yaml(
                             k8s_client,
                             yaml_objects=[yaml_obj],
+                            namespace=namespace
                         )
                         # Assuming res contains some identifiable information about the resource
                         deployment_results["successful"].append(str(res))
@@ -609,6 +611,8 @@ class KubeAPI():
         return force_serialisation(result)
     
     def create_namespace(self, name):
+        if name in self.list_namespaces():
+            return {"success": "already exists"}
         result = self.core_api.create_namespace(
             body=client.V1Namespace(metadata=client.V1ObjectMeta(name=name))
         )
