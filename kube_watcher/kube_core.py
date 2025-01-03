@@ -563,7 +563,8 @@ class KubeAPI():
             labels: dict,
             access_modes: list,
             storage_class_name: str,
-            storage_size: int
+            storage_size: int,
+            **kwargs
     ):
         body = client.V1PersistentVolumeClaim(
             metadata=client.V1ObjectMeta(
