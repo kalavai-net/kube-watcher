@@ -591,7 +591,8 @@ class KubeAPI():
         labels: dict,
         selector_labels: dict,
         service_type: str,
-        ports: list[dict]
+        ports: list[dict],
+        **kwargs
     ):
         body = client.V1Service(
             metadata=client.V1ObjectMeta(
