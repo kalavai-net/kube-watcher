@@ -13,6 +13,7 @@ class StorageClaimRequest(BaseModel):
     access_modes: list
     storage_class_name: str
     storage_size: int
+    force_namespace: str = None
 
 class StorageRequest(BaseModel):
     names: list = None
@@ -23,6 +24,7 @@ class ServiceRequest(BaseModel):
     selector_labels: dict
     service_type: str
     ports: list[dict]
+    force_namespace: str = None
     
 
 class KubecostParameters(BaseModel):
@@ -75,6 +77,7 @@ class NodesRequest(BaseModel):
 
 class GenericDeploymentRequest(BaseModel):
     config: str
+    force_namespace: str = None
 
 class CustomObjectRequest(BaseModel):
     group: str
@@ -85,35 +88,17 @@ class CustomObjectRequest(BaseModel):
 class CustomObjectDeploymentRequest(BaseModel):
     object: CustomObjectRequest
     body: str
+    force_namespace: str = None
 
 
 class DeleteLabelledResourcesRequest(BaseModel):
     label:str
     value:Optional[str] = None
+    force_namespace: str = None
 
 class GetLabelledResourcesRequest(BaseModel):
     label:str
     value:Optional[str] = None
-
-class FlowDeploymentRequest(BaseModel):
-    deployment_name: str
-    namespace: str
-    api_key: str = ""
-    flow_id: str = ""
-    flow_url: str = ""
-    num_cores: int = 0.5
-    ram_memory: str = "0.5Gi"
-    
-
-class AgentBuilderDeploymentRequest(BaseModel):
-    deployment_name: str
-    namespace: str
-    username: str
-    password: str
-    num_cores: int = 1
-    replicas: int = 1
-    ram_memory: str = "1.5Gi"
-    storage_memory: str = "0.5Gi"
     
 class UserRequest(BaseModel):
     email: str

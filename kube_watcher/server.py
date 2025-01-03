@@ -5,8 +5,6 @@ import requests
 
 from starlette.requests import Request
 from fastapi import FastAPI, HTTPException, Depends
-# import anvil.server
-# import anvil.users
 
 from kube_watcher.cost_core import OpenCostAPI
 
@@ -21,8 +19,6 @@ from kube_watcher.models import (
     GenericDeploymentRequest,
     DeleteLabelledResourcesRequest,
     GetLabelledResourcesRequest,
-    FlowDeploymentRequest,
-    AgentBuilderDeploymentRequest,
     UserRequest,
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
@@ -51,7 +47,6 @@ PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "prometheus-server.promet
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "opencost.opencost.svc.cluster.local:9003")
 IS_SHARED_POOL = not os.getenv("IS_SHARED_POOL", "True").lower() in ("false", "0", "f", "no")
 ALLOW_UNREGISTERED_USER = not os.getenv("ALLOW_UNREGISTERED_USER", "True").lower() in ("false", "0", "f", "no")
-#ANVIL_UPLINK_KEY = os.getenv("ANVIL_UPLINK_KEY", "")
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
 ADMIN_KEY = os.getenv("KW_ADMIN_KEY") # all permissions
@@ -75,7 +70,7 @@ else:
 ################################
 async def verify_admin_key(request: Request):
     if not USE_AUTH:
-        return
+        return None
     api_key = request.headers.get("X-API-KEY")
     if api_key != ADMIN_KEY:
         raise HTTPException(status_code=401, detail="Request requires Admin API Key")
@@ -83,7 +78,7 @@ async def verify_admin_key(request: Request):
 
 async def verify_read_key(request: Request):
     if not USE_AUTH:
-        return
+        return None
     api_key = request.headers.get("X-API-KEY")
     if api_key != READ_ONLY_KEY and api_key != ADMIN_KEY and api_key != WRITE_KEY:
         raise HTTPException(status_code=401, detail="Request requires a Read API Key")
@@ -91,7 +86,7 @@ async def verify_read_key(request: Request):
 
 async def verify_write_key(request: Request):
     if not USE_AUTH:
-        return
+        return None
     api_key = request.headers.get("X-API-KEY")
     if api_key != WRITE_KEY and api_key != ADMIN_KEY:
         raise HTTPException(status_code=401, detail="Request requires a User API Key")
@@ -142,6 +137,13 @@ async def verify_write_namespace(request: Request):
         return user.lower()
     except:
         raise HTTPException(status_code=401, detail="User Key is not authorised")
+
+async def verify_force_namespace(request: Request):
+    """Only admin keys can force namespace"""
+    if not USE_AUTH:
+        return True
+    api_key = request.headers.get("X-API-KEY")
+    return api_key == ADMIN_KEY
 #############################
 
 
@@ -341,11 +343,16 @@ async def create_user_space(request: GenericDeploymentRequest, api_key: str = De
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model")
-async def deploy_generic_model(request: GenericDeploymentRequest, api_key: str = Depends(verify_admin_key)):
-    return kube_api.deploy_generic_model(request.config) 
+async def deploy_generic_model(request: GenericDeploymentRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_admin_key)):
+    if can_force_namespace and request.force_namespace is not None:
+        return kube_api.deploy_generic_model(request.config, force_namespace=request.force_namespace)
+    else:
+        return kube_api.deploy_generic_model(request.config) 
 
 @app.post("/v1/deploy_custom_object")
-async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+async def deploy_custom_object(request: CustomObjectDeploymentRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
     response = kube_api.kube_deploy_custom_object(
         group=request.object.group,
         api_version=request.object.api_version,
@@ -355,21 +362,27 @@ async def deploy_custom_object(request: CustomObjectDeploymentRequest, api_key: 
     return response
 
 @app.post("/v1/deploy_storage_claim")
-async def deploy_storage_claim(request: StorageClaimRequest, api_key: str = Depends(verify_admin_key), namespace: str = Depends(verify_write_namespace)):
+async def deploy_storage_claim(request: StorageClaimRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_admin_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
     response = kube_api.deploy_storage_claim(
         namespace=namespace,
         **request.model_dump())
     return response
 
 @app.post("/v1/deploy_service")
-async def deploy_service(request: ServiceRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+async def deploy_service(request: ServiceRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
     response = kube_api.deploy_service(
         namespace=namespace,
         **request.model_dump())
     return response
 
 @app.post("/v1/delete_labeled_resources")
-async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+async def delete_labeled_resources(request: DeleteLabelledResourcesRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
     return kube_api.delete_labeled_resources(namespace, request.label, request.value)
 
 @app.post("/v1/get_resources_with_label")
