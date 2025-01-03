@@ -99,6 +99,7 @@ class DeleteLabelledResourcesRequest(BaseModel):
 class GetLabelledResourcesRequest(BaseModel):
     label:str
     value:Optional[str] = None
+    force_namespace: str = None
     
 class UserRequest(BaseModel):
     email: str

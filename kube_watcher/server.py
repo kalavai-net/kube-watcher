@@ -251,8 +251,11 @@ async def get_status_for_object(request: CustomObjectRequest, api_key: str = Dep
             ns_objects[namespace] = objects
     return ns_objects
 
+
 @app.post("/v1/get_logs_for_label")
-async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+async def get_logs_for_label(request: GetLabelledResourcesRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
     logs = kube_api.get_logs_for_labels(
         namespace=namespace,
         label_key=request.label,
@@ -260,7 +263,9 @@ async def get_logs_for_label(request: GetLabelledResourcesRequest, api_key: str 
     return logs
 
 @app.post("/v1/describe_pods_for_label")
-async def describe_pods_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+async def describe_pods_for_label(request: GetLabelledResourcesRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
     logs = kube_api.describe_pods_for_labels(
         namespace=namespace,
         label_key=request.label,
