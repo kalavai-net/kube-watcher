@@ -10,6 +10,11 @@ Templates are like recipes, where **developers describe what worker nodes should
 ## List of available templates
 
 - [vLLM](./vllm): deploy your favourite LLMs in distributed machines.
+- [llama.cpp](./llamacpp): deploy llama.cpp models (CPU and GPU) in distributed machines.
+- [Aphrodite](./aphrodite): deploy your favourite LLMs in distributed machines.
+- [Petals](./petals): bit-torrent style deployment of LLMs
+- [litellm](./litellm/): Unified LLM API.
+- [playground](./playground/): Unified UI playground.
 
 
 ## How to contribute
@@ -22,12 +27,12 @@ For now, if you feel adventurous, here's how to get started:
 1. Clone the repository
 
 ```bash
-git clone https://github.com/kalavai-net/kalavai-client/
+git clone https://github.com/kalavai-net/kube-watcher/
 ```
 
 2. Duplicate the `templates/dummy` folder and rename it to your new template name
 ```bash
-cd kalavai-client
+cd kube-watcher
 mkdir -p templates/new_template
 cp -r templates/dummy templates/new_template
 ```
@@ -37,15 +42,11 @@ cp -r templates/dummy templates/new_template
 * `values.yaml`: a list of default values, including descriptions for each. Variable names will populate the template when users run your template.
 * `README.md`: any details you may want users to know about your template job.
 
-4. Develop your template. We use the [LeaderWorkerSet interface](https://github.com/kubernetes-sigs/lws/blob/main/docs/examples/sample/README.md).
+4. Develop your template. We use [Volcano jobs](https://volcano.sh/en/docs/vcjob/).
 
 5. Templatise your job with variables. Whenever you want a placeholder value, insert `$name_of_the_variable` in your `template.yaml`, and list your new variable under `values.yaml`.
 
-6. Test your template with the `kalavai` cli when ready! For that, make sure kalavai points to your dev `templates/` folder first with `$LOCAL_TEMPLATES_DIR`
-```bash
-
-LOCAL_TEMPLATES_DIR=./templates/ kalavai job run new_template--values-path templates/new_template/values.yaml
-```
+6. Test your template with the `kalavai` cli when ready! TODO
 
 7. (Optional) If you want to contribute your template to the community so others can use it, push a PR to the kalavai-client repository containing your `templates/new_template` folder
 

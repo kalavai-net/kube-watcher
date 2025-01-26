@@ -1,11 +1,22 @@
 # Kube-Watcher
 
-Set of OpenFaaS functions to request Kubernetes API information in Kalavai.
+API to handle kubernetes-specific functionality on behalf of the kalavai client. It includes template recipes for Kalavai jobs, designed to automate deployment of distributed workloads in Kalavai LLM pools.
 
-Python kubernetes API reference https://github.com/kubernetes-client/python/blob/master/kubernetes/README.md
+Users should not need to install (or even care about) this library. It is deployed automatically as part of any LLM Pool. For installation and usage of LLM pools, visit our [kalavai client repository](https://github.com/kalavai-net/kalavai-client).
 
 
-## Install
+## Job templates
+
+Template jobs built by Kalavai and the community make deploying distributed workflows easy for end users.
+
+Templates are like recipes, where developers describe what worker nodes should run, and users customise the behaviour via pre-defined parameters. Kalavai handles the heavy lifting: workload distribution, communication between nodes and monitoring the state of the deployment to restart the job if required.
+
+See [here](templates/README.md) for more details on how they work and to contribute.
+
+
+## Development
+
+### Install
 
 Python must be < 3.12 (AttributeError: module 'ssl' has no attribute 'wrap_socket')
 
@@ -14,8 +25,6 @@ conda create --name kube-watcher python=3.9
 conda activate kube-watcher
 pip install -e .
 ```
-
-## FastAPI service
 
 Build docker image:
 ```bash
@@ -68,177 +77,3 @@ opencost          opencost                                                Cluste
 In this case, the we would choose the following:
 - `PROMETHEUS_ENDPOINT`: 10.43.100.250:9090
 - `OPENCOST_ENDPOINT`: 10.43.140.3
-
-
-# DEPRECATED
-
-## Create bearer tokens
-
-Same tokens a for Kubernetes-dashboard work.
-
-In the kube-control-plane, execute (you can configure the name of the service account in the script changing the variable ACCOUNT_NAME):
-
-```bash
-sh generate_token.sh
-```
-
-
-The easiest way is to load the cluster config file loaded in the service. The config file is usually found on the control-plane node under `~/.kube/config`.
-
-```python
-kubernetes.config.load_kube_config("cluster_config.yaml")
-```
-
-Make sure to update the server field to point at the control-plane node.
-
-```yaml
-...
-clusters:
-- cluster:
-    server: https://<control-plane-ip>:6443
-...
-```
-
-# To connect to Graphana
-
-In control plane:
-```
-kubectl port-forward deployment/prometheus-grafana 3000
-```
-
-Then forward the port 3000 to local machine (vscode)
-
-Access graphana on localhost:3000
-- admin
-- prom-operator
-
-
-# Connect to prometheus (via browser or API)
-
-In control plane
-```
-kubectl port-forward --namespace default svc/prometheus-kube-prometheus-prometheus 9090:9090
-```
-
-Then forward the port 9090 to local machine (vscode) 
-
-Access prometheus UI on localhost:9090 or use python client to connect to port 9090
-
-
-# Serverless Kubernetes API
-
-OpenFaaS for serverless functions to help worker clients access kubernetes stats.
-
-Example: https://medium.com/@turcios.kevinj/get-started-with-the-kubernetes-python-client-on-openfaas-d5a8eb2f3eca
-
-Current functions
-
-- get-node-stats --> for a node(s) get connectivity stats
-- get-capacity --> for the network, get allocatable, capacity and online availability
-
-
-## Install
-
-```bash
-curl -sSL https://cli.openfaas.com | sudo sh
-curl -sLS https://get.arkade.dev | sudo sh
-arkade install openfaas
-```
-
-Create a python function from template:
-```bash
-faas-cli new --lang python3 get-all-pods --prefix <YOUR_DOCKERHUB_USERNAME> --gateway http://127.0.0.1:31112
-```
-
-Template will be created in folder get-all-pods
-
-Add dependencies to requirements.txt
-```bash
-kubernetes
-```
-
-Add to template/python3/template.yml:
-```yaml
-  - name: kubernetes-client
-    packages:
-      - g++
-      - libffi-dev
-      - openssl-dev
-```
-
-Apply read only role for namespace openfaas-fn
-```bash
-kubectl apply -f cluster_role.yaml
-```
-
-Login to openfaas
-```bash
-kubectl port-forward -n openfaas svc/gateway 8080:8080 &
-PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
-echo -n $PASSWORD | faas-cli login --username admin --password-stdin
-```
-
-Login to private image registry:
-```bash
-faas-cli registry-login --username admin --password admin --server 159.65.30.72:32000
-```
-
-Build and deploy function:
-```bash
-faas-cli up --build-option kubernetes-client -f get-all-pods.yml
-```
-
-To test the function:
-
-```
-http://159.65.30.72:31112/ui/
-http://159.65.30.72:31112/function/get-all-pods
-```
-
-### Install notes
-
-```bash
-=======================================================================
-= OpenFaaS has been installed.                                        =
-=======================================================================
-
-# Get the faas-cli
-curl -SLsf https://cli.openfaas.com | sudo sh
-
-# Forward the gateway to your machine
-kubectl rollout status -n openfaas deploy/gateway
-kubectl port-forward -n openfaas svc/gateway 8080:8080 &
-
-# If basic auth is enabled, you can now log into your gateway:
-PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
-echo -n $PASSWORD | faas-cli login --username admin --password-stdin
-
-faas-cli store deploy figlet
-faas-cli list
-
-# For Raspberry Pi
-faas-cli store list \
- --platform armhf
-
-faas-cli store deploy figlet \
- --platform armhf
-```
-
-
-
-
-
-### Check valid username/password
-
-RESULT=$(curl -X GET http://localhost:8009/v1/validate_user -H 'Content-Type: application/json' -d '{"username":"EMAIL", "password":"PASSWORD"}')
-
-
-
-## Langflow API
-
-Get flows:
-
-curl -X 'GET' \
-  'https://carlosfm.playground.test.k8s.mvp.kalavai.net/api/v1/api_key/' \
-  -H 'accept: application/json'\
-  -H 'x-api-key: sk-v_y7ppXDC6xieH2N4Zpn_GaOAoyjDdQuKVzyYGv8YGw'
