@@ -13,25 +13,25 @@ from kube_watcher.models import (
     NodesRequest,
     NodeCostRequest,
     NamespacesCostRequest,
-    DeepsparseDeploymentRequest,
-    DeepsparseDeploymentDeleteRequest,
-    DeepsparseDeploymentListRequest,
     GenericDeploymentRequest,
     DeleteLabelledResourcesRequest,
     GetLabelledResourcesRequest,
-    UserRequest,
+    JobTemplateRequest,
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
     ServiceWithLabelRequest,
     CustomObjectRequest,
     StorageClaimRequest,
     ServiceRequest,
-    StorageRequest
+    StorageRequest,
+    RayClusterRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
 )
 from kube_watcher.prometheus_core import PrometheusAPI
+from kube_watcher.jobs import Job, JobTemplate
+from kube_watcher.ray_cluster import RayCluster
 
 
 logger = logging.getLogger(__name__)
@@ -145,16 +145,6 @@ async def verify_force_namespace(request: Request):
     api_key = request.headers.get("X-API-KEY")
     return api_key == ADMIN_KEY
 #############################
-
-
-@app.post("/v1/validate_user")
-async def login(request: UserRequest):
-    try:
-        #user = anvil.users.login_with_email(request.email, request.password, remember=False)
-        user = {"username": "User"}
-        return {"username": user["username"], "error": None}
-    except Exception as e:
-        return {"error": str(e)}
 
 
 @app.get("/v1/get_cluster_total_resources")
@@ -348,6 +338,61 @@ async def create_user_space(request: GenericDeploymentRequest, can_force_namespa
         return {"status": str(e)}
     return {"status": "success"}
 
+@app.get("/v1/get_job_templates")
+async def get_job_templates(api_key: str = Depends(verify_read_key)):
+    return [e.name for e in JobTemplate]
+
+@app.get("/v1/job_defaults")
+async def get_job_defaults(request: JobTemplateRequest, api_key: str = Depends(verify_read_key)):
+    return Job(template=request.template).get_defaults()
+
+@app.post("/v1/deploy_job")
+async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    # populate template with values
+    job = Job(template=request.template)
+    deployment = job.populate(values=request.template_values)
+    
+    # deploy job
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+    response = kube_api.kube_deploy_custom_object(
+        group="batch.volcano.sh",
+        api_version="v1alpha1",
+        plural="jobs",
+        body=deployment,
+        namespace=namespace
+    )
+    # deploy service
+    if job.ports is not None and len(job.ports) > 0:
+        data = {
+            "name": job.job_name,
+            "labels": job.job_label,
+            "selector_labels": { **job.job_label, **{"role": "leader"} },
+            "service_type": "NodePort",
+            "ports": [
+                {"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports
+            ]
+        }
+        response = kube_api.deploy_service(
+            namespace=namespace,
+            **data
+        )
+    return response
+
+@app.post("/v1/deploy_ray")
+async def deploy_ray(request: RayClusterRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+    
+    cluster = RayCluster(name=request.name, manifest=request.manifest)
+    response = kube_api.kube_deploy_custom_object(
+        group="ray.io",
+        api_version="v1",
+        plural="rayclusters",
+        body=cluster.body,
+        namespace=namespace
+    )
+    return response
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model")
@@ -402,16 +447,6 @@ async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key
             request.label,
             request.value)
     return ns_resources
-
-@app.post("/v1/find_nodeport_url")
-async def find_nodeport_url(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
-    ns_ports = {}
-    for namespace in namespaces:
-        ns_ports[namespace] = kube_api.find_nodeport_url(
-            namespace,
-            request.label,
-            request.value)
-    return ns_ports
 
 # Endpoint to check health
 @app.get("/v1/health")

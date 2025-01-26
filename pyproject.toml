@@ -1,7 +1,7 @@
 [tool.poetry]
 name        = "kube_watcher"
-version     = "0.2.0"
-description = "Client to monitor kubernetes node activity"
+version     = "2025.01"
+description = "API to interact with kubernetes cluster"
 authors     = ["Carlos Fernandez Musoles <carlos@kalavai.net>"]
 
 
@@ -13,10 +13,7 @@ plotext                 = { version = "^5.2.8" }
 fastapi                 = { version = "0.101.1", extras = ["all"] }
 pyyaml                  = { version = "6.0.1" }
 anvil-uplink            = { version = "0.5.0" }
-
-# interface
-plotly                  = { version = "^5.15.0" }
-
+jinja2                  = { version = "3.1.4" }
 
 black                   = { version = ">= 22.1.0", optional = true }
 

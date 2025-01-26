@@ -1,5 +1,16 @@
 from typing import List, Optional
 from pydantic import BaseModel
+from enum import Enum
+
+class JobTemplate(Enum):
+    vllm = 1
+    aphrodite = 2
+    llamacpp = 3
+    petals = 4
+    litellm = 5
+    playground = 6
+    boinc = 7
+    gpustack = 8
 
 class NodeStatusRequest(BaseModel):
     node_id: str = "carlosfm-desktop-2"
@@ -104,3 +115,14 @@ class GetLabelledResourcesRequest(BaseModel):
 class UserRequest(BaseModel):
     email: str
     password: str
+
+class JobTemplateRequest(BaseModel):
+    force_namespace: str = None
+    template_values: dict = None
+    template: str
+
+class RayClusterRequest(BaseModel):
+    force_namespace: str = None
+    name: str
+    manifest: str
+     
