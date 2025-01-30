@@ -6,10 +6,8 @@ metadata:
     # must have this label
     kalavai.job.name: {{deployment_id}}
 spec:
-  queue: {{queue_name}}
   minAvailable: 2
   schedulerName: volcano
-  priorityClassName: {{priority}}
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
