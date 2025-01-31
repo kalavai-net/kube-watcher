@@ -39,10 +39,10 @@ spec:
             value: "/var/lib/postgresql/data/pgdata"
           resources:
             requests:
-              cpu: {{cpu}}
+              cpu: {{cpus}}
               memory: {{memory}}Gi
             limits:
-              cpu: {{cpu}}
+              cpu: {{cpus}}
               memory: {{memory}}Gi
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
@@ -91,9 +91,9 @@ spec:
             value: "{{ui_password}}"
           resources:
             requests:
-              cpu: {{cpu}}
+              cpu: {{cpus}}
               memory: {{memory}}Gi
             limits:
-              cpu: {{cpu}}
+              cpu: {{cpus}}
               memory: {{memory}}Gi
   
