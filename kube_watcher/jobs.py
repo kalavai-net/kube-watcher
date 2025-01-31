@@ -53,7 +53,7 @@ class Job:
                 values[default['name']] = default['default']
         self.job_name = values[TEMPLATE_ID_KEY]
         self.job_label = {TEMPLATE_LABEL: self.job_name}
-        self.ports = values[ENDPOINT_PORTS_KEY].split(",")
+        self.ports = values[ENDPOINT_PORTS_KEY].split(",") if ENDPOINT_PORTS_KEY in values else []
         return Template(self.template_str).render(values)
 
         
