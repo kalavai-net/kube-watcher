@@ -14,7 +14,6 @@ PROMETHEUS QUERIES:
 """
 import logging
 
-import plotly.express as px
 from prometheus_api_client import PrometheusConnect, MetricRangeDataFrame
 from prometheus_api_client.utils import parse_datetime
 from datetime import timedelta
