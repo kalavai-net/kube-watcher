@@ -58,7 +58,12 @@ class Job:
 
         
 if __name__ == "__main__":
-    job = Job(template="aphrodite")
-    job.populate(values={"model_id": "my_model"})
-    print(job.job_name, job.ports)
+    job = Job(template="litellm")
+    with open("litellm.yaml", "r") as f:
+        raw_values = yaml.load(f, Loader=yaml.SafeLoader)
+        values = {variable["name"]: variable['value'] for variable in raw_values}
+    print(values)
+    template = job.populate(values=values)
+    print(job.job_name, job.ports, job.job_label)
     print([e.name for e in JobTemplate])
+    print(template)

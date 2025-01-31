@@ -364,18 +364,15 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
     )
     # deploy service
     if job.ports is not None and len(job.ports) > 0:
-        data = {
-            "name": job.job_name,
-            "labels": job.job_label,
-            "selector_labels": { **job.job_label, **{"role": "leader"} },
-            "service_type": "NodePort",
-            "ports": [
-                {"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports
-            ]
-        }
+        request = ServiceRequest(
+            name=f"{job.job_name}-service",
+            labels=job.job_label,
+            selector_labels={ **job.job_label, **{"role": "leader"} },
+            service_type="NodePort",
+            ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
         response = kube_api.deploy_service(
             namespace=namespace,
-            **data
+            **request.model_dump()
         )
     return response
 
