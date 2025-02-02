@@ -37,7 +37,7 @@ class Job:
         else:
             if isinstance(template, str):
                 self.template = JobTemplate[template]
-            self.template_str = self._load(template=template)
+            self.template_str = self._load(template=self.template)
 
     @classmethod
     def from_yaml(cls, template_str):
