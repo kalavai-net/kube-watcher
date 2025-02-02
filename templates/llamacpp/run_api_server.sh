@@ -33,39 +33,54 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+download() {
+    local input_string="$1"
+    IFS=',' read -ra elements <<< "$input_string"
+    
+    for element in "${elements[@]}"; do
+      huggingface-cli download \
+        $repo_id \
+        $element \
+        --local-dir $local_dir \
+        --local-dir-use-symlinks False > /dev/null 2>&1
+    done
+
+    if [[ "${#elements[@]}" -gt 1 ]]; then
+      # choose the first file
+      mapfile -t sorted_elements < <(printf "%s\n" "${elements[@]}" | sort)
+      echo "${sorted_elements[0]}"
+    else
+      echo $input_string
+    fi
+}
+
 source /workspace/env/bin/activate
 
 #################
 # download model #
 #################
 # alternatively, load with server python3 -m llama_cpp.server --hf_model_repo_id Qwen/Qwen2-0.5B-Instruct-GGUF --model '*q8_0.gguf'
-huggingface-cli download \
-    $repo_id \
-    $model_filename \
-    --local-dir $local_dir \
-    --local-dir-use-symlinks False
+echo "Downloading: "$model_filename
+model=$(download $model_filename)
+echo "-----> This is the model: "$model
 
 ## Create config ##
 python /workspace/generate_config.py \
   --port $port --host 0.0.0.0 \
-  --models-path $local_dir \
-  --model-extension "*.gguf" \
+  --model $local_dir/$model \
   --output-filename /workspace/config.json
 
 ##################
 # run API server #
 ##################
-echo "Connecting to workers: "$rpc_servers
+if [ -z $rpc_servers ]; then
+  workers=""
+else
+  workers="--rpc_servers "$rpc_servers
+  echo "Connecting to workers: "$workers
+fi
 
 python -m llama_cpp.server \
   --config_file /workspace/config.json \
-  --rpc_servers $rpc_servers \
+  $workers \
   $extra
-
-# /workspace/llama.cpp/build/bin/llama-server --list-devices
-# /workspace/llama.cpp/build/bin/llama-server \
-#   --port $port \
-#   --host 0.0.0.0 \
-#   --model $local_dir/$model_filename \
-#   --rpc $rpc_servers \
-#   $extra

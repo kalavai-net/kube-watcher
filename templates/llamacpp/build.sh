@@ -20,7 +20,6 @@ case "$subcommand" in
     cd /workspace/llama.cpp
     mkdir build
     cd build
-
     # GGML_RPC=ON: Builds RPC support
     # BUILD_SHARED_LIBS=OFF: Don't rely on shared libraries like libggml
     # use -DGGML_CUDA=ON for GPU support
