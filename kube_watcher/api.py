@@ -2,6 +2,7 @@ import os
 from typing import List
 import logging
 import requests
+import yaml
 
 from starlette.requests import Request
 from fastapi import FastAPI, HTTPException, Depends
@@ -17,6 +18,7 @@ from kube_watcher.models import (
     DeleteLabelledResourcesRequest,
     GetLabelledResourcesRequest,
     JobTemplateRequest,
+    CustomJobTemplateRequest,
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
     ServiceWithLabelRequest,
@@ -351,6 +353,37 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
     # populate template with values
     job = Job(template=request.template)
     deployment = job.populate(values=request.template_values)
+    
+    # deploy job
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+    response = kube_api.kube_deploy_custom_object(
+        group="batch.volcano.sh",
+        api_version="v1alpha1",
+        plural="jobs",
+        body=deployment,
+        namespace=namespace
+    )
+    # deploy service
+    if job.ports is not None and len(job.ports) > 0:
+        request = ServiceRequest(
+            name=f"{job.job_name}-service",
+            labels=job.job_label,
+            selector_labels={ **job.job_label, **{"role": "leader"} },
+            service_type="NodePort",
+            ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
+        response = kube_api.deploy_service(
+            namespace=namespace,
+            **request.model_dump()
+        )
+    return response
+
+@app.post("/v1/deploy_custom_job")
+async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_admin_key), namespace: str = Depends(verify_write_namespace)):
+    # populate template with values
+    job = Job.from_yaml(template_str=request.template)
+    yaml_defaults = yaml.safe_load(request.default_values)
+    deployment = job.populate(values=request.template_values, default_values=yaml_defaults)
     
     # deploy job
     if can_force_namespace and request.force_namespace is not None:

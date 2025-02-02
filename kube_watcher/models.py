@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from enum import Enum
 
 class JobTemplate(Enum):
+    custom = 0
     vllm = 1
     aphrodite = 2
     llamacpp = 3
@@ -119,6 +120,12 @@ class UserRequest(BaseModel):
 class JobTemplateRequest(BaseModel):
     force_namespace: str = None
     template_values: dict = None
+    template: str
+
+class CustomJobTemplateRequest(BaseModel):
+    force_namespace: str = None
+    template_values: dict = None
+    default_values: str
     template: str
 
 class RayClusterRequest(BaseModel):
