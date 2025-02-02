@@ -67,7 +67,8 @@ echo "-----> This is the model: "$model
 ## Create config ##
 python /workspace/generate_config.py \
   --port $port --host 0.0.0.0 \
-  --model $local_dir/$model \
+  --local_dir $local_dir \
+  --model $model \
   --output-filename /workspace/config.json
 
 ##################
