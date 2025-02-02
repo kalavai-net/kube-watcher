@@ -26,7 +26,6 @@ def parse_deployment_name(deployment_name):
 
 class Job:
     def __init__(self, template: JobTemplate, template_str: str=None):
-        self.template = template
         self.job_name = None
         self.job_label = None
         self.ports = []
@@ -34,12 +33,11 @@ class Job:
         if template == JobTemplate.custom:
             # for custom jobs where we pass the template itself
             self.template_str = template_str
-            
+            self.template = template
         else:
             if isinstance(template, str):
-                template = JobTemplate[template]
+                self.template = JobTemplate[template]
             self.template_str = self._load(template=template)
-        
 
     @classmethod
     def from_yaml(cls, template_str):
