@@ -65,11 +65,11 @@ model=$(download $model_filename)
 echo "-----> This is the model: "$model
 
 ## Create config ##
-python /workspace/generate_config.py \
-  --port $port --host 0.0.0.0 \
-  --local_dir $local_dir \
-  --model $model \
-  --output-filename /workspace/config.json
+# python /workspace/generate_config.py \
+#   --port $port --host 0.0.0.0 \
+#   --local_dir $local_dir \
+#   --model $model \
+#   --output-filename /workspace/config.json
 
 ##################
 # run API server #
@@ -77,11 +77,18 @@ python /workspace/generate_config.py \
 if [ -z $rpc_servers ]; then
   workers=""
 else
-  workers="--rpc_servers "$rpc_servers
+  workers="--rpc "$rpc_servers
   echo "Connecting to workers: "$workers
 fi
 
-python -m llama_cpp.server \
-  --config_file /workspace/config.json \
-  $workers \
-  $extra
+# python -m llama_cpp.server \
+#   --config_file /workspace/config.json \
+#   $workers \
+#   $extra
+
+/workspace/llama.cpp/build/bin/llama-server \
+  -m $local_dir/$model \
+  --alias $model \
+  --host 0.0.0.0 \
+  --port 8080 \
+  $workers

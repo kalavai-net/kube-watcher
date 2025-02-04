@@ -88,23 +88,35 @@ spec:
     name: server
     template: # Definition of the ps pod
       metadata:
-        # annotations:
-        #   # must have these annotations
-        #   {{nouse_gputype}}
-        #   {{use_gputype}}
+{% if is_gpu_server == "True" %}
+        annotations:
+          # must have these annotations
+          {{nouse_gputype}}
+          {{use_gputype}}
+{% endif %}
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
-        #runtimeClassName: nvidia
+{% if is_gpu_server == "True" %}
+        runtimeClassName: nvidia
+{% endif %}
         containers:
         - name: llamacpp-leader
+{% if is_gpu_server == "True" %}
+          image: docker.io/bundenth/llamacpp-gpu:latest
+{% else %}
           image: docker.io/bundenth/llamacpp-cpu:latest
+{% endif %}
           command:
           - sh
           - -c
           - |
+{% if is_gpu_server == "True" %}
+            /workspace/build.sh server_gpu;
+{% else %}
             /workspace/build.sh server_cpu;
+{% endif %}
             /workspace/merge.sh --cpu-workers=/etc/volcano/cpu.host --gpu-workers=/etc/volcano/gpu.host --output=/workspace/all.host;
             HOSTS=`cat /workspace/all.host`;
             cat /workspace/all.host;

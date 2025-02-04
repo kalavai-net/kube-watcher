@@ -27,6 +27,11 @@
   default: ""
   description: "Master key of the LiteLLM service (central registry)"
 
+- name: is_gpu_server
+  value: "False"
+  default: "False"
+  description: "Whether to use GPUs in the server node"
+
 - name: cpu_workers
   value: 1
   default: 1
