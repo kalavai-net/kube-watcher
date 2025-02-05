@@ -17,6 +17,7 @@ spec:
   - event: TaskCompleted
     action: CompleteJob
   tasks:
+{% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
     name: registrar
     template: # Definition of the ps pod
@@ -37,48 +38,41 @@ spec:
           - sh
           - -c
           - |
-            if [ ! -z "{{litellm_key}}" ]; then
-              echo $VC_NAMESPACE;
-              # wait for model to be served
-              echo "Waiting for model service..."
-              PS_HOST=`cat /etc/volcano/server.host`;
-              /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8080
-              # Register model with LiteLLM
-              PS_HOST=`cat /etc/volcano/server.host`;
-              LITELLM_MODEL_NAME={{deployment_id}};
-              echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
-              API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8080/v1";
-              /workspace/register_model.sh \
-                --litellm_base_url={{litellm_base_url}} \
-                --litellm_key={{litellm_key}} \
-                --litellm_model_name="$LITELLM_MODEL_NAME" \
-                --model_id={{model_id}} \
-                --provider=hosted_vllm \
-                --api_base=$API_BASE \
-                --model_info='{"extra": "{{extra}}", "cpus": "{{cpus}}", "gpus": "{{gpus}}", "memory": "{{memory}}", "tensor_parallel_size": "{{tensor_parallel_size}}", "pipeline_parallel_size": "{{pipeline_parallel_size}}"}'
-            else
-              echo "[Warning] Missing LiteLLM base url. Model not publicly registered"
-              tail -f /dev/null
-            fi
+            echo $VC_NAMESPACE;
+            # wait for model to be served
+            echo "Waiting for model service..."
+            PS_HOST=`cat /etc/volcano/server.host`;
+            /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8080
+            # Register model with LiteLLM
+            PS_HOST=`cat /etc/volcano/server.host`;
+            LITELLM_MODEL_NAME={{deployment_id}};
+            echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
+            API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8080/v1";
+            /workspace/register_model.sh \
+              --litellm_base_url={{litellm_base_url}} \
+              --litellm_key={{litellm_key}} \
+              --litellm_model_name="$LITELLM_MODEL_NAME" \
+              --model_id={{model_id}} \
+              --provider=hosted_vllm \
+              --api_base=$API_BASE \
+              --model_info='{"extra": "{{extra}}", "cpus": "{{cpus}}", "gpus": "{{gpus}}", "memory": "{{memory}}", "tensor_parallel_size": "{{tensor_parallel_size}}", "pipeline_parallel_size": "{{pipeline_parallel_size}}"}'
           lifecycle:
             preStop:
               exec:
                 command: 
                 - sh
                 - -c
-                - |       
-                  if [ ! -z "{{litellm_key}}" ]; then
-                    LITELLM_MODEL_NAME={{deployment_id}};       
-                    MODEL_ID=$(python3 /workspace/get_litellm_id.py \
-                      --litellm_url={{litellm_base_url}} \
-                      --api_key={{litellm_key}} \
-                      --model_name="$LITELLM_MODEL_NAME");
-                    curl -X POST "{{litellm_base_url}}/model/delete" \
-                        -H 'Authorization: Bearer {{litellm_key}}' \
-                        -H "accept: application/json" \
-                        -H "Content-Type: application/json" \
-                        -d '{ "id": "'$MODEL_ID'"}';
-                  fi
+                - |
+                  LITELLM_MODEL_NAME={{deployment_id}};       
+                  MODEL_ID=$(python3 /workspace/get_litellm_id.py \
+                    --litellm_url={{litellm_base_url}} \
+                    --api_key={{litellm_key}} \
+                    --model_name="$LITELLM_MODEL_NAME");
+                  curl -X POST "{{litellm_base_url}}/model/delete" \
+                      -H 'Authorization: Bearer {{litellm_key}}' \
+                      -H "accept: application/json" \
+                      -H "Content-Type: application/json" \
+                      -d '{ "id": "'$MODEL_ID'"}';
           resources:
             requests:
               cpu: 0.1
@@ -87,6 +81,7 @@ spec:
               cpu: 0.1
               memory: 0.1Gi
         restartPolicy: OnFailure
+{% endif %}
   - replicas: 1   # One ps pod specified
     name: server
     template: # Definition of the ps pod
