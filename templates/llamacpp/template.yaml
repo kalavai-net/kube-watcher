@@ -139,12 +139,16 @@ spec:
               cpu: {{cpus}}
               memory: {{memory}}Gi
               ephemeral-storage: {{working_memory}}Gi
-              #nvidia.com/gpu: {{gpus}}
+{% if is_gpu_server == "True" %}
+              nvidia.com/gpu: {{gpus}}
+{% endif %}
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
               ephemeral-storage: {{working_memory}}Gi
-              #nvidia.com/gpu: {{gpus}}
+{% if is_gpu_server == "True" %}
+              nvidia.com/gpu: {{gpus}}
+{% endif %}
           volumeMounts:
             - name: cache
               mountPath: /cache
