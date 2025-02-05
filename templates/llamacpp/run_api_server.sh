@@ -42,7 +42,7 @@ download() {
         $repo_id \
         $element \
         --local-dir $local_dir \
-        --local-dir-use-symlinks False > /dev/null 2>&1
+        --local-dir-use-symlinks False
     done
 
     if [[ "${#elements[@]}" -gt 1 ]]; then
