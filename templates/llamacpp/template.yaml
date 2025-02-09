@@ -118,7 +118,7 @@ spec:
             export WORKERS=$(/workspace/get_workers_address.sh --rpc_port={{rpc_port}} --rpc_servers="${HOSTS}")
             /workspace/run_api_server.sh \
               --repo_id={{repo_id}} \
-              --model_filename='{{model_filename}}' \
+              --model_filename={{model_filename}} \
               --local_dir=/cache \
               --port=8080 \
               --rpc_servers=$WORKERS \
