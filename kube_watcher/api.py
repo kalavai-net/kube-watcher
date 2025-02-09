@@ -357,13 +357,14 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
     # deploy job
     if can_force_namespace and request.force_namespace is not None:
         namespace = request.force_namespace
-    response = kube_api.kube_deploy_custom_object(
+    responses = []
+    responses.append(kube_api.kube_deploy_custom_object(
         group="batch.volcano.sh",
         api_version="v1alpha1",
         plural="jobs",
         body=deployment,
         namespace=namespace
-    )
+    ))
     # deploy service
     if job.ports is not None and len(job.ports) > 0:
         request = ServiceRequest(
@@ -372,11 +373,11 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
             selector_labels={ **job.job_label, **{"role": "leader"} },
             service_type="NodePort",
             ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
-        response = kube_api.deploy_service(
+        responses.append(kube_api.deploy_service(
             namespace=namespace,
             **request.model_dump()
-        )
-    return response
+        ))
+    return responses
 
 @app.post("/v1/deploy_custom_job")
 async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_admin_key), namespace: str = Depends(verify_write_namespace)):

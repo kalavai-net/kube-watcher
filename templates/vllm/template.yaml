@@ -127,6 +127,12 @@ spec:
             name: model-port
           - containerPort: 8265
             name: dashboard-port
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: {{cpus}}
