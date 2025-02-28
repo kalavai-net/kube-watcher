@@ -12,6 +12,7 @@ class JobTemplate(Enum):
     playground = 6
     boinc = 7
     gpustack = 8
+    speaches = 9
     flexible = 99
 
 class NodeStatusRequest(BaseModel):

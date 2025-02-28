@@ -1,0 +1,34 @@
+############################
+### MUST HAVE THIS FIELDS ##
+# Either id_field pointing to another existing field
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  description: "Field that contains the ID of the job"
+
+# must contain the list of ports to enable in the leader node
+- name: endpoint_ports
+  value: "8000"
+  default: "8000"
+  description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
+############################
+
+- name: deployment_name
+  value: speaches
+  default: speaches
+  description: "Name of the deployment job"
+
+- name: cpus
+  value: 2
+  default: 2
+  description: "Number of cpus per worker"
+
+- name: memory
+  value: 4
+  default: 4
+  description: "Memory per worker"
+
+- name: gpus
+  value: 1
+  default: 1
+  description: "Number of gpus per worker"

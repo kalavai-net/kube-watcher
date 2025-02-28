@@ -1,0 +1,49 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: speaches-test
+  labels:
+    # must have this label
+    kalavai.job.name: speaches-test
+spec:
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  policies: 
+  - event: PodEvicted # Restart the job when a pod is evicted.
+    action: RestartJob
+  tasks:
+  - replicas: 1   # One ps pod specified
+    name: worker
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: speaches-test
+          role: leader
+      spec:
+        containers:
+        - name: container
+          image: docker.io/bundenth/speaches:gpu-latest
+          imagePullPolicy: Always
+          command:
+          - sh
+          - -c
+          - |
+            # run server
+            uvicorn --factory speaches.main:create_app
+          ports:
+          - containerPort: 8000
+            name: container-port
+          env:
+          resources:
+            requests:
+              cpu: 2
+              memory: 4Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 2
+              memory: 4Gi
+              nvidia.com/gpu: 1
+        restartPolicy: OnFailure
+
