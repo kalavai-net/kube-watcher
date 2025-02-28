@@ -1,0 +1,51 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  policies: 
+  - event: PodEvicted # Restart the job when a pod is evicted.
+    action: RestartJob
+  tasks:
+  - replicas: {{workers}}   # One ps pod specified
+    name: worker
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+          role: leader
+      spec:
+        containers:
+        - name: container
+          image: {{container_image}}
+          imagePullPolicy: Always
+          command:
+          - sh
+          - -c
+          - |
+            {{command}}
+          ports:
+          - containerPort: 8000
+            name: container-port
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+            {% if gpus and gpus > 0 %}
+              nvidia.com/gpu: {{gpus}}
+            {% endif %}
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+            {% if gpus and gpus > 0 %}
+              nvidia.com/gpu: {{gpus}}
+            {% endif %}
+        restartPolicy: {{restart_policy}}
+

@@ -1,0 +1,40 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: flex
+  labels:
+    # must have this label
+    kalavai.job.name: flex
+spec:
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  policies: 
+  - event: PodEvicted # Restart the job when a pod is evicted.
+    action: RestartJob
+  tasks:
+  - replicas: 1   # One ps pod specified
+    name: worker
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: flex
+          role: leader
+      spec:
+        containers:
+        - name: container
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            sleep 1;
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 1
+              memory: 2Gi
