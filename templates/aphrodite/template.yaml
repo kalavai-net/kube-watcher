@@ -126,12 +126,13 @@ spec:
             name: model-port
           - containerPort: 8265
             name: dashboard-port
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
+          # this blocks internal traffic, which causes issues when tasks wait for each other
+          # readinessProbe:
+          #   httpGet:
+          #     path: /health
+          #     port: 8080
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
           resources:
             requests:
               cpu: {{cpus}}
