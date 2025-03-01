@@ -60,11 +60,11 @@ spec:
             {% if gpus > 0 %}
               nvidia.com/gpu: {{gpus}}
             {% endif %}
-          # readinessProbe:
-          #   httpGet:
-          #     path: /health
-          #     port: 8000
-          #   initialDelaySeconds: 5
-          #   periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
         restartPolicy: OnFailure
 

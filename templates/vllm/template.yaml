@@ -106,7 +106,7 @@ spec:
             /home/ray/workspace/download_model.sh \
               --model_id={{model_id}} \
               --remote_dir="/home/ray/cache";
-            RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size=$(({{workers}})) --ray_object_store_memory={{memory * 500000000}};
+            RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size={{workers}} --ray_object_store_memory={{memory * 500000000}};
             sleep 30;
             nvidia-smi;
             ray status;
@@ -127,12 +127,13 @@ spec:
             name: model-port
           - containerPort: 8265
             name: dashboard-port
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
+          # this blocks internal traffic, which causes issues when tasks wait for each other
+          # readinessProbe:
+          #   httpGet:
+          #     path: /health
+          #     port: 8080
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
           resources:
             requests:
               cpu: {{cpus}}
