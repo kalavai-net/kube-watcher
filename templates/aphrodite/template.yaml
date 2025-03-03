@@ -12,10 +12,14 @@ spec:
     env: []
     svc: ["--disable-network-policy=true"]
   policies: 
-  - event: PodEvicted # Restart the job when a pod is evicted.
-    action: RestartJob
-  - event: TaskCompleted
-    action: CompleteJob
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
   tasks:
 {% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
