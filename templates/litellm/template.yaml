@@ -11,18 +11,18 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  policies: 
-  - event: PodEvicted
-    action: RestartJob
-  - event: PodFailed
-    action: RestartJob
-  - event: TaskCompleted
-    action: RestartJob
-  - event: Unknown
-    action: RestartJob
   tasks:
   - replicas: 1   # One ps pod specified
     name: db
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
     template: # Definition of the ps pod
       metadata:
         labels:
@@ -59,6 +59,15 @@ spec:
             claimName: {{db_storage}}
   - replicas: {{replicas}}   # One ps pod specified
     name: server
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
     template: # Definition of the ps pod
       metadata:
         labels:

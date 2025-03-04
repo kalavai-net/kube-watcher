@@ -11,18 +11,18 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  policies: 
-  - event: PodEvicted
-    action: RestartJob
-  - event: PodFailed
-    action: RestartJob
-  - event: TaskCompleted
-    action: RestartJob
-  - event: Unknown
-    action: RestartJob
   tasks:
   - replicas: {{replicas}}   # One ps pod specified
     name: server
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
     template: # Definition of the ps pod
       metadata:
         labels:

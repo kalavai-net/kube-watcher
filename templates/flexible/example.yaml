@@ -10,12 +10,14 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  policies: 
-  - event: PodEvicted # Restart the job when a pod is evicted.
-    action: RestartJob
   tasks:
   - replicas: 1   # One ps pod specified
     name: worker
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: TaskCompleted
+      action: CompleteJob
     template: # Definition of the ps pod
       metadata:
         labels:

@@ -11,19 +11,19 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  policies: 
-  - event: PodEvicted
-    action: RestartJob
-  - event: PodFailed
-    action: RestartJob
-  - event: TaskCompleted
-    action: RestartJob
-  - event: Unknown
-    action: RestartJob
   tasks:
 {% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
     name: registrar
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
     template: # Definition of the ps pod
       terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
       metadata:
@@ -87,6 +87,15 @@ spec:
 {% endif %}
   - replicas: 1   # One ps pod specified
     name: server
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
     template: # Definition of the ps pod
       metadata:
 {% if is_gpu_server == "True" %}
@@ -166,8 +175,14 @@ spec:
   - replicas: {{cpu_workers}}
     name: cpu
     policies:
-    - event: TaskCompleted  # The job will be marked as completed when two worker pods finish tasks.
-      action: CompleteJob
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
     template: # Definition of worker pods
       metadata:
         labels:
@@ -196,8 +211,14 @@ spec:
   - replicas: {{gpu_workers}}
     name: gpu
     policies:
-    - event: TaskCompleted  # The job will be marked as completed when two worker pods finish tasks.
-      action: CompleteJob
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
     template: # Definition of worker pods
       metadata:
         annotations:
