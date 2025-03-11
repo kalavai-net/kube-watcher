@@ -429,6 +429,12 @@ class KubeAPI():
 
         return force_serialisation(resources_found)
     
+    def get_specs_for_pod(self, pod_name, namespace):
+        return self.core_api.read_namespaced_pod(
+            name=pod_name,
+            namespace=namespace
+        )
+    
     def get_logs_for_labels(self, label_key, label_value, namespace):
         """Get logs for all pods that match a label key:value"""
         pods = self.find_pods_with_label(
@@ -438,7 +444,10 @@ class KubeAPI():
         )
         logs = {}
         for pod_name in pods.keys():
-            logs[pod_name] = self.get_logs_for_pod(pod=pod_name, namespace=namespace)
+            logs[pod_name] = {
+                "logs": self.get_logs_for_pod(pod=pod_name, namespace=namespace),
+                "spec": self.get_specs_for_pod(pod_name=pod_name, namespace=namespace)
+            }
         
         return logs
     
