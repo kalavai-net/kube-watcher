@@ -29,6 +29,12 @@ spec:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - name: leader
           image: ghcr.io/open-webui/open-webui:main

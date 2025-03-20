@@ -26,6 +26,12 @@ spec:
     name: ps
     template: # Definition of the ps pod
       spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - name: nginx
           # docker image to use as base for each worker

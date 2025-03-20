@@ -29,6 +29,12 @@ spec:
           role: leader
       spec:
         runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - name: container
         {% if gpus > 0 %}

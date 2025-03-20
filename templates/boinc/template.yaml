@@ -29,6 +29,12 @@ spec:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - image: docker.io/bundenth/boinc-cpu:latest
           name: boinc
@@ -90,6 +96,12 @@ spec:
           kalavai.job.name: {{deployment_id}}
       spec:
         runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - image: docker.io/bundenth/boinc-gpu:latest
           name: boinc
@@ -144,6 +156,12 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - image: docker.io/bundenth/boinc-cpu:latest
           name: boinc

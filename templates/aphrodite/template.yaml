@@ -30,6 +30,12 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - name: aphrodite-registrar
           image: docker.io/bundenth/kalavai-utils:latest
@@ -108,6 +114,12 @@ spec:
           kalavai.job.name: {{deployment_id}}
       spec:
         runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - name: aphrodite-leader
           image: docker.io/bundenth/ray-aphrodite:latest
@@ -195,6 +207,12 @@ spec:
           kalavai.job.name: {{deployment_id}}
       spec:
         runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - name: aphrodite-worker
           image: docker.io/bundenth/ray-aphrodite:latest

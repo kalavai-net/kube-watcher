@@ -28,6 +28,12 @@ spec:
           kalavai.job.name: {{deployment_id}}
           role: leader
       spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          - {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
         containers:
         - name: container
           image: {{container_image}}
