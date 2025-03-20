@@ -352,7 +352,9 @@ async def get_job_defaults(request: JobTemplateRequest, api_key: str = Depends(v
 async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
     # populate template with values
     job = Job(template=request.template)
-    deployment = job.populate(values=request.template_values)
+    deployment = job.populate(
+        values=request.template_values,
+        target_labels=request.target_labels)
     
     # deploy job
     if can_force_namespace and request.force_namespace is not None:
@@ -384,7 +386,10 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
     # populate template with values
     job = Job.from_yaml(template_str=request.template)
     yaml_defaults = yaml.safe_load(request.default_values)
-    deployment = job.populate(values=request.template_values, default_values=yaml_defaults)
+    deployment = job.populate(
+        values=request.template_values,
+        default_values=yaml_defaults,
+        target_labels=request.target_labels)
     
     # deploy job
     if can_force_namespace and request.force_namespace is not None:

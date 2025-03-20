@@ -10,6 +10,7 @@ TEMPLATE_ID_FIELD = "id_field"
 TEMPLATE_ID_KEY = "deployment_id"
 TEMPLATE_LABEL = "kalavai.job.name"
 ENDPOINT_PORTS_KEY = "endpoint_ports"
+NODE_SELECTOR = "NODE_SELECTOR"
 
 
 def get_template_path(template: JobTemplate):
@@ -52,7 +53,7 @@ class Job:
             default_values = yaml.safe_load(f)
         return default_values
 
-    def populate(self, values: dict, default_values=None):
+    def populate(self, values: dict, default_values=None, target_labels=None):
         if default_values is None:
             default_values = self.get_defaults()
         
@@ -68,6 +69,12 @@ class Job:
         self.job_name = values[TEMPLATE_ID_KEY]
         self.job_label = {TEMPLATE_LABEL: self.job_name}
         self.ports = values[ENDPOINT_PORTS_KEY].split(",") if ENDPOINT_PORTS_KEY in values else []
+        if target_labels is not None:
+            values[NODE_SELECTOR] = [
+                {"name": key, "value": value} 
+                for key, value in target_labels.items()
+            ]
+
         return Template(self.template_str).render(values)
 
         

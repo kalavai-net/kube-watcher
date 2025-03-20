@@ -123,12 +123,14 @@ class JobTemplateRequest(BaseModel):
     force_namespace: str = None
     template_values: dict = None
     template: str
+    target_labels: dict[str, str] = None
 
 class CustomJobTemplateRequest(BaseModel):
     force_namespace: str = None
     template_values: dict = None
     default_values: str
     template: str
+    target_labels: dict[str, str] = None
 
 class RayClusterRequest(BaseModel):
     force_namespace: str = None
