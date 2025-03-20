@@ -129,7 +129,8 @@ spec:
               --model_path="/home/ray/cache/{{model_id}}" \
               --extra='{{extra}}' \
               --tensor_parallel_size={{tensor_parallel_size}} \
-              --pipeline_parallel_size={{pipeline_parallel_size}}
+              --pipeline_parallel_size={{pipeline_parallel_size}} \
+              --tool_call_parser={{tool_call_parser}}
             exit 1
           env:
           - name: HF_TOKEN

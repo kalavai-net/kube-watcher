@@ -20,6 +20,9 @@ while [ $# -gt 0 ]; do
     --extra=*)
       extra="${1#*=}"
       ;;
+    --tool_call_parser=*)
+      tool_call_parser="${1#*=}"
+      ;;
     *)
       printf "***************************\n"
       printf "* Error: Invalid argument.*\n"
@@ -37,4 +40,6 @@ python -m aphrodite.endpoints.openai.api_server  \
     --port 8080 --host 0.0.0.0 \
     --tensor-parallel-size $tensor_parallel_size \
     --pipeline-parallel-size $pipeline_parallel_size \
+    --enable-auto-tool-choice \
+    --tool-call-parser $tool_call_parser \
     $extra

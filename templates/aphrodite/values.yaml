@@ -72,7 +72,12 @@
   default: "1"
   description: "Pipeline parallelism (use the number of nodes)"
 
+- name: tool_call_parser
+  value: "llama3_json"
+  default: "llama3_json"
+  description: "Tool call parser to use. https://aphrodite.pygmalion.chat/usage/openai/#command-line-arguments-for-the-server"
+
 - name: extra
   value: ""
   default: ""
-  description: "Extra parameters to pass to the vLLM server. See https://aphrodite.pygmalion.chat/"
+  description: "Extra parameters to pass to the vLLM server. See https://aphrodite.pygmalion.chat/usage/openai/#command-line-arguments-for-the-server"

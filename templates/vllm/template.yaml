@@ -130,6 +130,7 @@ spec:
               --extra='{{extra}}' \
               --tensor_parallel_size={{tensor_parallel_size}} \
               --pipeline_parallel_size={{pipeline_parallel_size}} \
+              --tool_call_parser={{tool_call_parser}} \
               --lora_modules="{{lora_modules}}";
             exit 1
           env:

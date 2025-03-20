@@ -1,6 +1,7 @@
 #!/bin/bash
 
 cache_dir="/cache"
+tool_call_parser="llama3_json"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -21,6 +22,9 @@ while [ $# -gt 0 ]; do
       ;;
     --extra=*)
       extra="${1#*=}"
+      ;;
+    --tool_call_parser=*)
+      tool_call_parser="${1#*=}"
       ;;
     *)
       printf "***************************\n"
@@ -73,5 +77,7 @@ python -m vllm.entrypoints.openai.api_server \
   --host 0.0.0.0 --port 8080 \
   --tensor-parallel-size $tensor_parallel_size \
   --pipeline-parallel-size $pipeline_parallel_size \
+  --enable-auto-tool-choice \
+  --tool-call-parser $tool_call_parser \
   $lora \
   $extra

@@ -4,17 +4,22 @@
   description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
 
 - name: model_id
-  value: Qwen/Qwen2.5-0.5B-Instruct
+  value: Groq/Llama-3-Groq-8B-Tool-Use
   default: null
   description: "Huggingface model id to load"
 
+- name: working_memory
+  value: 20
+  default: 5
+  description: "Pool storage to use to cache model weights"
+
 - name: hf_token
-  value: "your token"
+  value: ""
   default: null
   description: "Huggingface token to load the model"
 
 - name: memory
-  value: 10
+  value: 24
   default: 10
   description: "RAM memory per single worker (final one = memory * num_workers)"
 
@@ -22,6 +27,11 @@
   value: 1
   default: 1
   description: "Pipeline parallelism (use the number of nodes)"
+
+- name: tool_call_parser
+  value: "llama3_json"
+  default: "llama3_json"
+  description: "Tool call parser to use. https://docs.vllm.ai/en/latest/features/tool_calling.html#automatic-function-calling"
 
 - name: extra
   value: "--dtype float16"

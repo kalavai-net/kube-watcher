@@ -28,6 +28,11 @@
   default: 1
   description: "Pipeline parallelism (use the number of nodes)"
 
+- name: tool_call_parser
+  value: "hermes"
+  default: "llama3_json"
+  description: "Tool call parser to use. https://docs.vllm.ai/en/latest/features/tool_calling.html#automatic-function-calling"
+
 - name: extra
   value: "--dtype float16"
   default: ""
