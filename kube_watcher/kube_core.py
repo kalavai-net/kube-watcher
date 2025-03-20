@@ -446,7 +446,7 @@ class KubeAPI():
         for pod_name in pods.keys():
             logs[pod_name] = {
                 "logs": self.get_logs_for_pod(pod=pod_name, namespace=namespace),
-                "spec": self.get_specs_for_pod(pod_name=pod_name, namespace=namespace)
+                "pod": force_serialisation(self.get_specs_for_pod(pod_name=pod_name, namespace=namespace))
             }
         
         return logs
@@ -884,9 +884,9 @@ if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
 
     res = api.get_logs_for_labels(
-        namespace="carlosfm",
+        namespace="default",
         label_key="kalavai.job.name",
-        label_value="litellm-1"
+        label_value="alphafold"
     )
 
     # res = api.kube_get_custom_objects(
@@ -894,4 +894,6 @@ if __name__ == "__main__":
     #     api_version="v1alpha1",
     #     plural="jobs"
     # )
-    print(json.dumps(res,indent=3))
+    for pod, info in res.items():
+        print(pod)
+        print(json.dumps(info["pod"]["spec"]["node_name"],indent=3))
