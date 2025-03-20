@@ -34,7 +34,7 @@ spec:
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
-          - {{selector.name}}: {{selector.value}}
+          {{selector.name}}: {{selector.value}}
         {% endfor %}
       {% endif %}
         containers:
@@ -136,7 +136,7 @@ spec:
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
-          - {{selector.name}}: {{selector.value}}
+          {{selector.name}}: {{selector.value}}
         {% endfor %}
       {% endif %}
         containers:
