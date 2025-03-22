@@ -9,6 +9,7 @@ cache: false
 
 litellm_settings:
   num_retries: 3
+  callbacks: ["lago"]
 
 general_settings:
   disable_prisma_schema_update: false

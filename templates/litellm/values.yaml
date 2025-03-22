@@ -77,3 +77,24 @@
   value: "2"
   default: "2"
   description: "RAM memory per single worker (final one = memory * num_workers)"
+
+- name: lago_api_base
+  value: "https://api.lago.com"
+  default: "https://api.lago.com"
+  description: "Lago API base URL for billing"
+
+- name: lago_api_key
+  value: "sk-1234567890"
+  default: "sk-1234567890"
+  description: "Lago API key"
+
+- name: lago_api_event_code
+  value: "cogen_billing"
+  default: "cogen_billing"
+  description: "Name of the lago billing code"
+
+- name: lago_api_charge_by
+  value: "api_key"
+  default: "api_key"
+  description: "Lago API charge by element (team_id)"
+  
