@@ -10,7 +10,7 @@ TEMPLATE_ID_FIELD = "id_field"
 TEMPLATE_ID_KEY = "deployment_id"
 TEMPLATE_LABEL = "kalavai.job.name"
 ENDPOINT_PORTS_KEY = "endpoint_ports"
-NODE_SELECTOR = "NODE_SELECTOR"
+NODE_SELECTOR = "NODE_SELECTORS"
 
 
 def get_template_path(template: JobTemplate):
