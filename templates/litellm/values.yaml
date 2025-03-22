@@ -94,7 +94,7 @@
   description: "Name of the lago billing code"
 
 - name: lago_api_charge_by
-  value: "api_key"
-  default: "api_key"
+  value: "user_id"
+  default: "user_id"
   description: "Lago API charge by element (team_id)"
   
