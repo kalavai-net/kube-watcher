@@ -9,10 +9,13 @@ cache: false
 
 litellm_settings:
   num_retries: 3
-  callbacks: ["lago"]
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+
 
 general_settings:
   disable_prisma_schema_update: false
+  enforce_user_param: true
   # database_connection_pool_limit: {{ .Values.litellm.general_settings.database_connection_pool_limit }}
   # database_connection_timeout: {{ .Values.litellm.general_settings.database_connection_timeout }}
   # allow_requests_on_db_unavailable: {{ .Values.litellm.general_settings.allow_requests_on_db_unavailable }}

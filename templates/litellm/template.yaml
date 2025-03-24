@@ -116,14 +116,12 @@ spec:
             value: "{{ui_username}}"
           - name: UI_PASSWORD
             value: "{{ui_password}}"
-          - name: LAGO_API_BASE
-            value: "{{lago_api_base}}"
-          - name: LAGO_API_KEY
-            value: "{{lago_api_key}}"
-          - name: LAGO_API_EVENT_CODE
-            value: "{{lago_api_event_code}}"
-          - name: LAGO_API_CHARGE_BY
-            value: "{{lago_api_charge_by}}"
+          - name: LANGFUSE_PUBLIC_KEY
+            value: "{{langfuse_public_key}}"
+          - name: LANGFUSE_SECRET_KEY
+            value: "{{langfuse_secret_key}}"
+          - name: LANGFUSE_HOST
+            value: "{{langfuse_host}}"
           resources:
             requests:
               cpu: {{cpus}}
