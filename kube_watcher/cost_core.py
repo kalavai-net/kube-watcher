@@ -20,7 +20,8 @@ class OpenCostAPI():
         self.base_url = base_url
     
     def _form_url(self, endpoint):
-        return urljoin(self.base_url, endpoint)
+        # merge base url with endpoint ensuring there's no double slash
+        return f"{self.base_url.rstrip('/')}/api/v1/{endpoint.lstrip('/')}"
     
     def get_nodes_computation(self, nodes: list=None, **kwargs):
         # https://docs.kubecost.com/apis/apis-overview/allocation
