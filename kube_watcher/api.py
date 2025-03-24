@@ -310,10 +310,18 @@ async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_r
 async def node_cost(request: NodeCostRequest, api_key: str = Depends(verify_read_key)):
     opencost = OpenCostAPI(base_url=OPENCOST_ENDPOINT)
 
+    if request.node_names is None:
+        if request.node_labels is None:
+            raise HTTPException(status_code=400, detail="node_names or node_labels must be provided")
+        
+        request.node_names = kube_api.get_nodes_with_labels(
+            labels=request.node_labels
+        )
+    print(f"Getting cost for nodes: {request.node_names}")
+
     return opencost.get_nodes_computation(
         nodes=request.node_names,
         **request.kubecost_params.model_dump())
-
 
 @app.post("/v1/get_namespaces_cost")
 async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(verify_read_key)):

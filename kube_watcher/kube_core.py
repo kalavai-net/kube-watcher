@@ -89,6 +89,27 @@ class KubeAPI():
             nodes.append(spec.metadata.name)
         return nodes
     
+    def get_nodes_with_labels(self, labels: dict) -> list:
+        """
+        Get list of nodes that contain one or more specified labels.
+        
+        Args:
+            labels (dict): Dictionary of label key-value pairs to match
+            
+        Returns:
+            list: List of node names that match the specified labels
+        """
+        nodes = self.core_api.list_node()
+        matching_nodes = []
+        
+        for node in nodes.items:
+            node_labels = node.metadata.labels
+            # Check if all specified labels match
+            if all(node_labels.get(key) == value for key, value in labels.items()):
+                matching_nodes.append(node.metadata.name)
+                
+        return matching_nodes
+    
     def get_nodes_with_pressure(self, pressures=["DiskPressure", "MemoryPressure", "PIDPressure"]):
         """Get nodes with pressure signals"""
         nodes = self.core_api.list_node()
@@ -883,11 +904,13 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_logs_for_labels(
-        namespace="default",
-        label_key="kalavai.job.name",
-        label_value="alphafold"
+    res = api.get_nodes_with_labels(
+        labels={
+            "kalavai.storage.enabled": "False"
+        }
     )
+    print(json.dumps(res, indent=3))
+    exit()
 
     # res = api.kube_get_custom_objects(
     #     group="batch.volcano.sh",

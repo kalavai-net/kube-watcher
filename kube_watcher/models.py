@@ -51,7 +51,8 @@ class KubecostParameters(BaseModel):
 
 
 class NodeCostRequest(BaseModel):
-    node_names: List[str]
+    node_names: List[str] = None
+    node_labels: dict = None
     kubecost_params: KubecostParameters
 
 class PodsWithStatusRequest(BaseModel):
