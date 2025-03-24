@@ -194,8 +194,35 @@ async def get_nodes(api_key: str = Depends(verify_read_key)):
 
 @app.post("/v1/get_nodes_resources")
 async def get_nodes_resources(request: NodesRequest, api_key: str = Depends(verify_read_key)):
+    if request.node_names is None:
+        if request.node_labels is None:
+            raise HTTPException(status_code=400, detail="node_names or node_labels must be provided")
+        
+        request.node_names = kube_api.get_nodes_with_labels(
+            labels=request.node_labels)
     return kube_api.get_nodes_resources(node_names=request.node_names)
 
+@app.post("/v1/get_node_stats")
+async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_read_key)):
+    client = PrometheusAPI(url=PROMETHEUS_ENDPOINT, disable_ssl=True) # works as long as we are port forwarding from control plane
+
+    if request.node_names is None:
+        if request.node_labels is None:
+            raise HTTPException(status_code=400, detail="node_names or node_labels must be provided")
+        
+        request.node_names = kube_api.get_nodes_with_labels(
+            labels=request.node_labels)
+    
+    result = {
+        name: client.get_node_stats(
+            node_id=name,
+            start_time=request.start_time,
+            end_time=request.end_time,
+            chunk_size=request.chunk_size
+        )
+        for name in request.node_names
+    }
+    return result
 
 @app.post("/v1/delete_nodes")
 async def delete_nodes(request: NodesRequest, api_key: str = Depends(verify_admin_key)):
@@ -292,18 +319,6 @@ async def get_deployments(api_key: str = Depends(verify_read_key), namespaces: s
             namespace=namespace
         )
     return ns_deployments
-
-
-@app.post("/v1/get_node_stats")
-async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_read_key)):
-    client = PrometheusAPI(url=PROMETHEUS_ENDPOINT, disable_ssl=True) # works as long as we are port forwarding from control plane
-    
-    return client.get_node_stats(
-        node_id=request.node_id,
-        start_time=request.start_time,
-        end_time=request.end_time,
-        chunk_size=request.chunk_size
-    )
 
 
 @app.post("/v1/get_nodes_cost")

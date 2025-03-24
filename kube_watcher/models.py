@@ -16,7 +16,8 @@ class JobTemplate(Enum):
     flexible = 99
 
 class NodeStatusRequest(BaseModel):
-    node_id: str = "carlosfm-desktop-2"
+    node_names: List[str] = None
+    node_labels: dict = None
     start_time: str = "1h"
     end_time: str = "now"
     chunk_size: int = 1
@@ -88,6 +89,7 @@ class DeepsparseDeploymentListRequest(BaseModel):
     
 class NodesRequest(BaseModel):
     node_names: List[str] = None
+    node_labels: dict = None
     schedulable: bool = True
 
 class GenericDeploymentRequest(BaseModel):
