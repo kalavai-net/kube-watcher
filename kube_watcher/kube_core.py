@@ -91,7 +91,7 @@ class KubeAPI():
     
     def get_nodes_with_labels(self, labels: dict) -> list:
         """
-        Get list of nodes that contain one or more specified labels.
+        Get list of nodes that contain one or more specified labels (or annotations)
         
         Args:
             labels (dict): Dictionary of label key-value pairs to match
@@ -103,9 +103,16 @@ class KubeAPI():
         matching_nodes = []
         
         for node in nodes.items:
+            # Check labels
             node_labels = node.metadata.labels
-            # Check if all specified labels match
-            if all(node_labels.get(key) == value for key, value in labels.items()):
+            # Check annotations
+            node_annotations = node.metadata.annotations
+            # Check if all specified labels match either in labels or annotations
+            if all(
+                (node_labels and node_labels.get(key) == value) or 
+                (node_annotations and node_annotations.get(key) == value) 
+                for key, value in labels.items()
+            ):
                 matching_nodes.append(node.metadata.name)
                 
         return matching_nodes
@@ -290,6 +297,38 @@ class KubeAPI():
             }
         }
         return self.core_api.patch_node(node_name, body)
+
+    def add_annotation_to_node(self, node_labels: dict, annotation: dict):
+        """
+        Add annotations to nodes that match the specified labels.
+        
+        Args:
+            node_labels (dict): Dictionary of label key-value pairs to match
+            annotation (dict): Dictionary of annotations to add to matching nodes
+            
+        Returns:
+            list: List of node names that were updated
+        """
+        nodes = self.core_api.list_node()
+        updated_nodes = []
+        
+        for node in nodes.items:
+            # Check if all specified labels match
+            if all(node.metadata.labels.get(key) == value for key, value in node_labels.items()):
+                # Create a patch body with the new annotations
+                patch_body = {
+                    "metadata": {
+                        "annotations": annotation
+                    }
+                }
+                try:
+                    # Patch the node with the new annotations
+                    self.core_api.patch_node(node.metadata.name, patch_body)
+                    updated_nodes.append(node.metadata.name)
+                except Exception as e:
+                    print(f"Failed to update node {node.metadata.name}: {str(e)}")
+                    
+        return updated_nodes
 
     def kube_deploy(self, yaml_strs):
         yamls = yaml_strs.split("---")
@@ -906,7 +945,7 @@ if __name__ == "__main__":
 
     res = api.get_nodes_with_labels(
         labels={
-            "kalavai.storage.enabled": "False"
+            "kalavai.cluster.user": "carlosfma"
         }
     )
     print(json.dumps(res, indent=3))

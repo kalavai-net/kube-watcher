@@ -55,6 +55,8 @@ ADMIN_KEY = os.getenv("KW_ADMIN_KEY") # all permissions
 WRITE_KEY = os.getenv("KW_WRITE_KEY") # deploy and read permissions
 READ_ONLY_KEY = os.getenv("KW_READ_ONLY_KEY") # read permissions
 
+KALAVAI_USER_KEY = os.getenv("KALAVAI_USER_KEY", "kalavai.cluster.user")
+KALAVAI_USER_EMAIL = os.getenv("KALAVAI_USER_EMAIL", "kalavai.cluster.email")
 
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
@@ -355,6 +357,13 @@ async def create_user_space(request: GenericDeploymentRequest, can_force_namespa
     kube_api.create_namespace(
         name=namespace,
         labels={"monitor-pods-datasets": "enabled"})
+
+    # add annotation to user node
+    if namespace != "default" and request.user_email is not None:
+        kube_api.add_annotation_to_node(
+            node_labels={KALAVAI_USER_KEY: namespace},
+            annotation={KALAVAI_USER_EMAIL: request.user_email}
+        )
 
     try:
         # deploy for new workspace
