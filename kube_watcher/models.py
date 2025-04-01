@@ -95,7 +95,11 @@ class NodesRequest(BaseModel):
 class GenericDeploymentRequest(BaseModel):
     config: str
     force_namespace: str = None
-    user_email: str = None
+
+class UserWorkspaceRequest(BaseModel):
+    force_namespace: str = None
+    user_id: str = None
+    node_name: str = None
 
 class CustomObjectRequest(BaseModel):
     group: str

@@ -26,7 +26,8 @@ from kube_watcher.models import (
     StorageClaimRequest,
     ServiceRequest,
     StorageRequest,
-    RayClusterRequest
+    RayClusterRequest,
+    UserWorkspaceRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -56,7 +57,6 @@ WRITE_KEY = os.getenv("KW_WRITE_KEY") # deploy and read permissions
 READ_ONLY_KEY = os.getenv("KW_READ_ONLY_KEY") # read permissions
 
 KALAVAI_USER_KEY = os.getenv("KALAVAI_USER_KEY", "kalavai.cluster.user")
-KALAVAI_USER_EMAIL = os.getenv("KALAVAI_USER_EMAIL", "kalavai.cluster.email")
 
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
@@ -106,12 +106,8 @@ async def verify_read_namespaces(request: Request):
     user = request.headers.get("USER", None)
     
     try:
-        response = requests.request(
-            method="post",
-            url=f"{KALAVAI_API_ENDPOINT}/validate_user_namespace/{user}",
-            data={"key": api_key}
-        ).json()
-        validated = response["success"] in ["true", "True"]
+        # TODO: Implement user key validation
+        validated = True
 
         if not validated:
             raise HTTPException(status_code=401, detail="User Key is not authorised")
@@ -129,12 +125,8 @@ async def verify_write_namespace(request: Request):
         return "default"
     
     try:
-        response = requests.request(
-            method="post",
-            url=f"{KALAVAI_API_ENDPOINT}/validate_user_namespace/{user}",
-            data={"key": api_key}
-        ).json()
-        validated = response["success"] in ["true", "True"]
+        # TODO: Implement user key validation
+        validated = True
 
         if not validated:
             raise HTTPException(status_code=401, detail="User Key is not authorised")
@@ -349,7 +341,7 @@ async def namespace_cost(request: NamespacesCostRequest, api_key: str = Depends(
         **request.kubecost_params.model_dump())
 
 @app.post("/v1/create_user_space")
-async def create_user_space(request: GenericDeploymentRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
     # create namespace for user
     if can_force_namespace and request.force_namespace is not None:
         namespace = request.force_namespace
@@ -359,10 +351,10 @@ async def create_user_space(request: GenericDeploymentRequest, can_force_namespa
         labels={"monitor-pods-datasets": "enabled"})
 
     # add annotation to user node
-    if namespace != "default" and request.user_email is not None:
+    if request.user_id is not None and request.node_name is not None:
         kube_api.add_annotation_to_node(
-            node_labels={KALAVAI_USER_KEY: namespace},
-            annotation={KALAVAI_USER_EMAIL: request.user_email}
+            node_labels={"kubernetes.io/hostname": request.node_name},
+            annotation={KALAVAI_USER_KEY: request.user_id}
         )
 
     try:
