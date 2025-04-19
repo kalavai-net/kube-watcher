@@ -1,0 +1,60 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  queue: default
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  tasks:
+  - replicas: 1
+    name: server
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          role: leader
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: leader
+          image: steveltn/https-portal:latest
+          env:
+          - name: DOMAINS
+            value: {{domains}}
+          - name: STAGE
+            value: {{stage}}
+          - name: FORCE_RENEW
+            value: "{{force_renew}}"
+          ports:
+          - containerPort: 80
+            name: port-80
+          - containerPort: 443
+            name: port-443
+          resources:
+            requests:
+              cpu: 1
+              memory: 0.5Gi
+            limits:
+              cpu: 1
+              memory: 0.5Gi
+        restartPolicy: OnFailure

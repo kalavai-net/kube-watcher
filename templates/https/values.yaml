@@ -1,0 +1,33 @@
+############################
+## MUST HAVE THESE FIELDS ##
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  description: "Field that contains the ID of the job"
+
+# must contain the list of ports to enable in the leader node
+- name: endpoint_ports
+  value: "80,443"
+  default: "80,443"
+  description: "[DO NOT CHANGE] Ports opened on master node will be shown as endpoints for the job"
+############################
+
+- name: deployment_name
+  value: "https-portal" 
+  default: "https-portal"
+  description: "Name of the job"
+
+- name: domains
+  value: "api.cogenai.kalavai.net -> http://51.159.150.251:30861"
+  default: "api.cogenai.kalavai.net -> http://51.159.150.251:30861"
+  description: "Domains to map to the job"
+
+- name: stage
+  value: "production"
+  default: "production"
+  description: "Environment stage"
+
+- name: force_renew
+  value: "true"
+  default: "true"
+  description: "Force renew of certificates"

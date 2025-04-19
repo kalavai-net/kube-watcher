@@ -51,13 +51,13 @@ spec:
           - name: ENABLE_OLLAMA_API
             value: "False"
           - name: WEBUI_AUTH
-            value: "True"
+            value: "{{webui_auth}}"
           - name: ENABLE_LOGIN_FORM
             value: "True"
           - name: ENABLE_SIGNUP
             value: "True"
           - name: DEFAULT_USER_ROLE
-            value: "user" #"admin"
+            value: "{{default_user_role}}" #"admin"
           - name: OFFLINE_MODE
             value: "True"
           - name: DATA_DIR
@@ -86,4 +86,3 @@ spec:
           persistentVolumeClaim:
             claimName: {{data_storage}}
         restartPolicy: OnFailure
-  

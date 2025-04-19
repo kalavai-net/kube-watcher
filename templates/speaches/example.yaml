@@ -1,49 +1,34 @@
-apiVersion: batch.volcano.sh/v1alpha1
-kind: Job
-metadata:
-  name: speaches-test
-  labels:
-    # must have this label
-    kalavai.job.name: speaches-test
-spec:
-  schedulerName: volcano
-  plugins:
-    env: []
-    svc: ["--disable-network-policy=true"]
-  policies: 
-  - event: PodEvicted # Restart the job when a pod is evicted.
-    action: RestartJob
-  tasks:
-  - replicas: 1   # One ps pod specified
-    name: worker
-    template: # Definition of the ps pod
-      metadata:
-        labels:
-          kalavai.job.name: speaches-test
-          role: leader
-      spec:
-        containers:
-        - name: container
-          image: docker.io/bundenth/speaches:gpu-latest
-          imagePullPolicy: Always
-          command:
-          - sh
-          - -c
-          - |
-            # run server
-            uvicorn --factory speaches.main:create_app
-          ports:
-          - containerPort: 8000
-            name: container-port
-          env:
-          resources:
-            requests:
-              cpu: 2
-              memory: 4Gi
-              nvidia.com/gpu: 1
-            limits:
-              cpu: 2
-              memory: 4Gi
-              nvidia.com/gpu: 1
-        restartPolicy: OnFailure
+- name: model_id
+  value: "tiny.en"
+  default: "hexgrad/Kokoro-82M"
+  description: "Model ID for for STT and TTS model"
 
+- name: mode
+  value: "audio_transcription"
+  default: "audio_speech"
+  description: "Mode of the model: audio_speech for TTS, audio_transcription for STT"
+
+- name: cpus
+  value: 2
+  default: 2
+  description: "Number of cpus per worker"
+
+- name: memory
+  value: 4
+  default: 4
+  description: "Memory per worker"
+
+- name: gpus
+  value: 0
+  default: 1
+  description: "Number of gpus per worker"
+
+- name: litellm_base_url
+  value: "http://litellm.default.svc.cluster.local:4000"
+  default: "http://litellm.default.svc.cluster.local:4000"
+  description: "Base URL of the LiteLLM service (central registry)"
+
+- name: litellm_key
+  value: "sk-25021984"
+  default: ""
+  description: "Master key of the LiteLLM service (central registry)"

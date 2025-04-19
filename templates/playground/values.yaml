@@ -43,6 +43,16 @@
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
 - name: memory
-  value: "4"
-  default: "4"
+  value: "2"
+  default: "2"
   description: "RAM memory per single worker (final one = memory * num_workers)"
+
+- name: default_user_role
+  value: "user"
+  default: "user"
+  description: "Default user role"
+
+- name: webui_auth
+  value: "True"
+  default: "True"
+  description: "Enable webui authentication

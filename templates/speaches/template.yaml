@@ -11,8 +11,88 @@ spec:
     env: []
     svc: ["--disable-network-policy=true"]
   tasks:
+{% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
-    name: worker
+    name: registrar
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: speaches-leader
+          image: docker.io/bundenth/kalavai-utils:latest
+          env:
+          - name: VC_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          command:
+          - sh
+          - -c
+          - |
+            echo $VC_NAMESPACE;
+            # wait for model to be served
+            echo "Waiting for model service..."
+            PS_HOST=`cat /etc/volcano/server.host`;
+            /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8000
+            # Register model with LiteLLM
+            PS_HOST=`cat /etc/volcano/server.host`;
+            LITELLM_MODEL_NAME="{{deployment_id}}";
+            echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
+            API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8000/v1";
+            /workspace/register_model.sh \
+              --litellm_base_url={{litellm_base_url}} \
+              --litellm_key={{litellm_key}} \
+              --litellm_model_name="$LITELLM_MODEL_NAME" \
+              --model_id={{model_id}} \
+              --provider=openai \
+              --api_base=$API_BASE \
+              --model_info='{"mode": "{{mode}}"}'
+          lifecycle:
+            preStop:
+              exec:
+                command: 
+                - sh
+                - -c
+                - |
+                  LITELLM_MODEL_NAME="{{deployment_id}}";         
+                  MODEL_ID=$(python3 /workspace/get_litellm_id.py \
+                    --litellm_url={{litellm_base_url}} \
+                    --api_key={{litellm_key}} \
+                    --model_name="$LITELLM_MODEL_NAME");
+                  curl -X POST "{{litellm_base_url}}/model/delete" \
+                      -H 'Authorization: Bearer {{litellm_key}}' \
+                      -H "accept: application/json" \
+                      -H "Content-Type: application/json" \
+                      -d '{ "id": "'$MODEL_ID'"}';
+          resources:
+            requests:
+              cpu: 0.1
+              memory: 0.1Gi
+            limits:
+              cpu: 0.1
+              memory: 0.1Gi
+        restartPolicy: OnFailure
+{% endif %}
+  - replicas: 1   # One ps pod specified
+    name: server
     policies:
     - event: PodEvicted
       action: RestartJob
@@ -40,20 +120,30 @@ spec:
         {% if gpus > 0 %}
           image: ghcr.io/speaches-ai/speaches:latest-cuda-12.4.1
         {% else %}
-          image: ghcr.io/speaches-ai/speaches:latest-cpu
+          image: docker.io/bundenth/speaches:cpu-latest
         {% endif %}
           imagePullPolicy: Always
           command:
           - sh
           - -c
           - |
+            ## FOR GPU IMAGES ##
+          {% if gpus > 0 %}
             export KOKORO_REVISION=c97b7bbc3e60f447383c79b2f94fee861ff156ac
             # Download the ONNX model (~346 MBs)
             huggingface-cli download hexgrad/Kokoro-82M --include 'kokoro-v0_19.onnx' --revision $KOKORO_REVISION
             # Download the voices.bin (~5.5 MBs) file
             curl --location --output /home/ubuntu/.cache/huggingface/hub/models--hexgrad--Kokoro-82M/snapshots/$KOKORO_REVISION/voices.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.bin
-            # Download all English voices (~4.5 minutes)
-            huggingface-cli download rhasspy/piper-voices --include 'en/**/*' 'voices.json'
+            # Download all English voices (~4.5 minutes) - too much, rate limited
+            #huggingface-cli download rhasspy/piper-voices --include 'en/**/*' 'voices.json'
+            # Download specific voices
+            huggingface-cli download rhasspy/piper-voices --include 'en/en_US/af/**/*' 'voices.json'
+            huggingface-cli download rhasspy/piper-voices --include 'en/en_US/bm_george/**/*' 'voices.json'
+          {% else %}
+            ## FOR CPU IMAGES ##
+            . /workspace/speaches/.venv/bin/activate
+          {% endif %}
+            ## FOR ALL ##
             # run server
             uvicorn --factory --host 0.0.0.0 --port 8000 speaches.main:create_app
           ports:
