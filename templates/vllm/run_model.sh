@@ -2,6 +2,7 @@
 
 cache_dir="/cache"
 tool_call_parser="llama3_json"
+template_url=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -22,6 +23,9 @@ while [ $# -gt 0 ]; do
       ;;
     --extra=*)
       extra="${1#*=}"
+      ;;
+    --template_url=*)
+      template_url="${1#*=}"
       ;;
     --tool_call_parser=*)
       tool_call_parser="${1#*=}"
@@ -70,6 +74,14 @@ else
   lora="--enable-lora --lora-modules "$(join_by " " "${all_loras[@]}")
 fi
 
+if [ -z "$template_url" ]
+then
+  template_str=""
+else
+  wget $template_url -O /home/ray/workspace/template.jinja
+  template_str="--chat-template /home/ray/workspace/template.jinja"
+fi
+
 HF_HUB_OFFLINE=1
 python -m vllm.entrypoints.openai.api_server \
   --model $model_path \
@@ -80,4 +92,5 @@ python -m vllm.entrypoints.openai.api_server \
   --enable-auto-tool-choice \
   --tool-call-parser $tool_call_parser \
   $lora \
-  $extra
+  $extra \
+  $template_str

@@ -1,10 +1,10 @@
 FROM bundenth/ray:latest AS build-image
 
-RUN sudo apt update && sudo apt install bc
+RUN sudo apt update && sudo apt install bc wget -y
 
 RUN . $HOME/workspace/env/bin/activate && \
     pip3 install "vllm" --no-cache-dir && \
-    pip3 install huggingface-hub --no-cache-dir
+    pip3 install huggingface-hub bitsandbytes llmcompressor --no-cache-dir
 
 WORKDIR $HOME/workspace
 

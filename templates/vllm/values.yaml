@@ -42,6 +42,11 @@
   default: null
   description: "Huggingface model id to load"
 
+- name: mode
+  value: "completion"
+  default: "completion"
+  description: "Mode of the model (useful for health checks): one of [completion, rerank, realtime]. See more: https://docs.litellm.ai/docs/proxy/health"
+
 - name: lora_modules
   value: ""
   default: ""
@@ -81,6 +86,11 @@
   value: "llama3_json"
   default: "llama3_json"
   description: "Tool call parser to use. https://docs.vllm.ai/en/latest/features/tool_calling.html#automatic-function-calling"
+
+- name: template_url
+  value: ""
+  default: ""
+  description: "URL of a publicly available template jinja file to use for chat completions (https://docs.vllm.ai/en/v0.8.1/serving/openai_compatible_server.html#chat-template). Some here: https://github.com/vllm-project/vllm/tree/main/examples"
 
 - name: extra
   value: "--dtype float16 --enforce-eager"
