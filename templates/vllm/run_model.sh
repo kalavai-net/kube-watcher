@@ -83,6 +83,7 @@ else
 fi
 
 HF_HUB_OFFLINE=1
+echo "---->"$extra
 python -m vllm.entrypoints.openai.api_server \
   --model $model_path \
   --served-model-name $model_id \

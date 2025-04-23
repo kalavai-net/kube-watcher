@@ -65,7 +65,7 @@ spec:
               --model_id={{model_id}} \
               --provider=hosted_vllm \
               --api_base=$API_BASE \
-              --model_info='{"mode": "{{mode}}", "extra": "{{extra}}", "cpus": "{{cpus}}", "gpus": "{{gpus}}", "memory": "{{memory}}", "tensor_parallel_size": "{{tensor_parallel_size}}", "pipeline_parallel_size": "{{pipeline_parallel_size}}"}'
+              --model_info='{"mode": "{{mode}}", "cpus": "{{cpus}}", "gpus": "{{gpus}}", "memory": "{{memory}}", "tensor_parallel_size": "{{tensor_parallel_size}}", "pipeline_parallel_size": "{{pipeline_parallel_size}}"}'
           lifecycle:
             preStop:
               exec:

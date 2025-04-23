@@ -1,6 +1,6 @@
 [tool.poetry]
 name        = "kube_watcher"
-version     = "2025.04.01"
+version     = "2025.04.2"
 description = "API to interact with kubernetes cluster"
 authors     = ["Carlos Fernandez Musoles <carlos@kalavai.net>"]
 
