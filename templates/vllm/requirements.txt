@@ -1,0 +1,4 @@
+huggingface-hub
+bitsandbytes
+llmcompressor
+vllm==0.8.5
