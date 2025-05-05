@@ -1,0 +1,263 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  queue: default
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  tasks:
+{% if litellm_key != "" %}
+  - replicas: 1   # One ps pod specified
+    name: registrar
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: vllm-leader
+          image: docker.io/bundenth/kalavai-utils:latest
+          env:
+          - name: VC_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          command:
+          - sh
+          - -c
+          - |
+            echo $VC_NAMESPACE;
+            # wait for model to be served
+            echo "Waiting for model service..."
+            PS_HOST=`cat /etc/volcano/server.host`;
+            /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8080
+            # Register model with LiteLLM
+            PS_HOST=`cat /etc/volcano/server.host`;
+            LITELLM_MODEL_NAME="{{deployment_id}}";
+            echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
+            API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8080/v1";
+            /workspace/register_model.sh \
+              --litellm_base_url={{litellm_base_url}} \
+              --litellm_key={{litellm_key}} \
+              --litellm_model_name="$LITELLM_MODEL_NAME" \
+              --model_id={{model_id}} \
+              --provider=hosted_vllm \
+              --api_base=$API_BASE \
+              --model_info='{"mode": "{{mode}}", "cpus": "{{cpus}}", "gpus": "{{gpus}}", "memory": "{{memory}}", "tensor_parallel_size": "{{tensor_parallel_size}}", "pipeline_parallel_size": "{{pipeline_parallel_size}}"}'
+          lifecycle:
+            preStop:
+              exec:
+                command: 
+                - sh
+                - -c
+                - |
+                  LITELLM_MODEL_NAME="{{deployment_id}}";         
+                  MODEL_ID=$(python3 /workspace/get_litellm_id.py \
+                    --litellm_url={{litellm_base_url}} \
+                    --api_key={{litellm_key}} \
+                    --model_name="$LITELLM_MODEL_NAME");
+                  curl -X POST "{{litellm_base_url}}/model/delete" \
+                      -H 'Authorization: Bearer {{litellm_key}}' \
+                      -H "accept: application/json" \
+                      -H "Content-Type: application/json" \
+                      -d '{ "id": "'$MODEL_ID'"}';
+          resources:
+            requests:
+              cpu: 0.1
+              memory: 0.1Gi
+            limits:
+              cpu: 0.1
+              memory: 0.1Gi
+        restartPolicy: OnFailure
+{% endif %}
+  - replicas: 1   # One ps pod specified
+    name: server
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of the ps pod
+      metadata:
+        annotations:
+          # must have these annotations
+          {{nouse_gputype}}
+          {{use_gputype}}
+        labels:
+          role: leader
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: sglang-leader
+          image: docker.io/bundenth/sglang:latest
+          command:
+          - sh
+          - -c
+          - |
+            PS_HOST=`cat /etc/volcano/server.host`;
+            # Download model weights
+            /home/ray/workspace/download_model.sh \
+              --model_id={{model_id}} \
+              --remote_dir="/home/ray/cache";
+            nvidia-smi;
+            # Run model
+            /home/ray/workspace/run_model.sh \
+              --model_path="/home/ray/cache/{{model_id}}" \
+              --model_id={{model_id}} \
+              --server_ip=$PS_HOST:5000 \
+              --extra='{{extra}}' \
+              --template_url='{{template_url}}' \
+              --tensor_parallel_size={{tensor_parallel_size}} \
+              --pipeline_parallel_size={{pipeline_parallel_size}} \
+              --tool_call_parser={{tool_call_parser}} \
+              --node_rank=0 \
+              --num_nodes={{workers}};
+            exit 1
+          env:
+          - name: HF_TOKEN
+            value: {{hf_token}}
+          ports:
+          - containerPort: 8080
+            name: model-port
+          # this blocks internal traffic, which causes issues when tasks wait for each other
+          # readinessProbe:
+          #   httpGet:
+          #     path: /health
+          #     port: 8080
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              nvidia.com/gpu: {{gpus}}
+              ephemeral-storage: {{working_memory}}Gi
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              nvidia.com/gpu: {{gpus}}
+              ephemeral-storage: {{working_memory}}Gi
+          volumeMounts:
+            - name: cache
+              mountPath: /home/ray/cache
+        volumes:
+        - name: cache
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{memory * 0.5}}Gi
+        restartPolicy: OnFailure
+  - replicas: {{workers - 1}}
+    name: worker
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of worker pods
+      metadata:
+        annotations:
+          # must have these annotations
+          {{nouse_gputype}}
+          {{use_gputype}}
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: sglang-worker
+          image: docker.io/bundenth/sglang:latest
+          command:
+          - sh
+          - -c
+          - |
+            PS_HOST=`cat /etc/volcano/server.host`;
+            # Download model weights
+            /home/ray/workspace/download_model.sh \
+              --model_id={{model_id}} \
+              --remote_dir="/home/ray/cache";
+            nvidia-smi;
+            # Run model
+            RANK=$(($VC_TASK_INDEX + 1));
+            echo "Node rank: "$RANK;
+            /home/ray/workspace/run_model.sh \
+              --model_path="/home/ray/cache/{{model_id}}" \
+              --model_id={{model_id}} \
+              --server_ip=$PS_HOST:5000 \
+              --extra='{{extra}}' \
+              --template_url='{{template_url}}' \
+              --tensor_parallel_size={{tensor_parallel_size}} \
+              --pipeline_parallel_size={{pipeline_parallel_size}} \
+              --tool_call_parser={{tool_call_parser}} \
+              --node_rank=$RANK \
+              --num_nodes={{workers}};
+            exit 1
+          env:
+          - name: HF_TOKEN
+            value: {{hf_token}}
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              nvidia.com/gpu: {{gpus}}
+              ephemeral-storage: {{working_memory}}Gi
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              nvidia.com/gpu: {{gpus}}
+              ephemeral-storage: {{working_memory}}Gi
+          volumeMounts:
+            - name: cache
+              mountPath: /home/ray/cache
+        volumes:
+        - name: cache
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{memory * 0.5}}Gi
+        restartPolicy: OnFailure
