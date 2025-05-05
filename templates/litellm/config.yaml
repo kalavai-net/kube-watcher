@@ -9,6 +9,7 @@ cache: false
 
 litellm_settings:
   num_retries: 3
+  request_timeout: 9000
   success_callback: ["langfuse"]
   failure_callback: ["langfuse"]
 
@@ -47,7 +48,8 @@ general_settings:
 #     password: os.environ/REDIS_PASSWORD
 
 # # if using redis
-# router_settings:
+router_settings:
+  timeout: 9000
 #   routing_strategy: usage-based-routing-v2 
 #   # redis_url: "os.environ/REDIS_URL"
 #   redis_host: os.environ/REDIS_HOST
