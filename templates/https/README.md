@@ -2,7 +2,6 @@
 
 Original library: https://github.com/SteveLTN/https-portal
 
-
 Example:
 
 ```yaml
@@ -16,6 +15,10 @@ services:
     environment:
       DOMAINS: 'api.cogenai.kalavai.net -> http://51.159.150.251:30861'
       STAGE: 'production' # Don't use production until staging works
+      KEEPALIVE_TIMEOUT: 3600
+      PROXY_CONNECT_TIMEOUT: 3600
+      PROXY_SEND_TIMEOUT: 3600
+      PROXY_READ_TIMEOUT: 3600
       # FORCE_RENEW: 'true'
     volumes: 
       - https-portal-data:/var/lib/https-portal

@@ -45,6 +45,14 @@ spec:
             value: {{stage}}
           - name: FORCE_RENEW
             value: "{{force_renew}}"
+          - name: KEEPALIVE_TIMEOUT
+            value: 3600
+          - name: PROXY_CONNECT_TIMEOUT
+            value: 3600
+          - name: PROXY_SEND_TIMEOUT
+            value: 3600
+          - name: PROXY_READ_TIMEOUT
+            value: 3600
           ports:
           - containerPort: 80
             name: port-80
