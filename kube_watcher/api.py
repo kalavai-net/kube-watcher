@@ -27,7 +27,8 @@ from kube_watcher.models import (
     ServiceRequest,
     StorageRequest,
     RayClusterRequest,
-    UserWorkspaceRequest
+    UserWorkspaceRequest,
+    NodeLabelsRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -230,6 +231,21 @@ async def set_nodes_schedulable(request: NodesRequest, api_key: str = Depends(ve
     for node in request.node_names:
         kube_api.set_node_schedulable(node_name=node, state=request.schedulable)
     return None
+
+@app.post("/v1/add_labels_to_node")
+async def add_labels_to_node(request: NodeLabelsRequest, api_key: str = Depends(verify_admin_key)):
+    """
+    Add labels to a specific node by its name.
+    """
+    success = kube_api.add_labels_to_node(
+        node_name=request.node_name,
+        new_labels=request.labels
+    )
+    
+    if not success:
+        raise HTTPException(status_code=500, detail=f"Failed to add labels to node {request.node_name}")
+    
+    return {"status": "success", "message": f"Labels added to node {request.node_name}"}
 
 @app.post("/v1/get_storage_usage")
 async def get_storage_usage(request: StorageRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):

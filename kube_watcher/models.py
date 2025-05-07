@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Union
 from pydantic import BaseModel
 from enum import Enum
 
@@ -146,4 +146,15 @@ class RayClusterRequest(BaseModel):
     force_namespace: str = None
     name: str
     manifest: str
+
+class NodeLabelsRequest(BaseModel):
+    """
+    Request model for adding labels to a node.
+    
+    Attributes:
+        node_name (str): Name of the node to update
+        labels (Dict[str, str]): Dictionary of labels to add to the node
+    """
+    node_name: str
+    labels: Dict[str, str]
      

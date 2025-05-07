@@ -45,8 +45,6 @@ If you are doing a local deployment (on your local machine), you can specify bot
 IN_CLUSTER=False KW_USE_AUTH=False PROMETHEUS_ENDPOINT=http://10.43.164.196:9090 OPENCOST_ENDPOINT=http://10.43.53.194:9003 uvicorn kube_watcher.api:app
 ```
 
-IN_CLUSTER=False PROMETHEUS_ENDPOINT=http://10.43.100.250:9090 OPENCOST_ENDPOINT=http://10.43.53.194:9003 uvicorn kube_watcher.server:app
-
 Note that you must set `IN_CLUSTER` to False since you are not running inside a pod. This will make `kube-watcher` load the cluster configuration from your `~/.kube/config` file.
 
 If you want to deploy to kubernetes, you'll have to set the environmental variables within the YAML deployment, then run:
@@ -77,3 +75,15 @@ opencost          opencost                                                Cluste
 In this case, the we would choose the following:
 - `PROMETHEUS_ENDPOINT`: 10.43.100.250:9090
 - `OPENCOST_ENDPOINT`: 10.43.140.3
+
+
+curl -X POST "http://localhost:8000/v1/add_labels_to_node" \
+     -H "X-API-KEY: your-admin-key" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "node_name": "pop-os",
+           "labels": {
+             "environment": "production",
+             "monitoring": "enabled"
+           }
+         }'

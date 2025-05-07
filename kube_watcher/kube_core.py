@@ -330,6 +330,31 @@ class KubeAPI():
                     
         return updated_nodes
 
+    def add_labels_to_node(self, node_name: str, new_labels: dict):
+        """
+        Add labels to a specific node by its name.
+        
+        Args:
+            node_name (str): Name of the node to update
+            new_labels (dict): Dictionary of labels to add to the node
+            
+        Returns:
+            bool: True if the node was successfully updated, False otherwise
+        """
+        try:
+            # Create a patch body with the new labels
+            patch_body = {
+                "metadata": {
+                    "labels": new_labels
+                }
+            }
+            # Patch the node with the new labels
+            self.core_api.patch_node(node_name, patch_body)
+            return True
+        except Exception as e:
+            print(f"Failed to update node {node_name}: {str(e)}")
+            return False
+
     def kube_deploy(self, yaml_strs):
         yamls = yaml_strs.split("---")
         result = True
