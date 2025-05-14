@@ -19,6 +19,7 @@ services:
       PROXY_CONNECT_TIMEOUT: 3600
       PROXY_SEND_TIMEOUT: 3600
       PROXY_READ_TIMEOUT: 3600
+      CLIENT_MAX_BODY_SIZE: 100M
       # FORCE_RENEW: 'true'
     volumes: 
       - https-portal-data:/var/lib/https-portal
