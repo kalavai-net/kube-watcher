@@ -12,6 +12,12 @@ litellm_settings:
   request_timeout: 9000
   success_callback: ["langfuse"]
   failure_callback: ["langfuse"]
+  # redacts messages and response content
+  turn_off_message_logging: True 
+
+callback_settings:
+  otel:
+    message_logging: False
 
 
 general_settings:
