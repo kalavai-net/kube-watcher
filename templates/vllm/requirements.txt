@@ -4,5 +4,4 @@ llmcompressor
 num2words
 gptmodel
 autoawq
-decord
 vllm==0.8.5
