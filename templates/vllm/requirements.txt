@@ -4,4 +4,5 @@ llmcompressor
 num2words
 gptmodel
 autoawq
-vllm==0.8.5
+vllm
+lmcache

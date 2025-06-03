@@ -92,6 +92,36 @@
   default: ""
   description: "URL of a publicly available template jinja file to use for chat completions (https://docs.vllm.ai/en/v0.8.1/serving/openai_compatible_server.html#chat-template). Some here: https://github.com/vllm-project/vllm/tree/main/examples"
 
+- name: lmcache_max_local_cpu_size
+  value: 5.0
+  default: 5.0
+  description: "LMCache: Maximum CPU cache size in GB. See https://docs.lmcache.ai/api_reference/configurations.html"
+
+- name: lmcache_chunk_size
+  value: 256
+  default: 256
+  description: "LMCache: chunk size. See https://docs.lmcache.ai/api_reference/configurations.html"
+
+- name: lmcache_local_cpu
+  value: "True"
+  default: "True"
+  description: "LMCache: whether or not to use CPU offloading. See https://docs.lmcache.ai/api_reference/configurations.html"
+
+- name: lmcache_max_local_disk_size
+  value: 0
+  default: 0
+  description: "LMCache: Maximum disk cache size in GB. See https://docs.lmcache.ai/api_reference/configurations.html"
+
+- name: lmcache_local_disk
+  value: null
+  default: null
+  description: "LMCache: Path to local disk cache. Format: “file:///path/to/cache” or null. See https://docs.lmcache.ai/api_reference/configurations.html"
+
+- name: lmcache_remote_url
+  value: null
+  default: null
+  description: "LMCache: Remote storage URL. Format: “protocol://host:port” or null. See https://docs.lmcache.ai/api_reference/configurations.html"
+
 - name: extra
   value: "--dtype float16 --enforce-eager"
   default: --dtype float16 --enforce-eager
