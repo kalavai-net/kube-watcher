@@ -9,9 +9,9 @@ COPY requirements.txt .
 
 # install dependencies
 RUN . $HOME/workspace/env/bin/activate && \
-    pip3 install -r requirements.txt --no-cache-dir && \
-    pip3 install lmcache --prefer-binary --no-cache-dir
-
+    pip3 install lmcache --prefer-binary --no-cache-dir && \
+    pip3 install -r requirements.txt --no-cache-dir
+    
 # install torchdec https://github.com/QwenLM/Qwen2.5-VL?tab=readme-ov-file#installing-cuda-enabled-torchcodec 
 # RUN . $HOME/workspace/env/bin/activate && \
 #     pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --no-cache-dir && \
