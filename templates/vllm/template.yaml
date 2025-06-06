@@ -150,17 +150,17 @@ spec:
           - name: HF_TOKEN
             value: {{hf_token}}
           - name: LMCACHE_CHUNK_SIZE
-            value: {{lmcache_chunk_size}}
+            value: "{{lmcache_chunk_size}}"
           - name: LMCACHE_LOCAL_CPU
             value: "{{lmcache_local_cpu}}"
           - name: LMCACHE_MAX_LOCAL_CPU_SIZE
-            value: {{lmcache_max_local_cpu}}
-          - name: LMCACHE_LOCAL_DISK
-            value: {{lmcache_local_disk}}
+            value: "{{lmcache_max_local_cpu_size}}"
           - name: LMCACHE_MAX_LOCAL_DISK_SIZE
-            value: {{lmcache_max_local_disk_size}}
+            value: "{{lmcache_max_local_disk_size}}"
           - name: LMCACHE_REMOTE_URL
             value: {{lmcache_remote_url}}
+          - name: LMCACHE_LOCAL_DISK
+            value: {{lmcache_local_disk}}
           ports:
           - containerPort: 8080
             name: model-port
@@ -241,6 +241,18 @@ spec:
           env:
           - name: HF_TOKEN
             value: {{hf_token}}
+          - name: LMCACHE_CHUNK_SIZE
+            value: "{{lmcache_chunk_size}}"
+          - name: LMCACHE_LOCAL_CPU
+            value: "{{lmcache_local_cpu}}"
+          - name: LMCACHE_MAX_LOCAL_CPU_SIZE
+            value: "{{lmcache_max_local_cpu_size}}"
+          - name: LMCACHE_MAX_LOCAL_DISK_SIZE
+            value: "{{lmcache_max_local_disk_size}}"
+          - name: LMCACHE_REMOTE_URL
+            value: {{lmcache_remote_url}}
+          - name: LMCACHE_LOCAL_DISK
+            value: {{lmcache_local_disk}}
           resources:
             requests:
               cpu: {{cpus}}
