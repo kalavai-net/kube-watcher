@@ -118,7 +118,7 @@ spec:
         containers:
         - name: container
         {% if gpus > 0 %}
-          image: ghcr.io/speaches-ai/speaches:latest-cuda-12.4.1
+          image: ghcr.io/speaches-ai/speaches:0.7-cuda-12.4.1
         {% else %}
           image: docker.io/bundenth/speaches:cpu-latest
         {% endif %}
