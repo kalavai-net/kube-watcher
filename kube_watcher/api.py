@@ -145,13 +145,13 @@ async def verify_force_namespace(request: Request):
 
 
 @app.get("/v1/get_cluster_total_resources")
-async def total_resources(api_key: str = Depends(verify_read_key)):
-    cluster_capacity = kube_api.get_total_allocatable_resources()
+async def total_resources(request: NodesRequest, api_key: str = Depends(verify_read_key)):
+    cluster_capacity = kube_api.get_total_allocatable_resources(node_names=request.node_names)
     return cluster_capacity
 
 @app.get("/v1/get_cluster_available_resources")
-async def available_resources(api_key: str = Depends(verify_read_key)):
-    cluster_capacity = kube_api.get_available_resources()
+async def available_resources(request: NodesRequest, api_key: str = Depends(verify_read_key)):
+    cluster_capacity = kube_api.get_available_resources(node_names=request.node_names)
     return cluster_capacity
 
 @app.get("/v1/get_cluster_labels")
@@ -395,6 +395,8 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
     deployment = job.populate(
         values=request.template_values,
         target_labels=request.target_labels)
+    
+    print("-> Deployment parsed: ", deployment)
     
     # deploy job
     if can_force_namespace and request.force_namespace is not None:

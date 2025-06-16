@@ -42,7 +42,7 @@ There are two endpoints that the API service uses and need to be configured as e
 If you are doing a local deployment (on your local machine), you can specify both as environmental variables and run the local server with uvicorn:
 
 ```bash
-IN_CLUSTER=False KW_USE_AUTH=False PROMETHEUS_ENDPOINT=http://10.43.164.196:9090 OPENCOST_ENDPOINT=http://10.43.53.194:9003 uvicorn kube_watcher.api:app
+IN_CLUSTER=False KW_USE_AUTH=False uvicorn kube_watcher.api:app
 ```
 
 Note that you must set `IN_CLUSTER` to False since you are not running inside a pod. This will make `kube-watcher` load the cluster configuration from your `~/.kube/config` file.

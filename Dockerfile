@@ -1,6 +1,8 @@
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
+RUN apt update && apt install gcc g++ -y
+
 # Set the working directory in the container
 WORKDIR /usr/src/app
 

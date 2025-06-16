@@ -158,10 +158,12 @@ class KubeAPI():
             }
         return unschedulable
     
-    def get_total_allocatable_resources(self):
+    def get_total_allocatable_resources(self, node_names=None):
         """Get total allocatable resources (available and used) in the cluster"""
         
-        total_resources = self._extract_resources(fn=lambda node: node.status.allocatable)
+        total_resources = self._extract_resources(
+            fn=lambda node: node.status.allocatable,
+            node_names=node_names)
         return total_resources["total"]
     
     def get_available_resources(self, node_names=None):
@@ -624,7 +626,10 @@ class KubeAPI():
                 status = pod["status"]["phase"]
             pod_statuses[pod["metadata"]["name"]] = {
                 "status": status,
-                "conditions": force_serialisation(pod["status"]["container_statuses"])}
+                "conditions": force_serialisation(pod["status"]["container_statuses"]),
+                "node_name": pod["spec"]["node_name"]
+            }
+
         return pod_statuses
     
     def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
@@ -968,19 +973,9 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_nodes_with_labels(
-        labels={
-            "kalavai.cluster.user": "carlosfma"
-        }
+    res = api.get_pods_status_for_label(
+        label_key="app",
+        label_value="kube-watcher-api",
+        namespace="kalavai"
     )
-    print(json.dumps(res, indent=3))
-    exit()
-
-    # res = api.kube_get_custom_objects(
-    #     group="batch.volcano.sh",
-    #     api_version="v1alpha1",
-    #     plural="jobs"
-    # )
-    for pod, info in res.items():
-        print(pod)
-        print(json.dumps(info["pod"]["spec"]["node_name"],indent=3))
+    print(json.dumps(res, indent=2))
