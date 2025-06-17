@@ -78,11 +78,4 @@ spec:
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-          volumeMounts:
-          - mountPath: /data
-            name: data
-        volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: {{data_storage}}
         restartPolicy: OnFailure

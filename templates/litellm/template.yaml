@@ -12,6 +12,7 @@ spec:
     env: []
     svc: ["--disable-network-policy=true"]
   tasks:
+  {% if external_postgreSQL_url == "" %}
   - replicas: 1   # One ps pod specified
     name: db
     policies:
@@ -56,13 +57,7 @@ spec:
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-          volumeMounts:
-            - mountPath: /var/lib/postgresql/data
-              name: postgresdata
-        volumes:
-        - name: postgresdata
-          persistentVolumeClaim:
-            claimName: {{db_storage}}
+  {% endif %}
   - replicas: {{replicas}}   # One ps pod specified
     name: server
     policies:
@@ -94,7 +89,11 @@ spec:
           - -c
           - |
             DB_HOST=`cat /etc/volcano/db.host`;
+          {% if external_postgreSQL_url == "" %}
             export DATABASE_URL=postgres://{{postgres_user}}:{{postgres_password}}@$DB_HOST:5432/{{postgres_db}}
+          {% else %}
+            export DATABASE_URL={{external_postgreSQL_url}}
+          {% endif %}
             litellm --port 4000 --config /workspace/config.yaml
           ports:
           - containerPort: 4000

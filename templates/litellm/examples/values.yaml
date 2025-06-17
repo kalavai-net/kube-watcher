@@ -33,11 +33,6 @@
   default: "mypassword"
   description: ""
 
-- name: db_storage
-  value: "litellm-db"
-  default: "litellm-db"
-  description: "Storage name for the postgres database (backend)"
-
 - name: postgres_db
   value: "ps_db"
   default: "ps_db"

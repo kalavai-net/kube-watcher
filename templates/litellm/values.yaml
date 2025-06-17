@@ -48,25 +48,25 @@
   default: "mypassword"
   description: ""
 
-- name: db_storage
-  value: "litellm-db"
-  default: "litellm-db"
-  description: "Storage name for the postgres database (backend)"
+- name: external_postgreSQL_url
+  value: ""
+  default: ""
+  description: "Connect to external DB instead of deploying a local DB (of the form 'postgres://<postgres_user>:<postgres_password>@<db_url>/<db_name>)'"
 
 - name: postgres_db
   value: "ps_db"
   default: "ps_db"
-  description: "Storage name for the postgres database (backend)"
+  description: "Storage name for the postgres database (backend). Ignored if external_postgreSQL_url is set."
 
 - name: postgres_user
   value: "ps_user"
   default: "ps_user"
-  description: "Storage name for the postgres database (backend)"
+  description: "Storage name for the postgres database (backend). Ignored if external_postgreSQL_url is set."
 
 - name: postgres_password
   value: "ps_password"
   default: "ps_password"
-  description: "Storage name for the postgres database (backend)"
+  description: "Storage name for the postgres database (backend). Ignored if external_postgreSQL_url is set."
 
 - name: cpus
   value: "2"
