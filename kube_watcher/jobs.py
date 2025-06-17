@@ -57,7 +57,8 @@ class Job:
             with open(get_defaults_path(template=self.template), 'r') as f:
                 default_values = yaml.safe_load(f)
             return default_values
-        except:
+        except Exception as e:
+            print("Error when getting defaults:", str(e))
             return None
     
     def get_metadata(self):
@@ -65,7 +66,8 @@ class Job:
             with open(get_metadata_path(template=self.template), 'r') as f:
                 meta = json.load(f)
             return meta
-        except:
+        except Exception as e:
+            print("Error when getting metadata:", str(e))
             return None
 
     def populate(self, values: dict, default_values=None, target_labels=None):
@@ -94,12 +96,6 @@ class Job:
 
         
 if __name__ == "__main__":
-    job = Job(template="litellm")
-    with open("litellm.yaml", "r") as f:
-        raw_values = yaml.load(f, Loader=yaml.SafeLoader)
-        values = {variable["name"]: variable['value'] for variable in raw_values}
-    print(values)
-    template = job.populate(values=values)
-    print(job.job_name, job.ports, job.job_label)
-    print([e.name for e in JobTemplate])
-    print(template)
+    job = Job(template="playground")
+    print(job.get_defaults())
+    

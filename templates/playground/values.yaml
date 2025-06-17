@@ -55,4 +55,4 @@
 - name: webui_auth
   value: "True"
   default: "True"
-  description: "Enable webui authentication
+  description: "Enable webui authentication"
