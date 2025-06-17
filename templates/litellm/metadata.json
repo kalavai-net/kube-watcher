@@ -1,0 +1,6 @@
+{
+    "name": "LiteLLM",
+    "description": "Python SDK, Proxy Server (LLM Gateway) to call 100+ LLM APIs in OpenAI format",
+    "docs": "https://docs.litellm.ai/",
+    "icon": "https://opensource.muenchen.de/logo/litellm.png"
+}

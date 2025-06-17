@@ -386,7 +386,11 @@ async def get_job_templates(api_key: str = Depends(verify_read_key)):
 
 @app.get("/v1/job_defaults")
 async def get_job_defaults(request: JobTemplateRequest, api_key: str = Depends(verify_read_key)):
-    return Job(template=request.template).get_defaults()
+    job = Job(template=request.template)
+    return {
+        "defaults": job.get_defaults(),
+        "metadata": job.get_metadata()
+    }
 
 @app.post("/v1/deploy_job")
 async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):

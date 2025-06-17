@@ -1,4 +1,5 @@
 import yaml
+import json
 import re
 from os.path import commonprefix
 
@@ -18,6 +19,9 @@ def get_template_path(template: JobTemplate):
 
 def get_defaults_path(template: JobTemplate):
     return f"templates/{template.name}/values.yaml"
+
+def get_metadata_path(template: JobTemplate):
+    return f"templates/{template.name}/metadata.json"
 
 def escape_field(text):
     return re.sub('[^0-9a-z]+', '-', text.lower())
@@ -49,9 +53,20 @@ class Job:
             return f.read()
         
     def get_defaults(self):
-        with open(get_defaults_path(template=self.template), 'r') as f:
-            default_values = yaml.safe_load(f)
-        return default_values
+        try:
+            with open(get_defaults_path(template=self.template), 'r') as f:
+                default_values = yaml.safe_load(f)
+            return default_values
+        except:
+            return None
+    
+    def get_metadata(self):
+        try:
+            with open(get_metadata_path(template=self.template), 'r') as f:
+                meta = json.load(f)
+            return meta
+        except:
+            return None
 
     def populate(self, values: dict, default_values=None, target_labels=None):
         if default_values is None:

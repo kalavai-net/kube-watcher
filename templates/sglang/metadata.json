@@ -1,0 +1,6 @@
+{
+    "name": "SGLang",
+    "description": "SGLang is a fast serving framework for large language models and vision language models.",
+    "docs": "https://docs.sglang.ai/",
+    "icon": "https://docs.sglang.ai/_static/logo.png"
+}

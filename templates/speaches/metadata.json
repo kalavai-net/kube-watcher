@@ -1,0 +1,6 @@
+{
+    "name": "speaches",
+    "description": "speaches is an OpenAI API-compatible server supporting streaming transcription, translation, and speech generation",
+    "docs": "https://speaches.ai/",
+    "icon": ""
+}
