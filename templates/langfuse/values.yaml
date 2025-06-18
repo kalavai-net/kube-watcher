@@ -67,8 +67,8 @@
   description: "Salt used by the worker"
 
 - name: worker_encryption_key
-  value: "0000000000000000000000000000000000000000000000000000000000000000"
-  default: "0000000000000000000000000000000000000000000000000000000000000000"
+  value: "39a67fe1c642b796e93eeff171d11204b49ca2505ecc808c475c1b5f1e0bfd92"
+  default: "39a67fe1c642b796e93eeff171d11204b49ca2505ecc808c475c1b5f1e0bfd92"
   description: "Encryption key used by the worker. # Generate via `openssl rand -hex 32`"
 ########
 
