@@ -436,6 +436,7 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
         values=request.template_values,
         default_values=yaml_defaults,
         target_labels=request.target_labels)
+    print("--->", deployment)
     
     # deploy job
     if can_force_namespace and request.force_namespace is not None:
@@ -447,6 +448,7 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
         body=deployment,
         namespace=namespace
     )
+    print("--->", response)
     # deploy service
     if job.ports is not None and len(job.ports) > 0:
         request = ServiceRequest(

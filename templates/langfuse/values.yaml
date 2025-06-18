@@ -1,0 +1,105 @@
+############################
+### MUST HAVE THIS FIELDS ##
+# Either id_field pointing to another existing field
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  description: "Field that contains the ID of the job"
+
+# must contain the list of ports to enable in the leader node
+- name: endpoint_ports
+  value: "3000"
+  default: "3000"
+  description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
+############################
+
+- name: deployment_name
+  value: langfuse
+  default: langfuse
+  description: "Name of the deployment job"
+
+## WEB ##
+- name: nextauth_secret
+  value: mysecret
+  default: mysecret
+  description: "NextAuth secret"
+
+- name: langfuse_init_org_name
+  value: "kalavai"
+  default: "kalavai"
+  description: "Name of the default organisation"
+
+- name: langfuse_init_project_name
+  value: "llms"
+  default: "llms"
+  description: "Name of the default project"
+
+- name: langfuse_init_project_public_key
+  value: pk-12345
+  default: pk-12345
+  description: "Public key for the default project"
+
+- name: langfuse_init_project_secret_key
+  value: sk-12345
+  default: sk-12345
+  description: "Secret key for the default project"
+
+- name: langfuse_init_user_email
+  value: some@email.com
+  default: some@email.com
+  description: "Email of default user"
+
+- name: langfuse_init_user_name
+  value: username
+  default: username
+  description: "User name of default user"
+
+- name: langfuse_init_user_password
+  value: password
+  default: password
+  description: "Password of default user"
+########
+
+## WORKER ##
+- name: worker_salt
+  value: sk-0987654321
+  default: sk-0987654321
+  description: "Salt used by the worker"
+
+- name: worker_encryption_key
+  value: "0000000000000000000000000000000000000000000000000000000000000000"
+  default: "0000000000000000000000000000000000000000000000000000000000000000"
+  description: "Encryption key used by the worker. # Generate via `openssl rand -hex 32`"
+########
+
+## DB ##
+- name: external_postgreSQL_url
+  value: ""
+  default: ""
+  description: "Connect to external DB instead of deploying a local DB (of the form 'postgres://<postgres_user>:<postgres_password>@<db_url>/<db_name>)'"
+
+- name: postgres_password
+  value: postgres
+  default: postgres
+  description: "Password for postgreSQL database"
+########
+
+## REDIS ##
+- name: redis_auth
+  value: myredissecret
+  default: myredissecret
+  description: "Auth secret for Redis"
+########
+
+## MINIO ##
+- name: minio_secret
+  value: miniosecret
+  default: miniosecret
+  description: "Auth secret for Minio"
+########
+
+## CLICKHOUSE ##
+- name: clickhouse_password
+  value: clickhouse
+  default: clickhouse
+  description: "Password for Clickhouse"

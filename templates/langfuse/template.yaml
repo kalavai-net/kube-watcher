@@ -1,0 +1,510 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+{% if external_postgreSQL_url == "" %}
+  minAvailable: 6
+{% else %}
+  minAvailable: 5
+{% endif %}
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  tasks:
+  - replicas: 1   # One ps pod specified
+    name: web
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          role: leader
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.io/langfuse/langfuse:3.72.2-1
+          name: web
+          entrypoint: 
+          command:
+          - sh
+          - -c
+          - |
+            DB_HOST=`cat /etc/volcano/postgres.host`;
+            CH_HOST=`cat /etc/volcano/clickhouse.host`;
+            MINIO_HOST=`cat /etc/volcano/minio.host`;
+            REDIS_HOST=`cat /etc/volcano/redis.host`;
+            # Wait until postgres, clickhouse, redis and minio tasks are running
+            NODES="$DB_HOST $CH_HOST $MINIO_HOST $REDIS_HOST"
+            for NODE in $NODES; do
+              echo "Checking $NODE..."
+              while ! ping -c 1 -W 1 "$NODE" >/dev/null 2>&1; do
+                echo "  $NODE not reachable. Retrying in 5 seconds..."
+                sleep 5
+              done
+              echo "  $NODE is reachable."
+            done
+
+          {% if external_postgreSQL_url == "" %}
+            export DATABASE_URL=postgresql://postgres:{{postgres_password}}@$DB_HOST:5432/postgres
+          {% else %}
+            export DATABASE_URL={{external_postgreSQL_url}}
+          {% endif %}
+            export CLICKHOUSE_MIGRATION_URL=clickhouse://$CH_HOST:9000;
+            export CLICKHOUSE_URL=$CH_HOST:8123;
+            export LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://$MINIO_HOST:9000
+            export LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT=http://$MINIO_HOST:9000
+            export LANGFUSE_S3_BATCH_EXPORT_ENDPOINT=http://$MINIO_HOST:9000
+
+            echo $DATABASE_URL;
+            echo $CLICKHOUSE_MIGRATION_URL;
+            echo $LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT;
+            echo $LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT;
+            echo $LANGFUSE_S3_BATCH_EXPORT_ENDPOINT;
+            echo $REDIS_HOST;
+
+            dumb-init -- ./web/entrypoint.sh node ./web/server.js --keepAliveTimeout 110000
+          ports:
+          - containerPort: 3000
+            name: langfuse-port
+          env:
+          # - name: DATABASE_URL
+          #   value: "postgresql://postgres:postgres@langfuse-postgres-0.langfuse:5432/postgres"
+          # - name: CLICKHOUSE_URL
+          #   value: "clickhouse://langfuse-clickhouse-0.langfuse:8123"
+
+          - name: SALT
+            value: {{worker_salt}}
+          - name: ENCRYPTION_KEY
+            value: "{{worker_encryption_key}}"
+          - name: TELEMETRY_ENABLED
+            value: "true"
+          - name: LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES
+            value: "true"
+          - name: CLICKHOUSE_USER
+            value: clickhouse
+          - name: CLICKHOUSE_PASSWORD
+            value: {{clickhouse_password}}
+          - name: CLICKHOUSE_CLUSTER_ENABLED
+            value: "false"
+          - name: LANGFUSE_USE_AZURE_BLOB
+            value: "false"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET
+            value: "langfuse"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_REGION
+            value: "auto"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
+            value: "minio"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
+            value: {{minio_secret}}
+          - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
+            value: "true"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_PREFIX
+            value: "events/"
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
+            value: "langfuse"
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_REGION
+            value: "auto"
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
+            value: minio
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
+            value: {{minio_secret}}
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
+            value: "true"
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_PREFIX
+            value: "media/"
+          - name: LANGFUSE_S3_BATCH_EXPORT_ENABLED
+            value: "false"
+          - name: LANGFUSE_S3_BATCH_EXPORT_BUCKET
+            value: "langfuse"
+          - name: LANGFUSE_S3_BATCH_EXPORT_PREFIX
+            value: "exports/"
+          - name: LANGFUSE_S3_BATCH_EXPORT_REGION
+            value: "auto"
+          - name: LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT
+            value: "http://localhost:9090"
+          - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
+            value: "minio"
+          - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
+            value: {{minio_secret}}
+          - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
+            value: "true"
+          - name: REDIS_PORT
+            value: "6379"
+          - name: REDIS_AUTH
+            value: {{redis_auth}}
+          - name: REDIS_TLS_ENABLED
+            value: "false"
+          # - name: REDIS_TLS_CA
+          #   value: "/certs/ca.crt"
+          # - name: REDIS_TLS_CERT
+          #   value: "/certs/redis.crt"
+          # - name: REDIS_TLS_KEY
+          #   value: "/certs/redis.key"
+          - name: NEXTAUTH_URL
+            value: http://localhost:3000
+          - name: NEXTAUTH_SECRET
+            value: {{nextauth_secret}}
+          - name: LANGFUSE_INIT_ORG_ID
+            value: "default_org_id"
+          - name: LANGFUSE_INIT_ORG_NAME
+            value: {{langfuse_init_org_name}}
+          - name: LANGFUSE_INIT_PROJECT_ID
+            value: "default_project_id"
+          - name: LANGFUSE_INIT_PROJECT_NAME
+            value: {{langfuse_init_project_name}}
+          - name: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
+            value: {{langfuse_init_project_public_key}}
+          - name: LANGFUSE_INIT_PROJECT_SECRET_KEY
+            value: {{langfuse_init_project_secret_key}}
+          - name: LANGFUSE_INIT_USER_EMAIL
+            value: {{langfuse_init_user_email}}
+          - name: LANGFUSE_INIT_USER_NAME
+            value: {{langfuse_init_user_name}}
+          - name: LANGFUSE_INIT_USER_PASSWORD
+            value: {{langfuse_init_user_password}}
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 2
+              memory: 4Gi
+  - replicas: 1   # One ps pod specified
+    name: worker
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.io/langfuse/langfuse-worker:3.72.2-1
+          name: worker
+          ports:
+          - containerPort: 3030
+            name: worker-port
+          command:
+          - sh
+          - -c
+          - |
+            DB_HOST=`cat /etc/volcano/postgres.host`;
+            CH_HOST=`cat /etc/volcano/clickhouse.host`;
+            MINIO_HOST=`cat /etc/volcano/minio.host`;
+            REDIS_HOST=`cat /etc/volcano/redis.host`;
+            # Wait until postgres, clickhouse, redis and minio tasks are running
+            NODES="${DB_HOST} ${CH_HOST} ${MINIO_HOST} ${REDIS_HOST}"
+            for NODE in $NODES; do
+              echo "Checking $NODE..."
+              while ! ping -c 1 -W 1 "$NODE" >/dev/null 2>&1; do
+                echo "  $NODE not reachable. Retrying in 5 seconds..."
+                sleep 5
+              done
+              echo "  $NODE is reachable."
+            done
+            
+          {% if external_postgreSQL_url == "" %}
+            export DATABASE_URL=postgresql://postgres:{{postgres_password}}@$DB_HOST:5432/postgres
+          {% else %}
+            export DATABASE_URL={{external_postgreSQL_url}}
+          {% endif %}
+            export CLICKHOUSE_MIGRATION_URL=clickhouse://$CH_HOST:9000;
+            export CLICKHOUSE_URL=$CH_HOST:8123;
+            export LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://$MINIO_HOST:9000
+            export LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT=http://$MINIO_HOST:9000
+            export LANGFUSE_S3_BATCH_EXPORT_ENDPOINT=http://$MINIO_HOST:9000
+
+            echo $DATABASE_URL;
+            echo $CLICKHOUSE_MIGRATION_URL;
+            echo $LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT;
+            echo $LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT;
+            echo $LANGFUSE_S3_BATCH_EXPORT_ENDPOINT;
+            echo $REDIS_HOST;            
+
+            dumb-init -- ./worker/entrypoint.sh node worker/dist/index.js;
+          env:
+          - name: SALT
+            value: {{worker_salt}}
+          - name: ENCRYPTION_KEY
+            value: "{{worker_encryption_key}}"
+          - name: TELEMETRY_ENABLED
+            value: "true"
+          - name: LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES
+            value: "true"
+          - name: CLICKHOUSE_USER
+            value: clickhouse
+          - name: CLICKHOUSE_PASSWORD
+            value: {{clickhouse_password}}
+          - name: CLICKHOUSE_CLUSTER_ENABLED
+            value: "false"
+          - name: LANGFUSE_USE_AZURE_BLOB
+            value: "false"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET
+            value: "langfuse"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_REGION
+            value: "auto"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
+            value: "minio"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
+            value: {{minio_secret}}
+          - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
+            value: "true"
+          - name: LANGFUSE_S3_EVENT_UPLOAD_PREFIX
+            value: "events/"
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
+            value: "langfuse"
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_REGION
+            value: "auto"
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
+            value: minio
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
+            value: {{minio_secret}}
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
+            value: "true"
+          - name: LANGFUSE_S3_MEDIA_UPLOAD_PREFIX
+            value: "media/"
+          - name: LANGFUSE_S3_BATCH_EXPORT_ENABLED
+            value: "true"
+          - name: LANGFUSE_S3_BATCH_EXPORT_BUCKET
+            value: "langfuse"
+          - name: LANGFUSE_S3_BATCH_EXPORT_PREFIX
+            value: "exports/"
+          - name: LANGFUSE_S3_BATCH_EXPORT_REGION
+            value: "auto"
+          - name: LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT
+            value: "http://localhost:9090"
+          - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
+            value: "minio"
+          - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
+            value: {{minio_secret}}
+          - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
+            value: "true"
+          - name: REDIS_PORT
+            value: "6379"
+          - name: REDIS_AUTH
+            value: {{redis_auth}}
+          - name: REDIS_TLS_ENABLED
+            value: "false"
+          # - name: REDIS_TLS_CA
+          #   value: "/certs/ca.crt"
+          # - name: REDIS_TLS_CERT
+          #   value: "/certs/redis.crt"
+          # - name: REDIS_TLS_KEY
+          #   value: "/certs/redis.key"
+          resources:
+            requests:
+              cpu: 2
+              memory: 4Gi
+            limits:
+              cpu: 4
+              memory: 6Gi
+  {% if external_postgreSQL_url == "" %}
+  - replicas: 1   # One ps pod specified
+    name: postgres
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: postgres
+          image: 'postgres:latest'
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+          - name: POSTGRES_DB
+            value: postgres
+          - name: POSTGRES_USER
+            value: postgres
+          - name: POSTGRES_PASSWORD
+            value: {{postgres_password}}
+          - name: PGDATA
+            value: "/var/lib/postgresql/data/pgdata"
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 1
+              memory: 2Gi
+  {% endif %}
+  - replicas: 1   # One ps pod specified
+    name: redis
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.io/redis:7
+          name: redis
+          command:
+          - sh
+          - -c
+          - |
+            redis-server --requirepass {{redis_auth}}
+          ports:
+          - containerPort: 6379
+            name: redis-port
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 1
+              memory: 2Gi
+  - replicas: 1   # One ps pod specified
+    name: minio
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.io/minio/minio
+          name: minio
+          command:
+          - sh
+          - -c
+          - |
+            mkdir -p /data/langfuse;
+            minio server --address ":9000" --console-address ":9001" /data;
+          ports:
+          - containerPort: 9090
+            name: minio-1-port
+          - containerPort: 9091
+            name: minio-2-port
+          env:
+          - name: MINIO_ROOT_USER
+            value: minio
+          - name: MINIO_ROOT_PASSWORD
+            value: {{minio_secret}}
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 2
+              memory: 4Gi
+  - replicas: 1   # One ps pod specified
+    name: clickhouse
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.io/clickhouse/clickhouse-server
+          name: clickhouse
+          ports:
+          - containerPort: 9000
+            name: ch-1-port
+          - containerPort: 8123
+            name: ch-2-port
+          env:
+          - name: CLICKHOUSE_DB
+            value: default
+          - name: CLICKHOUSE_USER
+            value: clickhouse
+          - name: CLICKHOUSE_PASSWORD
+            value: {{clickhouse_password}}
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 2
+              memory: 4Gi
+  
