@@ -1,7 +1,7 @@
 {
-    "name": "Aphrodite",
-    "description": "Large-scale LLM inference engine",
-    "docs": "https://aphrodite.pygmalion.chat/",
-    "icon": "https://raw.githubusercontent.com/PygmalionAI/aphrodite-engine/main/assets/aphrodite.png",
-    "info": ""
+    "name": "BOINC",
+    "description": "BOINC is a platform for distributed computing projects.",
+    "docs": "https://boinc.berkeley.edu/",
+    "icon": "https://boinc.berkeley.edu/logo/boinc_logo.png",
+    "info": "With the BOINC template you can contribute to scientific projects by running the BOINC client on your machine."
 }

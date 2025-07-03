@@ -3,5 +3,5 @@
     "description": "User-friendly AI Interface (Supports Ollama, OpenAI API, ...)",
     "docs": "https://docs.openwebui.com/",
     "icon": "https://openwebui.com/logo.png",
-    "info": ""
+    "info": "With the OpenWebUi template you can deploy a full browser based UI playground to test your LLM models in your cluster."
 }

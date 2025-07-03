@@ -1,7 +1,7 @@
 {
-    "name": "Aphrodite",
-    "description": "Large-scale LLM inference engine",
-    "docs": "https://aphrodite.pygmalion.chat/",
-    "icon": "https://raw.githubusercontent.com/PygmalionAI/aphrodite-engine/main/assets/aphrodite.png",
-    "info": ""
+    "name": "Flexible",
+    "description": "Flexible is a template that allows you to deploy docker containers on your cluster.",
+    "docs": "",
+    "icon": "",
+    "info": "With the Flexible template you can deploy any docker container on your cluster."
 }

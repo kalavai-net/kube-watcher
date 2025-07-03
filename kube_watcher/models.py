@@ -5,18 +5,18 @@ from enum import Enum
 class JobTemplate(Enum):
     custom = 0
     vllm = 1
-    aphrodite = 2
+    #aphrodite = 2
     llamacpp = 3
-    petals = 4
+    #petals = 4
     litellm = 5
     playground = 6
-    boinc = 7
+    #boinc = 7
     gpustack = 8
     speaches = 9
     sglang = 10
     https = 11
     langfuse = 12
-    flexible = 99
+    #flexible = 99
 
 class NodeStatusRequest(BaseModel):
     node_names: List[str] = None
