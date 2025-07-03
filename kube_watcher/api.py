@@ -389,7 +389,8 @@ async def get_job_defaults(request: JobTemplateRequest, api_key: str = Depends(v
     job = Job(template=request.template)
     return {
         "defaults": job.get_defaults(),
-        "metadata": job.get_metadata()
+        "metadata": job.get_metadata(),
+        "info": job.get_info()
     }
 
 @app.post("/v1/deploy_job")
