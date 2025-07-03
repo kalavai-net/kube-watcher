@@ -25,17 +25,17 @@
 - name: working_memory
   value: 5
   default: 5
-  description: "Pool storage to use to cache model weights"
+  description: "Temporary storage to use to cache model weights (in GB)"
 
 - name: workers
   value: 1
   default: 1
-  description: "Number of workers (for tensor and pipeline parallelism)"
+  description: "Number of nodes to use when deploying the model"
 
 - name: model_id
   value: null
   default: null
-  description: "Huggingface model id to load"
+  description: "Huggingface model id to deploy"
 
 - name: mode
   value: "completion"
@@ -43,34 +43,34 @@
   description: "Mode of the model (useful for health checks): one of [completion, rerank, realtime]. See more: https://docs.litellm.ai/docs/proxy/health"
 
 - name: hf_token
-  value: <yout token>
+  value: <your token>
   default: null
-  description: "Huggingface token, required to load model weights"
+  description: "Huggingface access token, required to load gated model weights"
 
 - name: cpus
   value: "2"
   default: "2"
-  description: "CPUs per single worker (final one = cpus * num_workers)"
+  description: "CPUs to be used per single node (final one = cpus * num_workers)"
 
 - name: gpus
   value: "1"
   default: "1"
-  description: "GPUs per single worker (final one = gpus * num_workers)"
+  description: "GPUs to be used per single node (final one = gpus * num_workers)"
 
 - name: memory
   value: 8
   default: 8
-  description: "RAM memory per single worker (final one = memory * num_workers)"
+  description: "RAM memory to be used per single node (final one = memory * num_workers)"
 
 - name: tensor_parallel_size
   value: 1
   default: 1
-  description: "Tensor parallelism (use the number of GPUs per node)"
+  description: "Tensor parallelism, used to split the model across GPUs within a single node"
 
 - name: pipeline_parallel_size
   value: 1
   default: 1
-  description: "Pipeline parallelism (use the number of nodes)"
+  description: "Pipeline parallelism, used to split the model across nodes"
 
 - name: tool_call_parser
   value: "llama3"

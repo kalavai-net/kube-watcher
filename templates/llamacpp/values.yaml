@@ -35,47 +35,47 @@
 - name: cpu_workers
   value: 1
   default: 1
-  description: "Number of remote workers"
+  description: "Number of CPU-based nodes to use when deploying the model"
 
 - name: gpu_workers
   value: 0
   default: 0
-  description: "Number of remote workers"
+  description: "Number of GPU-based nodes to use when deploying the model"
 
 - name: repo_id
   value: null
   default: null
-  description: "Huggingface model id to load"
+  description: "Huggingface model id to deploy"
 
 - name: model_filename
   value: "None"
   default: "None"
-  description: "Specific model file to use (handy for quantized models such as gguf)"
+  description: "Specific GGUF model file to use, which let's you select the quantization level"
 
 - name: hf_token
   value: <yout token>
   default: null
-  description: "Huggingface token, required to load model weights"
+  description: "Huggingface access token, required to load gated model weights"
 
 - name: cpus
   value: "2"
   default: "2"
-  description: "CPUs per single worker (final one = cpus * num_workers)"
+  description: "CPUs to be used per single node (final one = cpus * num_workers)"
 
 - name: gpus
   value: "1"
   default: "1"
-  description: "GPUs per single worker (final one = gpus * num_workers)"
+  description: "GPUs to be used per single node (final one = gpus * num_workers)"
 
 - name: memory
   value: "4"
   default: "4"
-  description: "RAM memory per single worker (final one = memory * num_workers)"
+  description: "RAM memory to be used per single node (final one = memory * num_workers)"
 
 - name: rpc_port
   value: "50052"
   default: "50052"
-  description: "RAM memory per single worker (final one = memory * num_workers)"
+  description: "Default port for the RPC server"
 
 - name: server_extra
   value: ""
