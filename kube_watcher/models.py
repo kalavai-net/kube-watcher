@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Union
 from pydantic import BaseModel
 from enum import Enum
 
+# This are off-the-shelf supported templates
 class JobTemplate(Enum):
     custom = 0
     vllm = 1
@@ -11,7 +12,7 @@ class JobTemplate(Enum):
     litellm = 5
     playground = 6
     #boinc = 7
-    gpustack = 8
+    #gpustack = 8
     speaches = 9
     sglang = 10
     https = 11

@@ -86,15 +86,22 @@ class Job:
         if default_values is None:
             default_values = self.get_defaults()
         
-        # substitute missing values with defaults
         for default in default_values:
+            # scan for template id field (name of the job)
             if default["name"] == TEMPLATE_ID_FIELD:
                 if default["default"] not in values:
                     raise ValueError(f"Key value '{default['default']}' missing from values")
                 values[TEMPLATE_ID_KEY] = parse_deployment_name(values[default["default"]])
                 continue
+            # substitute missing values with defaults
             if default["name"] not in values:
                 values[default['name']] = default['default']
+            else:
+                # check that non editable fields are not present
+                if "editable" in default and not default["editable"]:
+                    print(f"Removing non editable field [{default['name']}]")
+                    del values[default['name']]
+
         self.job_name = values[TEMPLATE_ID_KEY]
         self.job_label = {TEMPLATE_LABEL: self.job_name}
         self.ports = values[ENDPOINT_PORTS_KEY].split(",") if ENDPOINT_PORTS_KEY in values else []
