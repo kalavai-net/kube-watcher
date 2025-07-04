@@ -1,0 +1,76 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  queue: default
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  tasks:
+  - replicas: 1   # One ps pod specified
+    name: server
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        annotations:
+          # must have these annotations
+          {{nouse_gputype}}
+          {{use_gputype}}
+        labels:
+          role: leader
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: server
+          image: docker.io/bundenth/unmute-models:latest
+          command:
+          - sh
+          - -c
+          - |
+            uv run \
+              --locked \
+              --project ./moshi-server \
+              ./start_moshi_server_public.sh \
+              worker --config config-{{mode}}.toml
+          env:
+          - name: HUGGING_FACE_HUB_TOKEN
+            value: {{hf_token}}
+          ports:
+          - containerPort: 8080
+            name: model-port
+          # readinessProbe:
+          #   httpGet:
+          #     path: /health
+          #     port: 8080
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
+          resources:
+            requests:
+              cpu: 2
+              memory: 8Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 2
+              memory: 8Gi
+              nvidia.com/gpu: 1
+        restartPolicy: OnFailure
