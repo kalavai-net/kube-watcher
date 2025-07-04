@@ -3,81 +3,113 @@
 - name: id_field
   value: model_filename
   default: model_filename
+  editable: false
+  required: false
   description: "Field that contains the ID of the job"
 
 # must contain the list of ports to enable in the leader node
 - name: endpoint_ports
   value: "8080"
   default: "8080"
+  editable: false
+  required: false
   description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
+
+- name: rpc_port
+  value: "50052"
+  default: "50052"
+  editable: false
+  required: false
+  description: "Default port for the RPC server"
 ############################
 
 - name: working_memory
   value: 5
   default: 5
-  description: "Temporary storage to use to cache model weights (in GB)"
+  editable: true
+  required: true
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights"
 
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
   default: "http://litellm.default.svc.cluster.local:4000"
+  editable: true
+  required: false
   description: "Base URL of the LiteLLM service (central registry)"
 
 - name: litellm_key
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "Master key of the LiteLLM service (central registry)"
 
 - name: is_gpu_server
   value: "False"
   default: "False"
+  editable: true
+  required: false
   description: "Whether to use GPUs in the server node"
 
 - name: cpu_workers
   value: 1
   default: 1
+  editable: true
+  required: false
   description: "Number of CPU-based nodes to use when deploying the model"
 
 - name: gpu_workers
   value: 0
   default: 0
+  editable: true
+  required: false
   description: "Number of GPU-based nodes to use when deploying the model"
 
 - name: repo_id
   value: null
   default: null
+  editable: true
+  required: true
   description: "Huggingface model id to deploy"
 
 - name: model_filename
   value: "None"
   default: "None"
+  editable: true
+  required: true
   description: "Specific GGUF model file to use, which let's you select the quantization level"
 
 - name: hf_token
   value: <yout token>
   default: null
+  editable: true
+  required: false
   description: "Huggingface access token, required to load gated model weights"
 
 - name: cpus
   value: "2"
   default: "2"
+  editable: true
+  required: false
   description: "CPUs to be used per single node (final one = cpus * num_workers)"
 
 - name: gpus
   value: "1"
   default: "1"
+  editable: true
+  required: false
   description: "GPUs to be used per single node (final one = gpus * num_workers)"
 
 - name: memory
   value: "4"
   default: "4"
+  editable: true
+  required: false
   description: "RAM memory to be used per single node (final one = memory * num_workers)"
-
-- name: rpc_port
-  value: "50052"
-  default: "50052"
-  description: "Default port for the RPC server"
 
 - name: server_extra
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "Extra parameters for deployment. See https://github.com/ggerganov/llama.cpp/tree/master/examples/server"

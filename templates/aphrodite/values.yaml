@@ -3,81 +3,106 @@
 - name: id_field
   value: model_id
   default: model_id
+  editable: false
+  required: false
   description: "Field that contains the ID of the job"
 
 # must contain the list of ports to enable in the leader node
 - name: endpoint_ports
   value: "8080"
   default: "8080"
+  editable: false
+  required: false
   description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
 
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
   default: "http://litellm.default.svc.cluster.local:4000"
+  editable: true
+  required: false
   description: "Base URL of the LiteLLM service (central registry)"
 
 - name: litellm_key
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "Master key of the LiteLLM service (central registry)"
 
 - name: working_memory
   value: 10
   default: 10
-  description: "Temporary storage to use to cache model weights (in GB)"
+  editable: true
+  required: true
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights"
 
 - name: workers
   value: 1
   default: 1
-  description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
+  editable: true
+  required: true
+  description: "Number of remote worker machines (for tensor and pipeline parallelism)."
 
 - name: model_id
   value: null
   default: null
+  editable: true
+  required: true
   description: "Huggingface model id to load"
-
-# - name: model_filename
-#   value: ""
-#   default: ""
-#   description: "Specific model file to use (handy for quantized models such as gguf)"
 
 - name: hf_token
   value: <your token>
   default: null
+  editable: true
+  required: true
   description: "Huggingface token, required to load model weights"
 
 - name: cpus
   value: "2"
   default: "2"
+  editable: true
+  required: true
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
 - name: gpus
   value: "1"
   default: "1"
+  editable: true
+  required: true
   description: "GPUs per single worker (final one = gpus * num_workers)"
 
 - name: memory
   value: 8
   default: 8
+  editable: true
+  required: true
   description: "RAM memory per single worker (final one = memory * num_workers)"
 
 - name: tensor_parallel_size
   value: "1"
   default: "1"
+  editable: true
+  required: false
   description: "Tensor parallelism (use the number of GPUs per node)"
 
 - name: pipeline_parallel_size
   value: "1"
   default: "1"
+  editable: true
+  required: false
   description: "Pipeline parallelism (use the number of nodes)"
 
 - name: tool_call_parser
   value: "llama3_json"
   default: "llama3_json"
+  editable: true
+  required: false
   description: "Tool call parser to use. https://aphrodite.pygmalion.chat/usage/openai/#command-line-arguments-for-the-server"
 
 - name: extra
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "Extra parameters to pass to the vLLM server. See https://aphrodite.pygmalion.chat/usage/openai/#command-line-arguments-for-the-server"

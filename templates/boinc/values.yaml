@@ -1,6 +1,8 @@
 - name: id_field
   value: deployment_name
   default: deployment_name
+  editable: false
+  required: false
   description: "Field that contains the ID of the job"
 
 # must contain the list of ports to enable in the leader node
@@ -13,54 +15,76 @@
 - name: deployment_name
   value: boinc-1
   default: boinc-1
+  editable: true
+  required: true
   description: "Name of the deployment job"
 
 - name: mount_path
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "Local storage for boinic projects (workers). Empty for root ('/') "
 
 - name: cpu_workers
   value: "1"
   default: "2"
+  editable: true
+  required: false
   description: "Maximum number of workers to spawn in the cluster"
 
 - name: gpu_workers
   value: "1"
   default: "2"
+  editable: true
+  required: false
   description: "Maximum number of workers to spawn in the cluster"
 
 - name: email
   value: "carlos@kalavai.net"
   default: "carlos@kalavai.net"
+  editable: true
+  required: true
   description: "Maximum number of workers to spawn in the cluster"
 
 - name: password
   value: "kalavaipool"
   default: "kalavaipool"
+  editable: true
+  required: true
   description: "Maximum number of workers to spawn in the cluster"
 
 - name: min_cpus
   value: "4"
   default: "4"
+  editable: true
+  required: false
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
 - name: max_cpus
   value: "16"
   default: "16"
+  editable: true
+  required: false
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
 - name: min_memory
   value: "4"
   default: "4"
+  editable: true
+  required: false
   description: "RAM memory per single worker (final one = memory * num_workers)"
 
 - name: max_memory
   value: "16"
   default: "16"
+  editable: true
+  required: false
   description: "RAM memory per single worker (final one = memory * num_workers)"
 
 - name: gpus
   value: "1"
   default: "1"
+  editable: true
+  required: false
   description: "GPUs per single worker (final one = gpus * num_workers)"

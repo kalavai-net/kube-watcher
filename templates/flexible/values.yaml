@@ -4,51 +4,71 @@
 - name: id_field
   value: deployment_name
   default: deployment_name
+  editable: false
+  required: false
   description: "Field that contains the ID of the job"
 
 # must contain the list of ports to enable in the leader node
 - name: endpoint_ports
   value: "8000"
   default: "8000"
+  editable: false
+  required: false
   description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
 
 - name: deployment_name
   value: flex
   default: flex
+  editable: true
+  required: true
   description: "Name of the deployment job"
   
 - name: workers
   value: 1
-  default:
+  default: 1
+  editable: true
+  required: true
   description: "Number of workers"
 
 - name: cpus
   value: 1
   default: 1
+  editable: true
+  required: false
   description: "Number of cpus per worker"
 
 - name: memory
   value: 2
   default: 1
+  editable: true
+  required: false
   description: "Memory per worker"
 
 - name: gpus
   value: 0
   default: 0
+  editable: true
+  required: false
   description: "Number of gpus per worker"
 
 - name: command
   value: "sleep 1;"
   default: "sleep 1;"
+  editable: true
+  required: true
   description: "Command to run in the container of workers"
 
 - name: container_image
   value: busybox
   default: busybox
+  editable: true
+  required: true
   description: "Docker image for the workers"
 
 - name: restart_policy
   value: OnFailure
   default: OnFailure
+  editable: true
+  required: false
   description: "Container restart policy [OnFailure, Always, Never]"

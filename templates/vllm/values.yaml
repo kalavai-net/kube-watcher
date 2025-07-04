@@ -3,126 +3,169 @@
 - name: id_field
   value: model_id
   default: model_id
+  editable: false
+  required: false
   description: "Field that contains the ID of the job"
 
 # must contain the list of ports to enable in the leader node
 - name: endpoint_ports
   value: "8080"
   default: "8080"
+  editable: false
+  required: false
   description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
 
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
   default: "http://litellm.default.svc.cluster.local:4000"
+  editable: true
+  required: false
   description: "Base URL of the LiteLLM service (central registry)"
 
 - name: litellm_key
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "Master key of the LiteLLM service (central registry)"
-
-# - name: storage
-#   value: "models-hub"
-#   default: "models-hub"
-#   description: "Pool storage to use to cache model weights"
 
 - name: working_memory
   value: 5
   default: 5
-  description: "Temporary storage to use to cache model weights (in GB)"
+  editable: true
+  required: true
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights"
 
 - name: workers
   value: 1
   default: 1
+  editable: true
+  required: true
   description: "Number of workers, corresponding to the number of nodes (or machines) that will be involved in deploying the model"
 
 - name: model_id
   value: null
   default: null
+  editable: true
+  required: true
   description: "Huggingface model id to deploy"
 
 - name: mode
   value: "completion"
   default: "completion"
+  editable: true
+  required: false
   description: "Mode of the model (useful for health checks): one of [completion, rerank, realtime]. See more: https://docs.litellm.ai/docs/proxy/health"
 
 - name: lora_modules
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "LoRa adaptor(s) to load; semi-colon separated list of huggingface repos of the lora adaptors to load"
 
 - name: hf_token
   value: <yout token>
   default: null
+  editable: true
+  required: false
   description: "Huggingface access token, required to load gated model weights"
 
 - name: cpus
   value: "2"
   default: "2"
+  editable: true
+  required: false
   description: "CPUs to be used per single node (final one = cpus * num_workers)"
 
 - name: gpus
   value: "1"
   default: "1"
+  editable: true
+  required: false
   description: "GPUs to be used per single node (final one = gpus * num_workers)"
 
 - name: memory
   value: 8
   default: 8
+  editable: true
+  required: false
   description: "RAM memory to be used per single node (final one = memory * num_workers)"
 
 - name: tensor_parallel_size
   value: 1
   default: 1
+  editable: true
+  required: false
   description: "Tensor parallelism, used to split the model across GPUs within a single node"
 
 - name: pipeline_parallel_size
   value: 1
   default: 1
+  editable: true
+  required: false
   description: "Pipeline parallelism, used to split the model across nodes"
 
 - name: tool_call_parser
   value: "llama3_json"
   default: "llama3_json"
+  editable: true
+  required: false
   description: "Tool call parser to use. https://docs.vllm.ai/en/latest/features/tool_calling.html#automatic-function-calling"
 
 - name: template_url
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "URL of a publicly available template jinja file to use for chat completions (https://docs.vllm.ai/en/v0.8.1/serving/openai_compatible_server.html#chat-template). Some here: https://github.com/vllm-project/vllm/tree/main/examples"
 
 - name: lmcache_max_local_cpu_size
   value: 5.0
   default: 5.0
+  editable: true
+  required: false
   description: "LMCache: Maximum CPU cache size in GB. See https://docs.lmcache.ai/api_reference/configurations.html"
 
 - name: lmcache_chunk_size
   value: 256
   default: 256
+  editable: true
+  required: false
   description: "LMCache: chunk size. See https://docs.lmcache.ai/api_reference/configurations.html"
 
 - name: lmcache_local_cpu
   value: "True"
   default: "True"
+  editable: true
+  required: false
   description: "LMCache: whether or not to use CPU offloading. See https://docs.lmcache.ai/api_reference/configurations.html"
 
 - name: lmcache_max_local_disk_size
   value: 0
   default: 0
+  editable: true
+  required: false
   description: "LMCache: Maximum disk cache size in GB. See https://docs.lmcache.ai/api_reference/configurations.html"
 
 - name: lmcache_local_disk
   value: null
   default: null
+  editable: true
+  required: false
   description: "LMCache: Path to local disk cache. Format: “file:///path/to/cache” or null. See https://docs.lmcache.ai/api_reference/configurations.html"
 
 - name: lmcache_remote_url
   value: null
   default: null
+  editable: true
+  required: false
   description: "LMCache: Remote storage URL. Format: “protocol://host:port” or null. See https://docs.lmcache.ai/api_reference/configurations.html"
 
 - name: extra
   value: "--dtype float16 --enforce-eager"
   default: --dtype float16 --enforce-eager
+  editable: true
+  required: false
   description: "Extra parameters to pass to the vLLM server. See https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#cli-reference"

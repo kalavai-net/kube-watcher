@@ -4,46 +4,64 @@
 - name: id_field
   value: model_id
   default: model_id
+  editable: false
+  required: false
   description: "Field that contains the ID of the job"
 
 # must contain the list of ports to enable in the leader node
 - name: endpoint_ports
   value: "8000"
   default: "8000"
+  editable: false
+  required: false
   description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
 
 - name: cpus
   value: 2
   default: 2
+  editable: true
+  required: false
   description: "Number of cpus per worker"
 
 - name: memory
   value: 4
   default: 4
+  editable: true
+  required: false
   description: "Memory per worker"
 
 - name: gpus
   value: 1
   default: 1
+  editable: true
+  required: false
   description: "Number of gpus per worker"
 
 - name: model_id
   value: "hexgrad/Kokoro-82M"
   default: "hexgrad/Kokoro-82M"
+  editable: true
+  required: true
   description: "Model ID. hexagrad/Kokoro-82M for TTS and one of the following for STT: tiny.en, tiny, base.en, base, small.en, small, medium.en, medium, large-v1, large-v2, large-v3, large, distil-large-v2, distil-medium.en, distil-small.en, distil-large-v3, large-v3-turbo, turbo"
 
 - name: mode
   value: "audio_speech"
   default: "audio_speech"
+  editable: true
+  required: false
   description: "Mode of the model: audio_speech for TTS, audio_transcription for STT"
 
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000"
   default: "http://litellm.default.svc.cluster.local:4000"
+  editable: true
+  required: false
   description: "Base URL of the LiteLLM service (central registry)"
 
 - name: litellm_key
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "Master key of the LiteLLM service (central registry)"

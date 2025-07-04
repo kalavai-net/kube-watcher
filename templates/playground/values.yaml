@@ -3,51 +3,71 @@
 - name: id_field
   value: deployment_name
   default: deployment_name
+  editable: false
+  required: false
   description: "Field that contains the ID of the job"
 
 # must contain the list of ports to enable in the leader node
 - name: endpoint_ports
   value: "8080"
   default: "8080"
+  editable: false
+  required: false
   description: "[DO NOT CHANGE] Ports opened on master node will be shown as endpoints for the job"
 ############################
 
 - name: deployment_name
   value: "webui-1" 
   default: "webui-1"
+  editable: true
+  required: true
   description: "Name of the job"
 
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000"
   default: "http://litellm.default.svc.cluster.local:4000"
+  editable: true
+  required: false
   description: "Base URL of the LiteLLM service (central registry)"
 
 - name: litellm_key
   value: ""
   default: "sk-1234"
+  editable: true
+  required: false
   description: "Master key of the LiteLLM service (central registry)"
 
 - name: replicas
   value: 1
   default: 1
+  editable: true
+  required: false
   description: "Number of replicas for the deployment"
 
 - name: cpus
   value: "2"
   default: "2"
+  editable: true
+  required: false
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
 - name: memory
   value: "2"
   default: "2"
+  editable: true
+  required: false
   description: "RAM memory per single worker (final one = memory * num_workers)"
 
 - name: default_user_role
   value: "user"
   default: "user"
+  editable: true
+  required: false
   description: "Default user role"
 
 - name: webui_auth
   value: "True"
   default: "True"
+  editable: true
+  required: false
   description: "Enable webui authentication"

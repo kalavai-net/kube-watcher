@@ -4,93 +4,129 @@
 - name: id_field
   value: deployment_name
   default: deployment_name
+  editable: false
+  required: false
   description: "Field that contains the ID of the job"
 
 # must contain the list of ports to enable in the leader node
 - name: endpoint_ports
   value: "4000"
   default: "4000"
+  editable: false
+  required: false
   description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
 
 - name: deployment_name
   value: litellm
   default: litellm
+  editable: true
+  required: true
   description: "Name of the deployment job"
   
 - name: replicas
   value: "1"
   default: "1"
+  editable: true
+  required: false
   description: "Number of replicas to deploy"
 
 - name: master_key
   value: "sk-1234"
   default: "sk-1234"
+  editable: true
+  required: false
   description: ""
 
 - name: salt_key
   value: "sk-1234567890"
   default: "sk-1234567890"
+  editable: true
+  required: false
   description: ""
 
 - name: disable_admin_ui
   value: "False"
   default: "False"
+  editable: true
+  required: false
   description: ""
 
 - name: ui_username
   value: "admin"
   default: "admin"
+  editable: true
+  required: false
   description: ""
 
 - name: ui_password
   value: "mypassword"
   default: "mypassword"
+  editable: true
+  required: false
   description: ""
 
 - name: external_postgreSQL_url
   value: ""
   default: ""
+  editable: true
+  required: false
   description: "Connect to external DB instead of deploying a local DB (of the form 'postgres://<postgres_user>:<postgres_password>@<db_url>/<db_name>)'"
 
 - name: postgres_db
   value: "ps_db"
   default: "ps_db"
+  editable: true
+  required: false
   description: "Storage name for the postgres database (backend). Ignored if external_postgreSQL_url is set."
 
 - name: postgres_user
   value: "ps_user"
   default: "ps_user"
+  editable: true
+  required: false
   description: "Storage name for the postgres database (backend). Ignored if external_postgreSQL_url is set."
 
 - name: postgres_password
   value: "ps_password"
   default: "ps_password"
+  editable: true
+  required: false
   description: "Storage name for the postgres database (backend). Ignored if external_postgreSQL_url is set."
 
 - name: cpus
   value: "2"
   default: "2"
+  editable: true
+  required: false
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
 - name: memory
   value: "2"
   default: "2"
+  editable: true
+  required: false
   description: "RAM memory per single worker (final one = memory * num_workers)"
 
 - name: langfuse_public_key
   value: "sk-1234567890"
   default: "sk-1234567890"
+  editable: true
+  required: false
   description: "Langfuse public key"
 
 - name: langfuse_secret_key
   value: "sk-1234567890"
   default: "sk-1234567890"
+  editable: true
+  required: false
   description: "Langfuse secret key"
 
 - name: langfuse_host
   value: "https://cloud.langfuse.com"
   default: "https://cloud.langfuse.com"
+  editable: true
+  required: false
   description: "Langfuse host"
 
   
