@@ -62,7 +62,7 @@
   value: <your token>
   default: null
   editable: true
-  required: false
+  required: true
   description: "Huggingface access token, required to load gated model weights"
 
 - name: cpus
@@ -85,20 +85,6 @@
   editable: true
   required: false
   description: "RAM memory to be used per single node (final one = memory * num_workers)"
-
-- name: tensor_parallel_size
-  value: 1
-  default: 1
-  editable: true
-  required: false
-  description: "Tensor parallelism, used to split the model across GPUs within a single node"
-
-- name: pipeline_parallel_size
-  value: 1
-  default: 1
-  editable: true
-  required: false
-  description: "Pipeline parallelism, used to split the model across nodes"
 
 - name: tool_call_parser
   value: "llama3"

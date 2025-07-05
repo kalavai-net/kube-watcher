@@ -140,8 +140,8 @@ spec:
               --server_ip=$PS_HOST:5000 \
               --extra='{{extra}}' \
               --template_url='{{template_url}}' \
-              --tensor_parallel_size={{tensor_parallel_size}} \
-              --pipeline_parallel_size={{pipeline_parallel_size}} \
+              --tensor_parallel_size={{gpus}} \
+              --pipeline_parallel_size={{workers}} \
               --tool_call_parser={{tool_call_parser}} \
               --node_rank=0 \
               --num_nodes={{workers}};
@@ -230,8 +230,8 @@ spec:
               --server_ip=$PS_HOST:5000 \
               --extra='{{extra}}' \
               --template_url='{{template_url}}' \
-              --tensor_parallel_size={{tensor_parallel_size}} \
-              --pipeline_parallel_size={{pipeline_parallel_size}} \
+              --tensor_parallel_size={{gpus}} \
+              --pipeline_parallel_size={{workers}} \
               --tool_call_parser={{tool_call_parser}} \
               --node_rank=$RANK \
               --num_nodes={{workers}};

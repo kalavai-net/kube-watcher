@@ -104,7 +104,7 @@ spec:
       action: RestartJob
     template: # Definition of the ps pod
       metadata:
-{% if is_gpu_server == "True" %}
+{% if gpus > 0 %}
         annotations:
           # must have these annotations
           {{nouse_gputype}}
@@ -114,7 +114,7 @@ spec:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
-{% if is_gpu_server == "True" %}
+{% if gpus > 0 %}
         runtimeClassName: nvidia
 {% endif %}
       {% if NODE_SELECTORS %}
@@ -125,7 +125,7 @@ spec:
       {% endif %}
         containers:
         - name: llamacpp-leader
-{% if is_gpu_server == "True" %}
+{% if gpus > 0 %}
           image: docker.io/bundenth/llamacpp-gpu:latest
 {% else %}
           image: docker.io/bundenth/llamacpp-cpu:latest
@@ -134,13 +134,12 @@ spec:
           - sh
           - -c
           - |
-{% if is_gpu_server == "True" %}
+{% if gpus > 0 %}
             /workspace/build.sh server_gpu;
 {% else %}
             /workspace/build.sh server_cpu;
 {% endif %}
-            /workspace/merge.sh --cpu-workers=/etc/volcano/cpu.host --gpu-workers=/etc/volcano/gpu.host --output=/workspace/all.host;
-            HOSTS=`cat /workspace/all.host`;
+            HOSTS=`cat /workspace/worker.host`;
             cat /workspace/all.host;
             export WORKERS=$(/workspace/get_workers_address.sh --rpc_port={{rpc_port}} --rpc_servers="${HOSTS}")
             /workspace/run_api_server.sh \
@@ -167,14 +166,14 @@ spec:
               cpu: {{cpus}}
               memory: {{memory}}Gi
               ephemeral-storage: {{working_memory}}Gi
-{% if is_gpu_server == "True" %}
+{% if gpus > 0 %}
               nvidia.com/gpu: {{gpus}}
 {% endif %}
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
               ephemeral-storage: {{working_memory}}Gi
-{% if is_gpu_server == "True" %}
+{% if gpus > 0 %}
               nvidia.com/gpu: {{gpus}}
 {% endif %}
           volumeMounts:
@@ -184,8 +183,8 @@ spec:
         - name: cache
           emptyDir: {}
         restartPolicy: OnFailure
-  - replicas: {{cpu_workers}}
-    name: cpu
+  - replicas: {{workers - 1}}
+    name: worker
     policies:
     - event: PodEvicted
       action: RestartJob
@@ -200,53 +199,9 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-      {% if NODE_SELECTORS %}
-        nodeSelector:
-        {% for selector in NODE_SELECTORS %}
-          {{selector.name}}: {{selector.value}}
-        {% endfor %}
-      {% endif %}
-        containers:
-        - name: llamacpp-worker
-          image: docker.io/bundenth/llamacpp-cpu:latest
-          command:
-          - sh
-          - -c
-          - |
-            /workspace/build.sh cpu;
-            /workspace/run_rpc_worker.sh --rpc_port={{rpc_port}}
-          env:
-          - name: HF_TOKEN
-            value: {{hf_token}}
-          resources:
-            requests:
-              cpu: {{cpus}}
-              memory: {{memory}}Gi
-            limits:
-              cpu: {{cpus}}
-              memory: {{memory}}Gi
-        restartPolicy: OnFailure
-  - replicas: {{gpu_workers}}
-    name: gpu
-    policies:
-    - event: PodEvicted
-      action: RestartJob
-    - event: PodFailed
-      action: RestartJob
-    - event: TaskCompleted
-      action: RestartJob
-    - event: Unknown
-      action: RestartJob
-    template: # Definition of worker pods
-      metadata:
-        annotations:
-          # must have these annotations
-          {{nouse_gputype}}
-          {{use_gputype}}
-        labels:
-          kalavai.job.name: {{deployment_id}}
-      spec:
+{% if gpus > 0 %}
         runtimeClassName: nvidia
+{% endif %}
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -255,12 +210,20 @@ spec:
       {% endif %}
         containers:
         - name: llamacpp-worker
+{% if gpus > 0 %}
           image: docker.io/bundenth/llamacpp-gpu:latest
+{% else %}
+          image: docker.io/bundenth/llamacpp-cpu:latest
+{% endif %}
           command:
           - sh
           - -c
           - |
+{% if gpus > 0 %}
             /workspace/build.sh gpu;
+{% else %}
+            /workspace/build.sh cpu;
+{% endif %}
             /workspace/run_rpc_worker.sh --rpc_port={{rpc_port}}
           env:
           - name: HF_TOKEN
@@ -269,9 +232,13 @@ spec:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+{% if gpus > 0 %}
               nvidia.com/gpu: {{gpus}}
+{% endif %}
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+{% if gpus > 0 %}
               nvidia.com/gpu: {{gpus}}
+{% endif %}
         restartPolicy: OnFailure

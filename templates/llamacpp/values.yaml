@@ -44,26 +44,12 @@
   required: false
   description: "Master key of the LiteLLM service (central registry)"
 
-- name: is_gpu_server
-  value: "False"
-  default: "False"
-  editable: true
-  required: false
-  description: "Whether to use GPUs in the server node"
-
-- name: cpu_workers
+- name: workers
   value: 1
   default: 1
   editable: true
   required: false
-  description: "Number of CPU-based nodes to use when deploying the model"
-
-- name: gpu_workers
-  value: 0
-  default: 0
-  editable: true
-  required: false
-  description: "Number of GPU-based nodes to use when deploying the model"
+  description: "Number of devices or nodes to use when deploying the model"
 
 - name: repo_id
   value: null
@@ -83,7 +69,7 @@
   value: <yout token>
   default: null
   editable: true
-  required: false
+  required: true
   description: "Huggingface access token, required to load gated model weights"
 
 - name: cpus
@@ -94,11 +80,11 @@
   description: "CPUs to be used per single node (final one = cpus * num_workers)"
 
 - name: gpus
-  value: "1"
-  default: "1"
+  value: "0"
+  default: "0"
   editable: true
   required: false
-  description: "GPUs to be used per single node (final one = gpus * num_workers)"
+  description: "GPUs to be used per worker. If 0, inference will be CPU-based only"
 
 - name: memory
   value: "4"
