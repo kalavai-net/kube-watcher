@@ -3,5 +3,6 @@
     "description": "BOINC is a platform for distributed computing projects.",
     "docs": "https://boinc.berkeley.edu/",
     "icon": "https://boinc.berkeley.edu/logo/boinc_logo.png",
-    "info": "With the BOINC template you can contribute to scientific projects by running the BOINC client on your machine."
+    "template_rules": "With the BOINC template you can contribute to scientific projects by running the BOINC client on your machine.",
+    "values_rules": ""
 }

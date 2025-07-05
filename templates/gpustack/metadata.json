@@ -3,5 +3,6 @@
     "description": "Simple, scalable AI model deployment on GPU clusters",
     "docs": "https://docs.gpustack.ai/latest/overview/",
     "icon": "https://pbs.twimg.com/profile_images/1809415059866808320/s59YYkw8_400x400.jpg",
-    "info": "With the GPUStack template you can deploy a GPU stackyour favorite AI models on your cluster."
+    "template_rules": "With the GPUStack template you can deploy a GPU stackyour favorite AI models on your cluster.",
+    "values_rules": ""
 }

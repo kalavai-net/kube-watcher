@@ -3,5 +3,6 @@
     "description": "speaches is an OpenAI API-compatible server supporting streaming transcription, translation, and speech generation",
     "docs": "https://speaches.ai/",
     "icon": "",
-    "info": "With the Speaches template you can deploy text to speech and speech to text models in your cluster."
+    "template_rules": "With the Speaches template you can deploy text to speech and speech to text models in your cluster.",
+    "values_rules": ""
 }

@@ -23,9 +23,6 @@ def get_defaults_path(template: JobTemplate):
 def get_metadata_path(template: JobTemplate):
     return f"templates/{template.name}/metadata.json"
 
-def get_info_path(template: JobTemplate):
-    return f"templates/{template.name}/INFO.md"
-
 def escape_field(text):
     return re.sub('[^0-9a-z]+', '-', text.lower())
 
@@ -71,15 +68,6 @@ class Job:
             return meta
         except Exception as e:
             print("Error when getting metadata:", str(e))
-            return None
-
-    def get_info(self):
-        try:
-            with open(get_info_path(template=self.template), 'r') as f:
-                meta = json.load(f)
-            return meta
-        except Exception as e:
-            print("Error when getting info:", str(e))
             return None
 
     def populate(self, values: dict, default_values=None, target_labels=None):
