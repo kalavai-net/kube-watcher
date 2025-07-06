@@ -3,6 +3,6 @@
     "description": "Python SDK, Proxy Server (LLM Gateway) to call 100+ LLM APIs in OpenAI format",
     "docs": "https://docs.litellm.ai/",
     "icon": "https://opensource.muenchen.de/logo/litellm.png",
-    "template_rules": "With the LiteLLM template you can deploy a LiteLLM to act as API Gateway for your cluster LLM models.",
+    "template_rules": "LiteLLM is a gateway API interface for LLMs, but does not deploy any models itself. With the LiteLLM template you can deploy a LiteLLM to act as API Gateway for your cluster LLM models.",
     "values_rules": ""
 }

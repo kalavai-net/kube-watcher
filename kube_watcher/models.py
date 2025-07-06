@@ -4,7 +4,7 @@ from enum import Enum
 
 # This are off-the-shelf supported templates
 class JobTemplate(Enum):
-    custom = 0
+    #custom = 0
     vllm = 1
     #aphrodite = 2
     llamacpp = 3

@@ -3,6 +3,6 @@
     "description": "Open source LLM engineering platform: LLM Observability, metrics, evals, prompt management, playground, datasets",
     "docs": "https://langfuse.com/docs",
     "icon": "https://bookface-images.s3.amazonaws.com/small_logos/8bc9addf3646af503fbc3ded74504fb4df3399eb.png",
-    "template_rules": "With the Langfuse template you can deploy a Langfuse server to monitor and evaluate your LLM models.",
+    "template_rules": "Langfuse is an evaluation and traceability tool for LLMs, but does not itself deploy any models. With the Langfuse template you can deploy a Langfuse server to monitor and evaluate your LLM models.",
     "values_rules": ""
 }

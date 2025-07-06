@@ -48,7 +48,7 @@
   value: 1
   default: 1
   editable: true
-  required: false
+  required: true
   description: "Number of devices or nodes to use when deploying the model"
 
 - name: repo_id
@@ -59,8 +59,8 @@
   description: "Huggingface model id to deploy"
 
 - name: model_filename
-  value: "None"
-  default: "None"
+  value: null
+  default: null
   editable: true
   required: true
   description: "Specific GGUF model file to use, which let's you select the quantization level"
