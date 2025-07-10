@@ -384,8 +384,12 @@ async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: 
 async def get_job_templates(type: str=None, api_key: str = Depends(verify_read_key)):
     model_templates = []
     for e in JobTemplate:
-        if type is None or get_job_defaults(request=e.name)["metadata"]["type"] == type:
+        if type is None:
             model_templates.append(e.name)
+        else:
+            job = await get_job_defaults(request=JobTemplateRequest(template=e.name))
+            if job["metadata"]["type"] == type:
+                model_templates.append(e.name)
     return model_templates
 
 @app.get("/v1/job_defaults")
