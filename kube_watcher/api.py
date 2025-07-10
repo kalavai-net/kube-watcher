@@ -381,8 +381,12 @@ async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: 
     return {"status": "success"}
 
 @app.get("/v1/get_job_templates")
-async def get_job_templates(api_key: str = Depends(verify_read_key)):
-    return [e.name for e in JobTemplate]
+async def get_job_templates(type: str=None, api_key: str = Depends(verify_read_key)):
+    model_templates = []
+    for e in JobTemplate:
+        if type is None or get_job_defaults(request=e.name)["metadata"]["type"] == type:
+            model_templates.append(e.name)
+    return model_templates
 
 @app.get("/v1/job_defaults")
 async def get_job_defaults(request: JobTemplateRequest, api_key: str = Depends(verify_read_key)):

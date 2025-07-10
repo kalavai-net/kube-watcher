@@ -1,5 +1,6 @@
 {
     "name": "OpenWebUi",
+    "type": "other",
     "description": "User-friendly AI Interface (Supports Ollama, OpenAI API, ...)",
     "docs": "https://docs.openwebui.com/",
     "icon": "https://openwebui.com/logo.png",

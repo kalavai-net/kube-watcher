@@ -1,5 +1,6 @@
 {
   "name": "vLLM",
+  "type": "model",
   "description": "A high-throughput and memory-efficient inference and serving engine for LLMs",
   "docs": "https://docs.vllm.ai/",
   "icon": "https://docs.vllm.ai/en/latest/assets/logos/vllm-logo-only-light.ico",

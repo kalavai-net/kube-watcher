@@ -1,5 +1,6 @@
 {
     "name": "HTTPS-portal",
+    "type": "other",
     "description": "HTTPS-portal is a template that allows you to deploy a HTTPS portal to your cluster.",
     "docs": "https://github.com/SteveLTN/https-portal",
     "icon": "",

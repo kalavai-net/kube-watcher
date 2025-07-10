@@ -1,5 +1,6 @@
 {
     "name": "Aphrodite",
+    "type": "other",
     "description": "Large-scale LLM inference engine",
     "docs": "https://aphrodite.pygmalion.chat/",
     "icon": "https://raw.githubusercontent.com/PygmalionAI/aphrodite-engine/main/assets/aphrodite.png",

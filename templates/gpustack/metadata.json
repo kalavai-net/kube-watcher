@@ -1,5 +1,6 @@
 {
     "name": "GPUStack",
+    "type": "other",
     "description": "Simple, scalable AI model deployment on GPU clusters",
     "docs": "https://docs.gpustack.ai/latest/overview/",
     "icon": "https://pbs.twimg.com/profile_images/1809415059866808320/s59YYkw8_400x400.jpg",

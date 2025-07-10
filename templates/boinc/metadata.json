@@ -1,5 +1,6 @@
 {
     "name": "BOINC",
+    "type": "other",
     "description": "BOINC is a platform for distributed computing projects.",
     "docs": "https://boinc.berkeley.edu/",
     "icon": "https://boinc.berkeley.edu/logo/boinc_logo.png",
