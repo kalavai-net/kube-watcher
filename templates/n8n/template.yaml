@@ -113,6 +113,12 @@ spec:
             value: {{postgres_schema}}
           - name: N8N_ENCRYPTION_KEY
             value: {{n8n_encryption_key}}
+          - name: N8N_DISABLE_UI
+            value: "{{n8n_disable_ui}}"
+          - name: N8N_DIAGNOSTICS_ENABLED
+            value: "false"
+          - name: N8N_HIRING_BANNER_ENABLED
+            value: "false"
           resources:
             requests:
               cpu: 0.5

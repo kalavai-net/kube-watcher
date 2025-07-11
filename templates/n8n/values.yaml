@@ -72,3 +72,10 @@
   editable: true
   required: true
   description: "Encryption key to use by n8n to create credentials (enables persistence)"
+
+- name: n8n_disable_ui
+  value: "false"
+  default: "false"
+  editable: true
+  required: false
+  description: "Whether UI should be disabled in the deployment"
