@@ -17,6 +17,7 @@ class JobTemplate(Enum):
     sglang = 10
     https = 11
     langfuse = 12
+    n8n = 13
     #flexible = 99
 
 class NodeStatusRequest(BaseModel):

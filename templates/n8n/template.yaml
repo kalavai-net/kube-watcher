@@ -1,0 +1,123 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  minAvailable: 2
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  tasks:
+  {% if external_postgres_host == "" %}
+  - replicas: 1   # One ps pod specified
+    name: db
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: postgres
+          image: 'postgres:16'
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+          - name: POSTGRES_DB
+            value: {{postgres_db}}
+          - name: POSTGRES_USER
+            value: {{postgres_user}}
+          - name: POSTGRES_PASSWORD
+            value: {{postgres_password}}
+          - name: PGDATA
+            value: "/var/lib/postgresql/data/pgdata"
+          resources:
+            requests:
+              cpu: 0.5
+              memory: 0.5Gi
+            limits:
+              cpu: 0.5
+              memory: 1Gi
+  {% endif %}
+  - replicas: 1   # One ps pod specified
+    name: server
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          role: leader
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.n8n.io/n8nio/n8n
+          name: n8n-server
+          command:
+          - sh
+          - -c
+          - |
+          {% if external_postgres_host == "" %}
+            DB_HOST=`cat /etc/volcano/db.host`;
+            export DB_POSTGRESDB_HOST=$DB_HOST
+            export DB_POSTGRESDB_PORT=5432
+          {% else %}
+            export DB_POSTGRESDB_HOST={{external_posgres_host}}
+            export DB_POSTGRESDB_PORT={{external_postgres_port}}
+        {% endif %}
+            tini -- /docker-entrypoint.sh
+          ports:
+          - containerPort: 5678
+            name: n8n-port
+          env:
+          - name: DB_TYPE
+            value: postgresdb
+          - name: DB_POSTGRESDB_DATABASE
+            value: {{postgres_db}}
+          - name: DB_POSTGRESDB_USER
+            value: {{postgres_user}}
+          - name: DB_POSTGRESDB_PASSWORD
+            value: {{postgres_password}}
+          - name: DB_POSTGRESDB_SCHEMA
+            value: {{postgres_schema}}
+          - name: N8N_ENCRYPTION_KEY
+            value: {{n8n_encryption_key}}
+          resources:
+            requests:
+              cpu: 0.5
+              memory: 0.5Gi
+            limits:
+              cpu: 1
+              memory: 1Gi
+  

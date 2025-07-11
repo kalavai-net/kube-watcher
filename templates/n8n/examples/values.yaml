@@ -1,0 +1,13 @@
+- name: deployment_name
+  value: n8n
+  default: n8n
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+- name: n8n_encryption_key
+  value: "sk-0987654321"
+  default: "sk-0987654321"
+  editable: true
+  required: true
+  description: "Encryption key to use by n8n to create credentials (enables persistence)"

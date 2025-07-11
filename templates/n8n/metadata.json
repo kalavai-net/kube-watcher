@@ -1,0 +1,9 @@
+{
+    "name": "n8n",
+    "type": "other",
+    "description": "n8n (pronounced n-eight-n) helps you to connect any app with an API with any other, and manipulate its data with little or no code.",
+    "docs": "https://docs.n8n.io/",
+    "icon": "https://docs.n8n.io/_images/n8n-docs-icon.svg",
+    "template_rules": "",
+    "values_rules": ""
+}
