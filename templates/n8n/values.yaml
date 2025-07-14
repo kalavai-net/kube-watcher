@@ -79,3 +79,10 @@
   editable: true
   required: false
   description: "Whether UI should be disabled in the deployment"
+
+- name: n8n_secure_cookie
+  value: "false"
+  default: "false"
+  editable: true
+  required: false
+  description: "Whether to use secure cookies in the deployment"

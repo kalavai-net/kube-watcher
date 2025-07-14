@@ -360,9 +360,9 @@ spec:
             - containerPort: 5432
           env:
           - name: POSTGRES_DB
-            value: postgres
+            value: {{postgres_db}}
           - name: POSTGRES_USER
-            value: postgres
+            value: {{postgres_user}}
           - name: POSTGRES_PASSWORD
             value: {{postgres_password}}
           - name: PGDATA
