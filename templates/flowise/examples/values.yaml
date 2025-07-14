@@ -1,0 +1,20 @@
+- name: deployment_name
+  value: flowise
+  default: flowise
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+- name: jwt_auth_token_secret
+  value: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+  default: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+  editable: true
+  required: true
+  description: "JWT token secret"
+
+- name: jwt_refresh_token_secret
+  value: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+  default: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+  editable: true
+  required: true
+  description: "JWT refresh token secret"

@@ -1,0 +1,262 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  minAvailable: 3
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  tasks:
+  - replicas: 1   # One ps pod specified
+    name: server
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          role: leader
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.io/flowiseai/flowise:latest
+          name: flowise-server
+          command:
+          - sh
+          - -c
+          - |
+            export REDIS_HOST=`cat /etc/volcano/redis.host`;
+            export REDIS_URL=redis://$REDIS_HOST:$REDIS_PORT;
+        {% if external_postgres_host == "" %}
+            DB_HOST=`cat /etc/volcano/postgres.host`;
+            export DATABASE_HOST=$DB_HOST
+            export DATABASE_PORT=5432
+        {% else %}
+            export DATABASE_HOST={{external_posgres_host}}
+            export DATABASE_PORT={{external_postgres_port}}
+        {% endif %}
+            flowise start
+          ports:
+          - containerPort: 3000
+            name: server-port
+          env:
+          - name: REDIS_PORT
+            value: "6379"
+          - name: DATABASE_TYPE
+            value: postgres
+          - name: DATABASE_NAME
+            value: {{postgres_db}}
+          - name: DATABASE_USER
+            value: {{postgres_user}}
+          - name: DATABASE_PASSWORD
+            value: {{postgres_password}}
+          - name: DATABASE_PATH
+            value: "/root/.flowise"
+          - name: ENABLE_METRICS
+            value: "False"
+          - name: MODE
+            value: "{{flowise_mode}}" # queue
+          - name: JWT_AUTH_TOKEN_SECRET
+            value: "{{jwt_auth_token_secret}}"
+          - name: JWT_REFRESH_TOKEN_SECRET
+            value: "{{jwt_refresh_token_secret}}"
+          - name: JWT_ISSUER
+            value: "ISSUER"
+          - name: JWT_AUDIENCE
+            value: "AUDIENCE"
+          - name: JWT_TOKEN_EXPIRY_IN_MINUTES
+            value: "360"
+          - name: JWT_REFRESH_TOKEN_EXPIRY_IN_MINUTES
+            value: "43200"
+          resources:
+            requests:
+              cpu: 0.5
+              memory: 0.5Gi
+            limits:
+              cpu: 1
+              memory: 1Gi
+  - replicas: 1   # One ps pod specified
+    name: worker
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.io/flowiseai/flowise-worker:latest
+          name: flowise-worker
+          command:
+          - sh
+          - -c
+          - |
+            export REDIS_HOST=`cat /etc/volcano/redis.host`;
+            export REDIS_URL=redis://$REDIS_HOST:$REDIS_PORT;
+        {% if external_postgres_host == "" %}
+            DB_HOST=`cat /etc/volcano/postgres.host`;
+            export DATABASE_HOST=$DB_HOST
+            export DATABASE_PORT=5432
+        {% else %}
+            export DATABASE_HOST={{external_posgres_host}}
+            export DATABASE_PORT={{external_postgres_port}}
+        {% endif %}
+            pnpm run start-worker
+          ports:
+          - containerPort: 5566
+            name: worker-port
+          env:
+          - name: WORKER_PORT
+            value: "5566"
+          - name: REDIS_PORT
+            value: "6379"
+          - name: DATABASE_TYPE
+            value: postgres
+          - name: DATABASE_NAME
+            value: {{postgres_db}}
+          - name: DATABASE_USER
+            value: {{postgres_user}}
+          - name: DATABASE_PASSWORD
+            value: {{postgres_password}}
+          - name: DATABASE_PATH
+            value: "/root/.flowise"
+          - name: ENABLE_METRICS
+            value: "False"
+          - name: MODE
+            value: "{{flowise_mode}}" # queue
+          - name: JWT_AUTH_TOKEN_SECRET
+            value: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+          - name: JWT_REFRESH_TOKEN_SECRET
+            value: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+          - name: JWT_ISSUER
+            value: "ISSUER"
+          - name: JWT_AUDIENCE
+            value: "AUDIENCE"
+          - name: JWT_TOKEN_EXPIRY_IN_MINUTES
+            value: "360"
+          - name: JWT_REFRESH_TOKEN_EXPIRY_IN_MINUTES
+            value: "43200"
+          resources:
+            requests:
+              cpu: 0.5
+              memory: 0.5Gi
+            limits:
+              cpu: 1
+              memory: 1Gi
+  {% if external_postgres_host == "" %}
+  - replicas: 1   # One ps pod specified
+    name: postgres
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: postgres
+          image: 'postgres:latest'
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+          - name: POSTGRES_DB
+            value: {{postgres_db}}
+          - name: POSTGRES_USER
+            value: {{postgres_user}}
+          - name: POSTGRES_PASSWORD
+            value: {{postgres_password}}
+          - name: PGDATA
+            value: "/var/lib/postgresql/data/pgdata"
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 1
+              memory: 2Gi
+  {% endif %}
+  - replicas: 1   # One ps pod specified
+    name: redis
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - image: docker.io/redis:7
+          name: redis
+          # command:
+          # - sh
+          # - -c
+          # - |
+          #   redis-server --requirepass {{redis_password}}
+          ports:
+          - containerPort: 6379
+            name: redis-port
+          resources:
+            requests:
+              cpu: 1
+              memory: 1Gi
+            limits:
+              cpu: 1
+              memory: 1Gi
+  

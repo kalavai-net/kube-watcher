@@ -1,0 +1,88 @@
+############################
+### MUST HAVE THIS FIELDS ##
+# Either id_field pointing to another existing field
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  editable: false
+  required: false
+  description: "Field that contains the ID of the job"
+
+# must contain the list of ports to enable in the leader node
+- name: endpoint_ports
+  value: "3000"
+  default: "3000"
+  editable: false
+  required: false
+  description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
+############################
+
+- name: deployment_name
+  value: flowise
+  default: flowise
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+- name: postgres_db
+  value: "ps_db"
+  default: "ps_db"
+  editable: true
+  required: false
+  description: "Storage name for the postgres database (backend)."
+
+- name: postgres_user
+  value: "ps_user"
+  default: "ps_user"
+  editable: true
+  required: false
+  description: "Storage name for the postgres database (backend)."
+
+- name: postgres_password
+  value: "ps_password"
+  default: "ps_password"
+  editable: true
+  required: false
+  description: "Storage name for the postgres database (backend)."
+
+- name: external_postgres_host
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Address of the external postgreSQL database (only if using external db)"
+
+- name: external_postgres_port
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Port of the external postgreSQL database (only if using external db)"
+
+- name: flowise_mode
+  value: "queue"
+  default: "queue"
+  editable: true
+  required: false
+  description: "Whether to run flowise in queue mode"
+
+- name: jwt_auth_token_secret
+  value: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD-changeme"
+  default: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+  editable: true
+  required: true
+  description: "JWT token secret"
+
+- name: jwt_refresh_token_secret
+  value: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD-changeme"
+  default: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+  editable: true
+  required: true
+  description: "JWT refresh token secret"
+
+- name: redis_password
+  value: myredissecret
+  default: myredissecret
+  editable: true
+  required: false
+  description: "Auth secret for Redis"
