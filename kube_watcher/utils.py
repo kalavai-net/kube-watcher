@@ -14,6 +14,29 @@ FLOW_DEPLOYMENT_TEMPLATE = "deployments/flow_deployment_template.yaml"
 AGENT_BUILDER_TEMPLATE = "deployments/agent_builder_template.yaml"
 
 
+def extract_auth_token(headers):
+    """
+    Extract auth token. Valid headers:
+        X-API-KEY: token
+        X-API-Key: token
+        Authorization: Bearer token
+        authorization: Bearer token
+    """
+    #return headers.get("X-API-KEY")
+    bearer = None
+    try:
+        for header in ["Authorization", "authorization", "X-API-KEY", "X-API-Key"]:
+            bearer = headers.get(header, None)
+            if bearer is not None:
+                break
+        if bearer is not None and " " in bearer:
+            return bearer.split()[-1]
+        else:
+            return bearer
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def extract_longhorn_metric_from_prometheus(metric_keys, metrics, map_fields):
     objects = defaultdict(dict)
     lines = metrics.splitlines()

@@ -1,12 +1,12 @@
 [tool.poetry]
 name        = "kube_watcher"
-version     = "2025.04.2"
+version     = "2025.07.30"
 description = "API to interact with kubernetes cluster"
 authors     = ["Carlos Fernandez Musoles <carlos@kalavai.net>"]
 
 
 [tool.poetry.dependencies]
-python                  = ">= 3.8, < 4.0" 
+python                  = ">= 3.10, < 4.0" 
 kubernetes              = { version = "^27.2.0" }
 prometheus-api-client   = { version = "^0.5.3" }
 plotext                 = { version = "^5.2.8" }
@@ -14,6 +14,9 @@ fastapi                 = { version = "0.101.1", extras = ["all"] }
 pyyaml                  = { version = "6.0.1" }
 anvil-uplink            = { version = "0.5.0" }
 jinja2                  = { version = "3.1.4" }
+fastapi-mcp             = { version = "0.3.0" }
+mcp                     = { version = "<=1.7.0" } # tackling issue: https://github.com/modelcontextprotocol/python-sdk/issues/691
+uvicorn                 = { version = "0.34.0" }
 
 black                   = { version = ">= 22.1.0", optional = true }
 
