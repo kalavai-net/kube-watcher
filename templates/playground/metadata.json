@@ -4,6 +4,7 @@
     "description": "User-friendly AI Interface (Supports Ollama, OpenAI API, ...)",
     "docs": "https://docs.openwebui.com/",
     "icon": "https://openwebui.com/logo.png",
+    "info": "Useful to test LLMs in your pool with a neat playground GUI.\nDoes not require GPUs",
     "template_rules": "Playground is a GUI interface for models, but does not itself deploy any models. With the OpenWebUi template you can deploy a full browser based UI playground to test your LLM models in your cluster.",
     "values_rules": ""
 }

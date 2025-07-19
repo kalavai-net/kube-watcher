@@ -4,6 +4,7 @@
     "description": "Flowise is an open source generative AI development platform for building AI Agents and LLM workflows.",
     "docs": "https://docs.flowiseai.com/",
     "icon": "https://docs.flowiseai.com/~gitbook/image?url=https%3A%2F%2F2285675912-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Forganizations%252FGbkT2LO0nYo1GpaPli6H%252Fsites%252Fsite_xr8IJ%252Ficon%252FK0o2MMI8aGsaEmorO1kF%252FFlowise%2520Logo%2520Dark%2520High%2520Res.png%3Falt%3Dmedia%26token%3D1b448d7c-22a1-43c9-b274-d427b8f9588d&width=32&dpr=1&quality=100&sign=278568ee&sv=2",
+    "info": "Powerful agentic workflow automation, ideal for AI Agents.\nDoes not require GPUs",
     "template_rules": "",
     "values_rules": ""
 }
