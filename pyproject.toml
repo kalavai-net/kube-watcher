@@ -12,7 +12,6 @@ prometheus-api-client   = { version = "^0.5.3" }
 plotext                 = { version = "^5.2.8" }
 fastapi                 = { version = "0.101.1", extras = ["all"] }
 pyyaml                  = { version = "6.0.1" }
-anvil-uplink            = { version = "0.5.0" }
 jinja2                  = { version = "3.1.4" }
 fastapi-mcp             = { version = "0.3.0" }
 mcp                     = { version = "<=1.7.0" } # tackling issue: https://github.com/modelcontextprotocol/python-sdk/issues/691
