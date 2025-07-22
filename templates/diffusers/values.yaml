@@ -2,8 +2,8 @@
 ### MUST HAVE THIS FIELDS ##
 # Either id_field pointing to another existing field
 - name: id_field
-  value: model_id
-  default: model_id
+  value: deployment_name
+  default: deployment_name
   editable: false
   required: false
   description: "Field that contains the ID of the job"
@@ -16,6 +16,48 @@
   required: false
   description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
+
+- name: deployment_name
+  value: diffusers
+  default: diffusers
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+- name: working_memory
+  value: 5
+  default: 5
+  editable: true
+  required: true
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
+
+- name: workers
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
+
+- name: min_replicas
+  value: 0
+  default: 0
+  editable: true
+  required: false
+  description: "Minimum number of model replicas to be loaded at any given time"
+
+- name: max_replicas
+  value: 1
+  default: 1
+  editable: true
+  required: false
+  description: "Maximum number of model replicas to be loaded at any given time"
+
+- name: hf_token
+  value: <yout token>
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface access token, only required to load gated model weights"
 
 - name: cpus
   value: 2
@@ -37,20 +79,6 @@
   editable: true
   required: false
   description: "Number of gpus per worker"
-
-- name: model_id
-  value: "hexgrad/Kokoro-82M"
-  default: "hexgrad/Kokoro-82M"
-  editable: true
-  required: true
-  description: "Model ID. hexagrad/Kokoro-82M for TTS and one of the following for STT: tiny.en, tiny, base.en, base, small.en, small, medium.en, medium, large-v1, large-v2, large-v3, large, distil-large-v2, distil-medium.en, distil-small.en, distil-large-v3, large-v3-turbo, turbo"
-
-- name: mode
-  value: "audio_speech"
-  default: "audio_speech"
-  editable: true
-  required: false
-  description: "Mode of the model: audio_speech for TTS, audio_transcription for STT"
 
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000"

@@ -1,34 +1,24 @@
 #!/bin/bash
 
 cache_dir="/cache"
-tool_call_parser="llama3_json"
-template_url=""
+min_replicas=0
+max_replicas=1
+num_gpus=1
+device="cuda"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --model_path=*)
-      model_path="${1#*=}"
+    --num_gpus=*)
+      num_gpus="${1#*=}"
       ;;
-    --model_id=*)
-      model_id="${1#*=}"
+    --min_replicas=*)
+      min_replicas="${1#*=}"
       ;;
-    --tensor_parallel_size=*)
-      tensor_parallel_size="${1#*=}"
+    --max_replicas=*)
+      max_replicas="${1#*=}"
       ;;
-    --pipeline_parallel_size=*)
-      pipeline_parallel_size="${1#*=}"
-      ;;
-    --lora_modules=*)
-      lora_modules="${1#*=}"
-      ;;
-    --extra=*)
-      extra="${1#*=}"
-      ;;
-    --template_url=*)
-      template_url="${1#*=}"
-      ;;
-    --tool_call_parser=*)
-      tool_call_parser="${1#*=}"
+    --device=*)
+      device="${1#*=}"
       ;;
     *)
       printf "***************************\n"
@@ -74,5 +64,5 @@ else
   lora="--enable-lora --lora-modules "$(join_by " " "${all_loras[@]}")
 fi
 
-serve run ray_deploy:entrypoint \
+HF_HOME=$cache_dir NUM_GPUS=$num_gpus MIN_REPLICAS=$min_replicas MAX_REPLICAS=$max_replicas DEVICE=$device serve run ray_deploy:entrypoint \
   --address 0.0.0.0:6379

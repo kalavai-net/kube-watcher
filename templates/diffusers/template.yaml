@@ -126,7 +126,13 @@ spec:
           - -c
           - |
             # Run model
-            /home/ray/workspace/run_model.sh
+            /home/ray/workspace/run_model.sh \
+              --num_gpus={{gpus}} \
+              --min_replicas={{min_replicas}} \
+              --max_replicas={{max_replicas}}
+          env:
+          - name: HF_TOKEN
+            value: {{hf_token}}
           ports:
           - containerPort: 8000
             name: container-port

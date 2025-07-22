@@ -10,12 +10,11 @@ python ray_inference.py
 import os
 import base64
 import time
-import uuid
 from datetime import datetime
-from typing import List, Optional, Literal
+from typing import List, Optional
 from io import BytesIO
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response, JSONResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 import torch
 
@@ -25,12 +24,13 @@ from ray.serve.handle import DeploymentHandle
 
 app = FastAPI()
 
+# add models from HF https://huggingface.co/models?library=diffusers&sort=trending
 supported_models = [
     "stable-diffusion-v1-5/stable-diffusion-v1-5",
-    "CompVis/stable-diffusion-v1-4"
+    "CompVis/stable-diffusion-v1-4",
+    "black-forest-labs/FLUX.1-dev"
 ]
-device = "cuda"
-os.environ["HF_TOKEN"] = ""
+DEVICE = os.environ.get("DEVICE", "cuda")
 NUM_GPUS = os.environ.get("NUM_GPUS", 1)
 MIN_REPLICAS = os.environ.get("MIN_REPLICAS", 0)
 MAX_REPLICAS = os.environ.get("MAX_REPLICAS", 1)
@@ -207,10 +207,10 @@ class StableDiffusionV2:
                 torch_dtype=torch.float16
             )
             #self.pipe = FluxPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16)
-            if device == "cpu":
+            if DEVICE == "cpu":
                 self.pipe.enable_model_cpu_offload()
             else:
-                self.pipe = self.pipe.to(device)
+                self.pipe = self.pipe.to(DEVICE)
             self.current_model = model_id
 
     def generate(self, model_id: str, prompt: str, img_size: int = 512):
@@ -218,7 +218,7 @@ class StableDiffusionV2:
         assert len(prompt), "prompt parameter cannot be empty"
         self.load_model(model_id)
 
-        with torch.autocast(device):
+        with torch.autocast(DEVICE):
             image = self.pipe(prompt, height=img_size, width=img_size).images[0]
             return image
 
