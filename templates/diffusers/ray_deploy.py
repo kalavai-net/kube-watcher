@@ -199,12 +199,16 @@ class StableDiffusionV2:
         
     def load_model(self, model_id: str):
         if self.current_model != model_id:
-            from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline, FluxPipeline
-            self.pipe = StableDiffusionPipeline.from_pretrained(
+            # move to AutoPipeline https://huggingface.co/docs/diffusers/en/tutorials/autopipeline
+            #   supports Stable Diffusion, Stable Diffusion XL, ControlNet, Kandinsky 2.1, Kandinsky 2.2, and DeepFloyd IF
+            from diffusers import AutoPipelineForText2Image
+            #from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline, FluxPipeline
+            self.pipe = AutoPipelineForText2Image.from_pretrained(
                 model_id,
                 #scheduler=scheduler,
                 #revision="fp16",
-                torch_dtype=torch.float16
+                torch_dtype=torch.float16,
+                use_safe_tenrors=True
             )
             #self.pipe = FluxPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16)
             if DEVICE == "cpu":
