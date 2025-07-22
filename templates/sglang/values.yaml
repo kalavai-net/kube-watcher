@@ -21,28 +21,28 @@
   default: "http://litellm.default.svc.cluster.local:4000"
   editable: true
   required: false
-  description: "Base URL of the LiteLLM service (central registry)"
+  description: "Base URL of the LiteLLM service (central model registry). This can be an external LiteLLM instance or an internal deployment in the pool (default)"
 
 - name: litellm_key
   value: ""
   default: ""
   editable: true
   required: false
-  description: "Master key of the LiteLLM service (central registry)"
+  description: "Master key of the LiteLLM service (central model registry)"
 
 - name: working_memory
   value: 5
   default: 5
   editable: true
   required: true
-  description: "Temporary storage to use to cache model weights (in GB)"
+  description: "Temporary storage to use to cache model weights (in GB). All workers should have enough free disk to accommodate the weights."
 
 - name: workers
   value: 1
   default: 1
   editable: true
   required: true
-  description: "Number of nodes to use when deploying the model, should be big enough to hold the model weights"
+  description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
 
 - name: model_id
   value: null
@@ -63,28 +63,28 @@
   default: null
   editable: true
   required: true
-  description: "Huggingface access token, required to load gated model weights"
+  description: "Huggingface access token, only required to load gated model weights"
 
 - name: cpus
-  value: "2"
-  default: "2"
+  value: 2
+  default: 2
   editable: true
   required: false
-  description: "CPUs to be used per single node (final one = cpus * num_workers)"
+  description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
 
 - name: gpus
-  value: "1"
-  default: "1"
+  value: 1
+  default: 1
   editable: true
   required: false
-  description: "GPUs to be used per single node (final one = gpus * num_workers)"
+  description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
 
 - name: memory
   value: 8
   default: 8
   editable: true
   required: false
-  description: "RAM memory to be used per single node (final one = memory * num_workers)"
+  description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
 
 - name: tool_call_parser
   value: "llama3"

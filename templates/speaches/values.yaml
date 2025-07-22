@@ -22,21 +22,21 @@
   default: 2
   editable: true
   required: false
-  description: "Number of cpus per worker"
-
-- name: memory
-  value: 4
-  default: 4
-  editable: true
-  required: false
-  description: "Memory per worker"
+  description: "CPUs to be used. Workers should have these many CPUs available."
 
 - name: gpus
   value: 1
   default: 1
   editable: true
   required: false
-  description: "Number of gpus per worker"
+  description: "GPUs to be used. Workers should have these many GPUs available."
+
+- name: memory
+  value: 4
+  default: 4
+  editable: true
+  required: false
+  description: "RAM memory to be used. Workers should have these much RAM available."
 
 - name: model_id
   value: "hexgrad/Kokoro-82M"
@@ -57,11 +57,11 @@
   default: "http://litellm.default.svc.cluster.local:4000"
   editable: true
   required: false
-  description: "Base URL of the LiteLLM service (central registry)"
+  description: "Base URL of the LiteLLM service (central model registry). This can be an external LiteLLM instance or an internal deployment in the pool (default)"
 
 - name: litellm_key
   value: ""
   default: ""
   editable: true
   required: false
-  description: "Master key of the LiteLLM service (central registry)"
+  description: "Master key of the LiteLLM service (central model registry)"

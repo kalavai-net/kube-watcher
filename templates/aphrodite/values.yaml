@@ -21,28 +21,28 @@
   default: "http://litellm.default.svc.cluster.local:4000"
   editable: true
   required: false
-  description: "Base URL of the LiteLLM service (central registry)"
+  description: "Base URL of the LiteLLM service (central model registry). This can be an external LiteLLM instance or an internal deployment in the pool (default)"
 
 - name: litellm_key
   value: ""
   default: ""
   editable: true
   required: false
-  description: "Master key of the LiteLLM service (central registry)"
+  description: "Master key of the LiteLLM service (central model registry)"
 
 - name: working_memory
   value: 10
   default: 10
   editable: true
   required: true
-  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights"
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
 
 - name: workers
   value: 1
   default: 1
   editable: true
   required: true
-  description: "Number of remote worker machines (for tensor and pipeline parallelism)."
+  description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
 
 - name: model_id
   value: null
@@ -56,28 +56,28 @@
   default: null
   editable: true
   required: true
-  description: "Huggingface token, required to load model weights"
+  description: "Huggingface token, only required to load model weights"
 
 - name: cpus
-  value: "2"
-  default: "2"
+  value: 2
+  default: 2
   editable: true
-  required: true
-  description: "CPUs per single worker (final one = cpus * num_workers)"
+  required: false
+  description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
 
 - name: gpus
-  value: "1"
-  default: "1"
+  value: 1
+  default: 1
   editable: true
-  required: true
-  description: "GPUs per single worker (final one = gpus * num_workers)"
+  required: false
+  description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
 
 - name: memory
   value: 8
   default: 8
   editable: true
-  required: true
-  description: "RAM memory per single worker (final one = memory * num_workers)"
+  required: false
+  description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
 
 - name: tensor_parallel_size
   value: "1"

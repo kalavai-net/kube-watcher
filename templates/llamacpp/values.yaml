@@ -28,28 +28,28 @@
   default: 5
   editable: true
   required: true
-  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights"
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
 
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
   default: "http://litellm.default.svc.cluster.local:4000"
   editable: true
   required: false
-  description: "Base URL of the LiteLLM service (central registry)"
+  description: "Base URL of the LiteLLM service (central model registry). This can be an external LiteLLM instance or an internal deployment in the pool (default)"
 
 - name: litellm_key
   value: ""
   default: ""
   editable: true
   required: false
-  description: "Master key of the LiteLLM service (central registry)"
+  description: "Master key of the LiteLLM service (central model registry)"
 
 - name: workers
   value: 1
   default: 1
   editable: true
   required: true
-  description: "Number of devices or nodes to use when deploying the model"
+  description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
 
 - name: repo_id
   value: null
@@ -70,28 +70,28 @@
   default: null
   editable: true
   required: true
-  description: "Huggingface access token, required to load gated model weights"
+  description: "Huggingface access token, only required to load gated model weights"
 
 - name: cpus
-  value: "2"
-  default: "2"
+  value: 2
+  default: 2
   editable: true
   required: false
-  description: "CPUs to be used per single node (final one = cpus * num_workers)"
+  description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
 
 - name: gpus
-  value: "0"
-  default: "0"
+  value: 0
+  default: 0
   editable: true
   required: false
-  description: "GPUs to be used per worker. If 0, inference will be CPU-based only"
+  description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
 
 - name: memory
-  value: "4"
-  default: "4"
+  value: 4
+  default: 4
   editable: true
   required: false
-  description: "RAM memory to be used per single node (final one = memory * num_workers)"
+  description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
 
 - name: server_extra
   value: ""
