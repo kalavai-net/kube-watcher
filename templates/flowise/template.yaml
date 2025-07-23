@@ -6,7 +6,11 @@ metadata:
     # must have this label
     kalavai.job.name: {{deployment_id}}
 spec:
+{% if external_postgreSQL_url == "" %}
   minAvailable: 3
+{% else %}
+  minAvailable: 2
+{% endif %}
   schedulerName: volcano
   plugins:
     env: []
