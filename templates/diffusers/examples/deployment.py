@@ -2,7 +2,7 @@ import json
 import requests
 import yaml
 
-URL = "http://51.159.150.251:30001"
+URL = "http://51.159.182.127:30001"
 
 if __name__ == "__main__":
 
@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     response = requests.post(
         f"{URL}/v1/deploy_custom_job",
-        headers={"X-API-KEY": "14429b75-b1e4-4987-8bcf-afa00c69644b", "USER": "carlosfm"},
+        headers={"X-API-KEY": "aad25d2f-b24c-42c2-8a2a-2b2df1ec8bbf", "USER": "carlosfm"},
         json={
             "template": template,
             "template_values": values_dict,

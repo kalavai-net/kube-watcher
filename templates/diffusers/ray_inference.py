@@ -6,15 +6,16 @@ import base64
 t = time.time()
 model_id = "stable-diffusion-v1-5/stable-diffusion-v1-5"
 #model_id = "stable-diffusion-v1-5/stable-diffusion-v1-5"
-prompt = "A children's book drawing of a veterinarian using a stethoscope to listen to the heartbeat of a baby otter."
+prompt = "a realistic picture of a sunset."
 resp = requests.post(
     f"http://0.0.0.0:8000/v1/images/generations",
     json={
         "prompt": prompt,
         "model": model_id,
-        "n": 2,
+        "n": 1,
         "size": "512x512",
-        "response_format": "b64_json"
+        "response_format": "b64_json",
+        "extra": {"num_inference_steps": 50}
     },
 )
 print(f"Inference time: {time.time()-t:.2f}s")

@@ -1,4 +1,7 @@
 """
+TODO: support AutoPipelineForImage2Image, AutoPipelineForInpainting
+https://learnopencv.com/hugging-face-diffusers/
+
 Serve:
 
 serve run ray_deploy:entrypoint
@@ -49,7 +52,7 @@ class ImageGenerationRequest(BaseModel):
     response_format: str = Field(default="b64_json", description="The format in which the generated images are returned")
     style: Optional[str] = Field(default=None, description="The style of the generated images")
     user: Optional[str] = Field(default=None, description="A unique identifier representing your end-user")
-
+    extra: Optional[dict] = Field(default=None, description="Extra parameters for a diffusers pipeline")
 
 class ImageEditRequest(BaseModel):
     image: str = Field(..., description="The image to edit")
@@ -93,19 +96,6 @@ class APIIngress:
     def __init__(self, diffusion_model_handle: DeploymentHandle) -> None:
         self.handle = diffusion_model_handle
 
-    @app.get(
-        "/imagine",
-        responses={200: {"content": {"image/png": {}}}},
-        response_class=Response,
-    )
-    async def generate(self, prompt: str, img_size: int = 512):
-        assert len(prompt), "prompt parameter cannot be empty"
-
-        image = await self.handle.generate.remote(prompt, img_size=img_size)
-        file_stream = BytesIO()
-        image.save(file_stream, "PNG")
-        return Response(content=file_stream.getvalue(), media_type="image/png")
-
     @app.post("/v1/images/generations", response_model=ImageGenerationResponse)
     async def image_generation(self, request: ImageGenerationRequest):
         """OpenAI-compatible image generation endpoint"""
@@ -129,7 +119,7 @@ class APIIngress:
             # Generate images
             images = []
             for _ in range(request.n):
-                image = await self.handle.generate.remote(request.model, request.prompt, img_size=width)
+                image = await self.handle.generate.remote(model_id=request.model, prompt=request.prompt, img_size=width, **request.extra)
                 images.append(image)
             
             # Convert images to requested format
@@ -220,13 +210,13 @@ class StableDiffusionV2:
                 self.pipe = self.pipe.to(DEVICE)
             self.current_model = model_id
 
-    def generate(self, model_id: str, prompt: str, img_size: int = 512):
+    def generate(self, model_id: str, prompt: str, **kwargs):
         assert len(model_id), "Model not loaded"
         assert len(prompt), "prompt parameter cannot be empty"
         self.load_model(model_id)
 
         with torch.autocast(DEVICE):
-            image = self.pipe(prompt, height=img_size, width=img_size).images[0]
+            image = self.pipe(prompt, **kwargs).images[0]
             return image
 
 entrypoint = APIIngress.bind(StableDiffusionV2.bind())

@@ -1,25 +1,9 @@
 #!/bin/bash
 
 cache_dir="/home/ray/cache"
-min_replicas=0
-max_replicas=1
-num_gpus=1
-device="cuda"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --num_gpus=*)
-      num_gpus="${1#*=}"
-      ;;
-    --min_replicas=*)
-      min_replicas="${1#*=}"
-      ;;
-    --max_replicas=*)
-      max_replicas="${1#*=}"
-      ;;
-    --device=*)
-      device="${1#*=}"
-      ;;
     --cache_dir=*)
       cache_dir="${1#*=}"
       ;;
