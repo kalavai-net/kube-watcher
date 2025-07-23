@@ -36,7 +36,7 @@ spec:
         {% endfor %}
       {% endif %}
         containers:
-        - name: speaches-leader
+        - name: registrar
           image: docker.io/bundenth/kalavai-utils:latest
           env:
           - name: VC_NAMESPACE
@@ -61,10 +61,10 @@ spec:
               --litellm_base_url={{litellm_base_url}} \
               --litellm_key={{litellm_key}} \
               --litellm_model_name="$LITELLM_MODEL_NAME" \
-              --model_id={{model_id}} \
+              --model_id=diffusers \
               --provider=openai \
               --api_base=$API_BASE \
-              --model_info='{"mode": "{{mode}}"}'
+              --model_info='{"mode": "image_generation"}'
           lifecycle:
             preStop:
               exec:
@@ -125,14 +125,39 @@ spec:
           - sh
           - -c
           - |
+            # # Download model weights
+            # /home/ray/workspace/download_model.sh \
+            #   --model_id={{model_id}} \
+            #   --remote_dir="/home/ray/cache";
+            RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size={{workers}} --ray_object_store_memory={{memory * 500000000}};
+            sleep 30;
+          {% if gpus and gpus > 0 %}
+            nvidia-smi;
+          {% endif %}
+            ray status;
             # Run model
-            /home/ray/workspace/run_model.sh \
-              --num_gpus={{gpus}} \
-              --min_replicas={{min_replicas}} \
-              --max_replicas={{max_replicas}}
+            /home/ray/workspace/run_model.sh
           env:
           - name: HF_TOKEN
             value: {{hf_token}}
+          - name: HF_HOME
+            value: /home/ray/cache
+          - name: NUM_GPUS
+            value: "{{gpus}}"
+          - name: MIN_REPLICAS
+            value: "{{min_replicas}}"
+          - name: MAX_REPLICAS
+            value: "{{max_replicas}}"
+          - name: HOST
+            value: "0.0.0.0"
+          - name: PORT
+            value: "8000"
+          - name: DEVICE
+          {% if gpus and gpus > 0 %}
+            value: "cuda"
+          {% else %}
+            value: "cpu"
+          {% endif %}
           ports:
           - containerPort: 8000
             name: container-port
@@ -143,12 +168,26 @@ spec:
             {% if gpus and gpus > 0 %}
               nvidia.com/gpu: {{gpus}}
             {% endif %}
+              ephemeral-storage: {{working_memory}}Gi
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-            {% if gpus > 0 %}
+            {% if gpus and gpus > 0 %}
               nvidia.com/gpu: {{gpus}}
             {% endif %}
+              ephemeral-storage: {{working_memory}}Gi
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: dshm
+            - name: cache
+              mountPath: /home/ray/cache
+        volumes:
+        - name: cache
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{memory * 0.5}}Gi
           # readinessProbe:
           #   httpGet:
           #     path: /health
@@ -156,4 +195,77 @@ spec:
           #   initialDelaySeconds: 5
           #   periodSeconds: 10
         restartPolicy: OnFailure
-
+  - replicas: {{workers - 1}}
+    name: worker
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of worker pods
+      metadata:
+        annotations:
+          # must have these annotations
+          {{nouse_gputype}}
+          {{use_gputype}}
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: vllm-worker
+          image: docker.io/bundenth/ray-diffusers:latest #v1.1.4
+          command:
+          - sh
+          - -c
+          - |
+            PS_HOST=`cat /etc/volcano/server.host`;
+            # # Download model weights
+            # /home/ray/workspace/download_model.sh \
+            #   --model_id={{model_id}} \
+            #   --remote_dir="/home/ray/cache";
+          {% if gpus and gpus > 0 %}
+            nvidia-smi;
+          {% endif %}
+            RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh worker --ray_address=$PS_HOST --ray_port=6379 --ray_object_store_memory={{memory * 500000000}} --ray_block=1
+          env:
+          - name: HF_TOKEN
+            value: {{hf_token}}
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+            {% if gpus and gpus > 0 %}
+              nvidia.com/gpu: {{gpus}}
+            {% endif %}
+              ephemeral-storage: {{working_memory}}Gi
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+            {% if gpus and gpus > 0 %}
+              nvidia.com/gpu: {{gpus}}
+            {% endif %}
+              ephemeral-storage: {{working_memory}}Gi
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: dshm
+            - name: cache
+              mountPath: /home/ray/cache
+        volumes:
+        - name: cache
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{memory * 0.5}}Gi
+        restartPolicy: OnFailure

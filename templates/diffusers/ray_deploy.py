@@ -18,6 +18,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 import torch
 
+import ray
 from ray import serve
 from ray.serve.handle import DeploymentHandle
 
@@ -30,10 +31,12 @@ supported_models = [
     "CompVis/stable-diffusion-v1-4",
     "black-forest-labs/FLUX.1-dev"
 ]
+HOST = os.environ.get("HOST", "0.0.0.0")
+PORT = int(os.environ.get("PORT", 8000))
 DEVICE = os.environ.get("DEVICE", "cuda")
-NUM_GPUS = os.environ.get("NUM_GPUS", 1)
-MIN_REPLICAS = os.environ.get("MIN_REPLICAS", 0)
-MAX_REPLICAS = os.environ.get("MAX_REPLICAS", 1)
+NUM_GPUS = int(os.environ.get("NUM_GPUS", 1))
+MIN_REPLICAS = int(os.environ.get("MIN_REPLICAS", 0))
+MAX_REPLICAS = int(os.environ.get("MAX_REPLICAS", 1))
 
 
 # OpenAI-compatible request models
@@ -106,7 +109,7 @@ class APIIngress:
     @app.post("/v1/images/generations", response_model=ImageGenerationResponse)
     async def image_generation(self, request: ImageGenerationRequest):
         """OpenAI-compatible image generation endpoint"""
-        if request.model not in supported_models:
+        if False and request.model not in supported_models:
             raise HTTPException(status_code=400, detail=f"Model {request.model} is not supported")
         try:
             # Parse size string (e.g., "1024x1024")
@@ -202,7 +205,7 @@ class StableDiffusionV2:
             # move to AutoPipeline https://huggingface.co/docs/diffusers/en/tutorials/autopipeline
             #   supports Stable Diffusion, Stable Diffusion XL, ControlNet, Kandinsky 2.1, Kandinsky 2.2, and DeepFloyd IF
             from diffusers import AutoPipelineForText2Image
-            #from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline, FluxPipeline
+            from diffusers import StableDiffusionPipeline, FluxPipeline
             self.pipe = AutoPipelineForText2Image.from_pretrained(
                 model_id,
                 #scheduler=scheduler,
@@ -226,5 +229,21 @@ class StableDiffusionV2:
             image = self.pipe(prompt, height=img_size, width=img_size).images[0]
             return image
 
-
 entrypoint = APIIngress.bind(StableDiffusionV2.bind())
+
+# connect to cluster (if run on head node, connect to existing instance)
+ray.init(address="auto")
+# bind address
+serve.start(
+    http_options={
+        "host": HOST,
+        "port": PORT
+    }
+)
+# Serve deployments
+serve.run(
+    entrypoint
+)
+
+while True:
+    time.sleep(10)

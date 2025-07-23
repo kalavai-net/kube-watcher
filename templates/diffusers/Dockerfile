@@ -6,6 +6,7 @@ WORKDIR $HOME/workspace
 
 COPY run_model.sh .
 COPY requirements.txt .
+COPY ray_deploy.py .
 
 # install dependencies
 #pip3 install lmcache --prefer-binary --no-cache-dir && \

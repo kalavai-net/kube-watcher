@@ -4,11 +4,11 @@ import base64
 
 
 t = time.time()
-model_id = "CompVis/stable-diffusion-v1-4"
+model_id = "stable-diffusion-v1-5/stable-diffusion-v1-5"
 #model_id = "stable-diffusion-v1-5/stable-diffusion-v1-5"
 prompt = "A children's book drawing of a veterinarian using a stethoscope to listen to the heartbeat of a baby otter."
 resp = requests.post(
-    f"http://127.0.0.1:8000/v1/images/generations",
+    f"http://0.0.0.0:8000/v1/images/generations",
     json={
         "prompt": prompt,
         "model": model_id,

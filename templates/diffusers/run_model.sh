@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cache_dir="/cache"
+cache_dir="/home/ray/cache"
 min_replicas=0
 max_replicas=1
 num_gpus=1
@@ -19,6 +19,9 @@ while [ $# -gt 0 ]; do
       ;;
     --device=*)
       device="${1#*=}"
+      ;;
+    --cache_dir=*)
+      cache_dir="${1#*=}"
       ;;
     *)
       printf "***************************\n"
@@ -64,5 +67,6 @@ else
   lora="--enable-lora --lora-modules "$(join_by " " "${all_loras[@]}")
 fi
 
-HF_HOME=$cache_dir NUM_GPUS=$num_gpus MIN_REPLICAS=$min_replicas MAX_REPLICAS=$max_replicas DEVICE=$device serve run ray_deploy:entrypoint \
-  --address 0.0.0.0:6379
+python ray_deploy.py
+# serve run ray_deploy:entrypoint \
+#   --address 0.0.0.0:6379
