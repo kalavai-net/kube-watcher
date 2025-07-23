@@ -3,6 +3,8 @@
 cache_dir="/cache"
 tool_call_parser="llama3_json"
 template_url=""
+tensor_parallel_size=1
+pipeline_parallel_size=1
 
 while [ $# -gt 0 ]; do
   case "$1" in

@@ -13,7 +13,7 @@ services:
       - '443:443'
     restart: always
     environment:
-      DOMAINS: 'api.cogenai.kalavai.net -> http://51.159.150.251:30861'
+      DOMAINS: 'api.cogenai.kalavai.net -> http://51.159.182.127:30379'
       STAGE: 'production' # Don't use production until staging works
       KEEPALIVE_TIMEOUT: 3600
       PROXY_CONNECT_TIMEOUT: 3600
