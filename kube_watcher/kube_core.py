@@ -884,7 +884,8 @@ class KubeAPI():
             'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim),
             'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws),
             'raycluster': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster),
-            'job': (self.list_namespaced_vcjob, self.delete_namespaced_vcjob)
+            'job': (self.list_namespaced_vcjob, self.delete_namespaced_vcjob),
+            'secret': (core_api.list_namespaced_secret, core_api.delete_namespaced_secret)
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():
@@ -931,7 +932,8 @@ class KubeAPI():
             'replicaset': apps_api.list_namespaced_replica_set,
             'statefulset': apps_api.list_namespaced_stateful_set,
             'job': batch_v1_api.list_namespaced_job,
-            'persistentvolumeclaim': core_api.list_namespaced_persistent_volume_claim
+            'persistentvolumeclaim': core_api.list_namespaced_persistent_volume_claim,
+            'secret': core_api.list_namespaced_secret
         }
 
         label_selector = label_key if label_value is None else f"{label_key}={label_value}"

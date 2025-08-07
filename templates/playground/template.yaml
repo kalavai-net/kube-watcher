@@ -61,7 +61,7 @@ spec:
           - name: OFFLINE_MODE
             value: "True"
           - name: DATA_DIR
-            value: /data
+            value: "./data"
           - name: ENABLE_MESSAGE_RATING
             value: "False"
           - name: ENABLE_COMMUNITY_SHARING

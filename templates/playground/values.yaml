@@ -32,7 +32,7 @@
 
 - name: litellm_key
   value: ""
-  default: "sk-1234"
+  default: ""
   editable: true
   required: false
   description: "Master key of the LiteLLM service (central registry)"

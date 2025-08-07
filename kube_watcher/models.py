@@ -19,6 +19,8 @@ class JobTemplate(Enum):
     langfuse = 12
     n8n = 13
     flowise = 14
+    diffusers = 15
+    axolotl = 16
     #flexible = 99
 
 class NodeStatusRequest(BaseModel):
