@@ -89,7 +89,10 @@ def cast_resource_value(value):
     elif value.endswith('G'):
         return int(value[:-1]) * 1000000000
     else:
-        return int(value)
+        try:
+            return int(value)
+        except:
+            return value
 
 
 def parse_resource_value(resources, out_data_dict=None):
@@ -114,7 +117,10 @@ def parse_resource_value(resources, out_data_dict=None):
     for resource, value in resources.items():
         parsed_value = cast_resource_value(value)
         if parsed_value is not None:
-            out_data_dict[resource] += parsed_value
+            if isinstance(parsed_value, int):
+                out_data_dict[resource] += parsed_value
+            else:
+                out_data_dict[resource] = parsed_value
     return out_data_dict
 
 

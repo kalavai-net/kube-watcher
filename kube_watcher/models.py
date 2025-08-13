@@ -140,6 +140,7 @@ class JobTemplateRequest(BaseModel):
     template_values: dict = None
     template: str
     target_labels: dict[str, str] = None
+    replicas: int = 1
 
 class CustomJobTemplateRequest(BaseModel):
     force_namespace: str = None
@@ -147,6 +148,7 @@ class CustomJobTemplateRequest(BaseModel):
     default_values: str
     template: str
     target_labels: dict[str, str] = None
+    replicas: int = 1
 
 class RayClusterRequest(BaseModel):
     force_namespace: str = None

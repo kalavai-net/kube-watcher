@@ -1,6 +1,7 @@
 import yaml
 import json
 import re
+import copy
 from os.path import commonprefix
 
 from kube_watcher.models import JobTemplate
@@ -70,36 +71,41 @@ class Job:
             print("Error when getting metadata:", str(e))
             return None
 
-    def populate(self, values: dict, default_values=None, target_labels=None):
+    def populate(self, values: dict, default_values=None, target_labels=None, replica=None):
         if default_values is None:
             default_values = self.get_defaults()
-        
-        for default in default_values:
+
+        local_values = copy.deepcopy(values)
+        local_default_values = copy.deepcopy(default_values)
+        for default in local_default_values:
             # scan for template id field (name of the job)
             if default["name"] == TEMPLATE_ID_FIELD:
-                if default["default"] not in values:
+                if default["default"] not in local_values:
                     raise ValueError(f"Key value '{default['default']}' missing from values")
-                values[TEMPLATE_ID_KEY] = parse_deployment_name(values[default["default"]])
+                if replica is not None:
+                    local_values[TEMPLATE_ID_KEY] = parse_deployment_name(local_values[default["default"]] + f"_{replica}")
+                else:
+                    local_values[TEMPLATE_ID_KEY] = parse_deployment_name(local_values[default["default"]])
                 continue
             # substitute missing values with defaults
-            if default["name"] not in values:
-                values[default['name']] = default['default']
+            if default["name"] not in local_values:
+                local_values[default['name']] = default['default']
             else:
                 # check that non editable fields are not present
                 if "editable" in default and not default["editable"]:
                     print(f"Removing non editable field [{default['name']}]")
-                    del values[default['name']]
+                    del local_values[default['name']]
 
-        self.job_name = values[TEMPLATE_ID_KEY]
+        self.job_name = local_values[TEMPLATE_ID_KEY]
         self.job_label = {TEMPLATE_LABEL: self.job_name}
-        self.ports = values[ENDPOINT_PORTS_KEY].split(",") if ENDPOINT_PORTS_KEY in values else []
+        self.ports = local_values[ENDPOINT_PORTS_KEY].split(",") if ENDPOINT_PORTS_KEY in local_values else []
         if target_labels is not None:
-            values[NODE_SELECTOR] = [
+            local_values[NODE_SELECTOR] = [
                 {"name": key, "value": value} 
                 for key, value in target_labels.items()
             ]
 
-        return Template(self.template_str).render(values)
+        return Template(self.template_str).render(local_values)
 
         
 if __name__ == "__main__":
