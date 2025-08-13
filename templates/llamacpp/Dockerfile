@@ -11,7 +11,6 @@ RUN . /workspace/env/bin/activate && \
 WORKDIR /workspace
 RUN git clone https://github.com/ggerganov/llama.cpp.git
 
-WORKDIR /workspace
 
 COPY run_rpc_worker.sh .
 COPY run_api_server.sh .

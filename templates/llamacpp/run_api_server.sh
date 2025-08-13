@@ -38,11 +38,10 @@ download() {
     IFS=',' read -ra elements <<< "$input_string"
     
     for element in "${elements[@]}"; do
-      huggingface-cli download \
+      hf download \
         $repo_id \
         $element \
-        --local-dir $local_dir \
-        --local-dir-use-symlinks False >/dev/null 2>&1
+        --local-dir $local_dir >/dev/null 2>&1
     done
 
     if [[ "${#elements[@]}" -gt 1 ]]; then
@@ -52,24 +51,18 @@ download() {
     else
       echo $input_string
     fi
-}
+# }
+
 
 source /workspace/env/bin/activate
 
 #################
 # download model #
 #################
-# alternatively, load with server python3 -m llama_cpp.server --hf_model_repo_id Qwen/Qwen2-0.5B-Instruct-GGUF --model '*q8_0.gguf'
 echo "Downloading: "$model_filename
 model=$(download $model_filename)
 echo "-----> This is the model: "$model
 
-## Create config ##
-# python /workspace/generate_config.py \
-#   --port $port --host 0.0.0.0 \
-#   --local_dir $local_dir \
-#   --model $model \
-#   --output-filename /workspace/config.json
 
 ##################
 # run API server #
@@ -80,11 +73,6 @@ else
   workers="--rpc "$rpc_servers
   echo "Connecting to workers: "$workers
 fi
-
-# python -m llama_cpp.server \
-#   --config_file /workspace/config.json \
-#   $workers \
-#   $extra
 
 /workspace/llama.cpp/build/bin/llama-server \
   -m $local_dir/$model \

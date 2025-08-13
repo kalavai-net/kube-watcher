@@ -99,3 +99,10 @@
   editable: true
   required: false
   description: "Extra parameters for deployment. See https://github.com/ggerganov/llama.cpp/tree/master/examples/server"
+
+- name: max_retries
+  value: 1000
+  default: 1000
+  editable: true
+  required: false
+  description: "If the job fails, how many times to retry redeployment"

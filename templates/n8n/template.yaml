@@ -15,6 +15,7 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
+  maxRetries: {{max_retries}}
   tasks:
   {% if external_postgres_host == "" %}
   - replicas: 1   # One ps pod specified

@@ -11,7 +11,7 @@ case "$subcommand" in
     cd /workspace/llama.cpp
     mkdir build
     cd build
-    cmake .. -DGGML_RPC=ON
+    cmake .. -DGGML_RPC=ON -DLLAMA_CURL=OFF
     cmake --build . --config Release -j $(nproc)
     # source /workspace/env/bin/activate
     # # issue with streaming: https://github.com/abetlen/llama-cpp-python/issues/1861
@@ -21,7 +21,7 @@ case "$subcommand" in
     cd /workspace/llama.cpp
     mkdir build
     cd build
-    cmake .. -DGGML_RPC=ON -DGGML_CUDA=ON -DGGML_CUDA_ENABLE_UNIFIED_MEMORY=1
+    cmake .. -DGGML_RPC=ON -DGGML_CUDA=ON -DGGML_CUDA_ENABLE_UNIFIED_MEMORY=1 -DLLAMA_CURL=OFF
     cmake --build . --config Release -j $(nproc)
     #source /workspace/env/bin/activate
     #CMAKE_ARGS="-DGGML_RPC=on -DGGML_CUDA=on" pip3 install "llama-cpp-python[server]==0.3.7" --force-reinstall --no-cache-dir --ignore-installed
@@ -33,7 +33,7 @@ case "$subcommand" in
     # GGML_RPC=ON: Builds RPC support
     # BUILD_SHARED_LIBS=OFF: Don't rely on shared libraries like libggml
     # use -DGGML_CUDA=ON for GPU support
-    cmake .. -DGGML_RPC=ON
+    cmake .. -DGGML_RPC=ON -DLLAMA_CURL=OFF
     cmake --build . --config Release -j $(nproc)
     ;;
   gpu)
@@ -44,7 +44,7 @@ case "$subcommand" in
     # GGML_RPC=ON: Builds RPC support
     # BUILD_SHARED_LIBS=OFF: Don't rely on shared libraries like libggml
     # use -DGGML_CUDA=ON for GPU support
-    cmake .. -DGGML_RPC=ON -DGGML_CUDA=ON -DGGML_CUDA_ENABLE_UNIFIED_MEMORY=1
+    cmake .. -DGGML_RPC=ON -DGGML_CUDA=ON -DGGML_CUDA_ENABLE_UNIFIED_MEMORY=1 -DLLAMA_CURL=OFF
     cmake --build . --config Release -j $(nproc)
     ;;
   *)

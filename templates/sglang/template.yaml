@@ -11,6 +11,7 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
+  maxRetries: {{max_retries}}
   tasks:
 {% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
@@ -55,7 +56,7 @@ spec:
             /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8080
             # Register model with LiteLLM
             PS_HOST=`cat /etc/volcano/server.host`;
-            LITELLM_MODEL_NAME="{{deployment_id}}";
+            LITELLM_MODEL_NAME="{{model_id}}";
             echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
             API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8080/v1";
             /workspace/register_model.sh \
@@ -65,6 +66,7 @@ spec:
               --model_id={{model_id}} \
               --provider=hosted_vllm \
               --api_base=$API_BASE \
+              --job_id={{deployment_id}} \
               --model_info='{"mode": "{{mode}}", "cpus": "{{cpus}}", "gpus": "{{gpus}}", "memory": "{{memory}}", "tensor_parallel_size": "{{tensor_parallel_size}}", "pipeline_parallel_size": "{{pipeline_parallel_size}}"}'
           lifecycle:
             preStop:
@@ -73,10 +75,11 @@ spec:
                 - sh
                 - -c
                 - |
-                  LITELLM_MODEL_NAME="{{deployment_id}}";         
+                  LITELLM_MODEL_NAME="{{model_id}}";         
                   MODEL_ID=$(python3 /workspace/get_litellm_id.py \
                     --litellm_url={{litellm_base_url}} \
                     --api_key={{litellm_key}} \
+                    --job_id={{deployment_id}} \
                     --model_name="$LITELLM_MODEL_NAME");
                   curl -X POST "{{litellm_base_url}}/model/delete" \
                       -H 'Authorization: Bearer {{litellm_key}}' \

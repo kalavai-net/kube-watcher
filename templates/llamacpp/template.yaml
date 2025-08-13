@@ -11,6 +11,7 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
+  maxRetries: {{max_retries}}
   tasks:
 {% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
@@ -54,7 +55,7 @@ spec:
             /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8080
             # Register model with LiteLLM
             PS_HOST=`cat /etc/volcano/server.host`;
-            LITELLM_MODEL_NAME="{{deployment_id}}";
+            LITELLM_MODEL_NAME="{{model_filename}}";
             echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
             API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8080/v1";
             /workspace/register_model.sh \
@@ -64,6 +65,7 @@ spec:
               --model_id={{model_filename}} \
               --provider=openai \
               --api_base=$API_BASE \
+              --job_id={{deployment_id}} \
               --model_info='{"extra": "llamacpp parameters: {{server_extra}}", "cpus": "{{cpus}}", "gpus": "{{gpus}}", "memory": "{{memory}}", "cpu_workers": "{{cpu_workers}}", "gpu_workers": "{{gpu_workers}}"}'
           lifecycle:
             preStop:
@@ -72,10 +74,11 @@ spec:
                 - sh
                 - -c
                 - |
-                  LITELLM_MODEL_NAME="{{deployment_id}}";         
+                  LITELLM_MODEL_NAME="{{model_filename}}";         
                   MODEL_ID=$(python3 /workspace/get_litellm_id.py \
                     --litellm_url={{litellm_base_url}} \
                     --api_key={{litellm_key}} \
+                    --job_id={{deployment_id}} \
                     --model_name="$LITELLM_MODEL_NAME");
                   curl -X POST "{{litellm_base_url}}/model/delete" \
                       -H 'Authorization: Bearer {{litellm_key}}' \
@@ -139,8 +142,7 @@ spec:
 {% else %}
             /workspace/build.sh server_cpu;
 {% endif %}
-            HOSTS=`cat /workspace/worker.host`;
-            cat /workspace/all.host;
+            HOSTS=`cat /etc/volcano/worker.host`;
             export WORKERS=$(/workspace/get_workers_address.sh --rpc_port={{rpc_port}} --rpc_servers="${HOSTS}")
             /workspace/run_api_server.sh \
               --repo_id={{repo_id}} \

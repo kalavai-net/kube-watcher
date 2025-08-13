@@ -12,6 +12,7 @@ spec:
   plugins:
     env: []
     svc: []
+  maxRetries: {{max_retries}}
   policies: 
   - event: PodEvicted
     action: RestartJob
