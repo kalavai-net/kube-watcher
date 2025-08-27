@@ -9,7 +9,9 @@ WORKDIR /workspace
 
 # install python
 RUN apt-get update && \
-    apt-get install -y curl git cmake gcc g++ libgomp1 libbz2-dev libev-dev libffi-dev libgdbm-dev liblzma-dev libncurses-dev libreadline-dev libsqlite3-dev libssl-dev make tk-dev wget zlib1g-dev
+    apt-get install -y curl git cmake gcc g++ libgomp1 libbz2-dev libev-dev libffi-dev libgdbm-dev liblzma-dev libncurses-dev libreadline-dev libsqlite3-dev libssl-dev make tk-dev wget zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN curl -O https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz
 RUN tar -xvzf Python-${PYTHON_VERSION}.tgz
 RUN cd Python-${PYTHON_VERSION} && \
@@ -29,9 +31,8 @@ ENV PATH=/usr/local/cuda/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
 # install python dependencies
-RUN python3 -m venv /workspace/env
-RUN . /workspace/env/bin/activate && \
-    pip3 install huggingface-hub --no-cache-dir
+RUN pip install common_requirements.txt -r --no-cache-dir && \
+    rm -rf /home/ray/.cache/pip
 
 # fetch llama.cpp source
 WORKDIR /workspace

@@ -3,7 +3,7 @@
 FROM python:3.10-slim AS builder
 
 RUN apt-get update && apt-get install --yes git cmake g++ libgomp1 iputils-ping wget curl && \
-    sudo rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
 
 COPY common_requirements.txt .
 RUN pip install -r common_requirements.txt --no-cache-dir && \
