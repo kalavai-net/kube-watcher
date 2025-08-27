@@ -54,7 +54,7 @@ download() {
 # }
 
 
-source /workspace/env/bin/activate
+#source /workspace/env/bin/activate
 
 #################
 # download model #
