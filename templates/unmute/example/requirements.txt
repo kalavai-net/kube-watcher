@@ -1,6 +1,0 @@
-msgpack
-numpy
-sphn
-websockets
-sounddevice
-tqdm
