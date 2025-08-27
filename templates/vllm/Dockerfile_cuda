@@ -1,0 +1,23 @@
+FROM bundenth/ray:latest AS build-image
+
+RUN sudo apt update && sudo apt install bc wget ffmpeg curl -y
+
+WORKDIR /home/ray/workspace
+
+# install dependencies
+#pip3 install lmcache --prefer-binary --no-cache-dir && \
+#RUN . /home/ray/workspace/env/bin/activate && \
+RUN pip install vllm==0.10.1.1 --no-cache-dir
+
+COPY common_requirements.txt .
+RUN pip install -r common_requirements.txt --no-cache-dir
+
+# install torchdec https://github.com/QwenLM/Qwen2.5-VL?tab=readme-ov-file#installing-cuda-enabled-torchcodec 
+#pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --no-cache-dir && \
+#RUN . /home/ray/workspace/env/bin/activate && \
+RUN pip install torchcodec --index-url=https://download.pytorch.org/whl/cu124 --no-cache-dir
+
+COPY run_model.sh .
+RUN sudo chmod +x /home/ray/workspace/run_model.sh
+
+#CMD . /home/ray/workspace/env/bin/activate

@@ -116,7 +116,9 @@ spec:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+      {% if gpu_backend == "cuda" %}
         runtimeClassName: nvidia
+      {% endif %}
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -125,7 +127,7 @@ spec:
       {% endif %}
         containers:
         - name: sglang-leader
-          image: docker.io/bundenth/sglang:latest
+          image: docker.io/bundenth/ray-sglang-{{gpu_backend}}:latest
           command:
           - sh
           - -c
@@ -135,7 +137,11 @@ spec:
             /home/ray/workspace/download_model.sh \
               --model_id={{model_id}} \
               --remote_dir="/home/ray/cache";
+          {% if gpu_backend == "cuda" %}
             nvidia-smi;
+          {% else %}
+            rocm-smi;
+          {% endif %}
             # Run model
             /home/ray/workspace/run_model.sh \
               --model_path="/home/ray/cache/{{model_id}}" \
@@ -166,12 +172,20 @@ spec:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
               nvidia.com/gpu: {{gpus}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
               ephemeral-storage: {{working_memory}}Gi
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
               nvidia.com/gpu: {{gpus}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
             - name: cache
@@ -204,7 +218,9 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+      {% if gpu_backend == "cuda" %}
         runtimeClassName: nvidia
+      {% endif %}
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -213,7 +229,7 @@ spec:
       {% endif %}
         containers:
         - name: sglang-worker
-          image: docker.io/bundenth/sglang:latest
+          image: docker.io/bundenth/ray-sglang-{{gpu_backend}}:latest
           command:
           - sh
           - -c
@@ -223,7 +239,11 @@ spec:
             /home/ray/workspace/download_model.sh \
               --model_id={{model_id}} \
               --remote_dir="/home/ray/cache";
+          {% if gpu_backend == "cuda" %}
             nvidia-smi;
+          {% else %}
+            rocm-smi;
+          {% endif %}
             # Run model
             RANK=$(($VC_TASK_INDEX + 1));
             echo "Node rank: "$RANK;
@@ -246,12 +266,20 @@ spec:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
               nvidia.com/gpu: {{gpus}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
               ephemeral-storage: {{working_memory}}Gi
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
               nvidia.com/gpu: {{gpus}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
             - name: cache

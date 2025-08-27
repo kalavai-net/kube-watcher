@@ -224,29 +224,49 @@ class KubeAPI():
             if node_names is not None and node.metadata.name not in node_names:
                 continue
             resources = self.get_available_resources(node_names=[node.metadata.name])
-            gpu_capacity = node.status.capacity.get("nvidia.com/gpu", "0")
+            # parse different GPU backends (AMD, NVIDIA)
+            for backend in ["nvidia.com/gpu", "amd.com/gpu"]:
+                gpu_capacity = node.status.capacity.get(backend, "0")
 
-            gpu_info[node.metadata.name] = {
-                "available": resources["nvidia.com/gpu"],
-                "capacity": gpu_capacity,
-                "gpus": []
-            }
-            # extract model information
-            annotations = self.get_node_annotations(node_names=[node.metadata.name])
-            node_states = self.get_nodes_states()
-            for node, node_annotations in annotations.items():
-                if gpu_key not in node_annotations:
-                    continue
-                gpus = node_annotations[gpu_key].split(":")
-                for gpu_data in gpus:
-                    data = gpu_data.split(",")
-                    if len(data) < 6:
-                        continue
-                    gpu_info[node]["gpus"].append({
-                        "ready": node_states[node]["Ready"],
-                        "memory": data[2],
-                        "model": data[4]
-                    })
+                gpu_info[node.metadata.name] = {
+                    "available": resources[backend],
+                    "capacity": gpu_capacity,
+                    "gpus": []
+                }
+                if backend == "nvidia.com/gpu":
+                    # extract model information
+                    annotations = self.get_node_annotations(node_names=[node.metadata.name])
+                    node_states = self.get_nodes_states()
+                    for n, node_annotations in annotations.items():
+                        if gpu_key not in node_annotations:
+                            continue
+                        gpus = node_annotations[gpu_key].split(":")
+                        for gpu_data in gpus:
+                            data = gpu_data.split(",")
+                            if len(data) < 6:
+                                continue
+                            gpu_info[n]["gpus"].append({
+                                "ready": node_states[n]["Ready"],
+                                "memory": data[2],
+                                "model": data[4]
+                            })
+                if backend == "amd.com/gpu":
+                    annotations = self.get_node_labels(node_names=[node.metadata.name])
+                    node_states = self.get_nodes_states()
+                    
+                    for n, node_annotations in annotations.items():
+                        memory = ""
+                        model = "AMD GPU "
+                        if "amd.com/gpu.vram" in node_annotations:
+                            memory = node_annotations["amd.com/gpu.vram"]
+                        if "amd.com/gpu.family" in node_annotations:
+                            model += node_annotations["amd.com/gpu.family"]
+                        
+                        gpu_info[n]["gpus"].append({
+                            "ready": node_states[n]["Ready"],
+                            "memory": memory,
+                            "model": model
+                        })
         return gpu_info
     
     def read_node(self, node_names: list=None):
@@ -975,9 +995,5 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_pods_status_for_label(
-        label_key="app",
-        label_value="kube-watcher-api",
-        namespace="kalavai"
-    )
+    res = api.get_total_allocatable_resources()
     print(json.dumps(res, indent=2))

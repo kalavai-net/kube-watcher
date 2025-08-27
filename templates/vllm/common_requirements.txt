@@ -1,7 +1,5 @@
-huggingface-hub
 bitsandbytes
 llmcompressor
 num2words
 gptmodel
 autoawq
-vllm==0.9.2

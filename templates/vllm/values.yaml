@@ -16,6 +16,14 @@
   description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
 
+- name: gpu_backend
+  value: "cuda"
+  default: "cuda"
+  editable: true
+  required: false
+  description: "Use 'cuda' (nvidia cards) or 'rocm' (AMD cards) backend"
+
+
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
   default: "http://litellm.default.svc.cluster.local:4000"

@@ -41,7 +41,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-source /home/ray/workspace/env/bin/activate
+#source /home/ray/workspace/env/bin/activate
 
 if [ -z "$template_url" ]
 then

@@ -1,0 +1,14 @@
+FROM bundenth/ray:latest AS build-image
+
+RUN sudo apt update && sudo apt install bc wget -y
+
+WORKDIR /home/ray/workspace
+
+RUN pip install sglang[all] --no-cache-dir
+
+COPY common_requirements.txt .
+RUN pip install -r common_requirements.txt --no-cache-dir
+
+COPY run_model.sh .
+RUN sudo chmod +x /home/ray/workspace/run_model.sh
+
