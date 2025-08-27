@@ -14,7 +14,11 @@ callback_settings:
 
 
 general_settings:
+  store_prompts_in_spend_logs: false
   disable_prisma_schema_update: false
+  disable_error_logs: false
+  disable_spend_logs: false
+  #maximum_spend_logs_retention_period: "90d"  # Delete logs older than X days
   #enforce_user_param: true
   # database_connection_pool_limit: {{ .Values.litellm.general_settings.database_connection_pool_limit }}
   # database_connection_timeout: {{ .Values.litellm.general_settings.database_connection_timeout }}
