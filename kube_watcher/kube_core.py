@@ -227,7 +227,8 @@ class KubeAPI():
             # parse different GPU backends (AMD, NVIDIA)
             for backend in ["nvidia.com/gpu", "amd.com/gpu"]:
                 gpu_capacity = node.status.capacity.get(backend, "0")
-
+                if gpu_capacity == "0":
+                    continue
                 gpu_info[node.metadata.name] = {
                     "available": resources[backend],
                     "capacity": gpu_capacity,
@@ -255,18 +256,19 @@ class KubeAPI():
                     node_states = self.get_nodes_states()
                     
                     for n, node_annotations in annotations.items():
-                        memory = ""
-                        model = "AMD GPU "
+                        memory = None
+                        model = None
                         if "amd.com/gpu.vram" in node_annotations:
                             memory = node_annotations["amd.com/gpu.vram"]
                         if "amd.com/gpu.family" in node_annotations:
-                            model += node_annotations["amd.com/gpu.family"]
+                            model = node_annotations["amd.com/gpu.family"]
                         
-                        gpu_info[n]["gpus"].append({
-                            "ready": node_states[n]["Ready"],
-                            "memory": memory,
-                            "model": model
-                        })
+                        if memory is not None and model is not None:
+                            gpu_info[n]["gpus"].append({
+                                "ready": node_states[n]["Ready"],
+                                "memory": memory,
+                                "model": f"AMD GPU {model}"
+                            })
         return gpu_info
     
     def read_node(self, node_names: list=None):
