@@ -1,1 +1,2 @@
 llmcompressor
+huggingface_hub[hf_xet]

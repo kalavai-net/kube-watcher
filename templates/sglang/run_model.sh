@@ -57,11 +57,11 @@ python -m sglang.launch_server \
   --dist-init-addr $server_ip \
   --nnodes $num_nodes \
   --node-rank $node_rank \
-  --model $model_path \
+  --model-path $model_path \
   --served-model-name $model_id \
   --host 0.0.0.0 --port 8080 \
-  --tensor-parallel-size $tensor_parallel_size \
-  --pipeline-parallel-size $pipeline_parallel_size \
+  --tp-size $tensor_parallel_size \
+  --pp-size $pipeline_parallel_size \
   --tool-call-parser $tool_call_parser \
   $extra \
   $template_str

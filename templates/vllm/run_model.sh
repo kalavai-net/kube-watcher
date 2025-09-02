@@ -41,7 +41,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-#source /home/ray/workspace/env/bin/activate
+source /home/ray/workspace/env/bin/activate
 
 if [ -z "$lora_modules" ]
 then
@@ -85,9 +85,10 @@ else
 fi
 
 HF_HUB_OFFLINE=1
-echo "---->"$extra
-python -m vllm.entrypoints.openai.api_server \
-  --model $model_path \
+echo "----> [extra params] "$extra
+# python -m vllm.entrypoints.openai.api_server \
+#  --model $model_path \
+vllm serve $model_id \
   --served-model-name $model_id \
   --host 0.0.0.0 --port 8080 \
   --tensor-parallel-size $tensor_parallel_size \

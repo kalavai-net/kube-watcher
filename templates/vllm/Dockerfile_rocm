@@ -1,6 +1,9 @@
-FROM bundenth/ray:latest AS base
+# # reference https://github.com/vllm-project/vllm/blob/936416e5e4bf72d412d7317398935b66a100716f/docker/Dockerfile.rocm
+FROM bundenth/ray-base:latest AS base
 
-FROM rocm/vllm:rocm6.4.1_vllm_0.10.0_20250812 AS build
+#FROM rocm/vllm:rocm6.4.1_vllm_0.10.0_20250812 AS build
+#FROM rocm/vllm-dev:navi_base_ROCm6.3.1_base_20250114 AS build
+FROM rocm/pytorch:rocm6.3_ubuntu24.04_py3.12_pytorch_release_2.4.0 AS build
 
 WORKDIR /home/ray/workspace
 
@@ -10,12 +13,60 @@ COPY --from=base /home/ray/workspace/ .
 RUN sudo apt update && sudo apt install bc wget ffmpeg curl -y && \
     sudo rm -rf /var/lib/apt/lists/*
 
-RUN pip install ray[serve-grpc,default]==2.43.0 --no-cache-dir
+# Install PyTorch
+# RUN pip uninstall torch -y
+# RUN pip install --no-cache-dir --pre torch --index-url https://download.pytorch.org/whl/nightly/rocm6.3
 
+### build vllm ###
+# triton
+# RUN python -m pip install ninja cmake wheel pybind11
+# RUN pip uninstall -y triton
+# RUN git clone https://github.com/OpenAI/triton.git && \
+#     cd triton && \
+#     git checkout e5be006 && \
+#     cd python && \
+#     pip install . --no-cache-dir
+# RUN rm -rf triton
+
+# aiter
+RUN git clone --recursive https://github.com/ROCm/aiter.git && \
+    cd aiter && \
+    python3 setup.py develop
+RUN rm -rf aiter
+
+# vllm
+# Build & install AMD SMI
+RUN pip install /opt/rocm/share/amd_smi
+# Install dependencies
+RUN pip install --upgrade numba \
+    scipy \
+    huggingface-hub[cli,hf_transfer] \
+    setuptools_scm --no-cache-dir
+RUN pip install "numpy<2"
+# Build vLLM for 7900. (for MI series: "gfx90a;gfx942")
+ENV PYTORCH_ROCM_ARCH="gfx1100"
+RUN git clone https://github.com/vllm-project/vllm && \
+    cd vllm && \
+    git checkout v0.10.1 && \
+    pip install -r requirements/rocm.txt && \
+    python setup.py develop
+RUN rm -rf /home/workspace/vllm
+
+# install dependencies
 COPY common_requirements.txt .
-RUN pip install -r common_requirements.txt --no-cache-dir && \
-    rm -rf /home/ray/.cache/pip
+# RUN pip install -r common_requirements.txt --no-cache-dir && \
+# RUN pip install ray[default,serve-grpc]==2.44.1 --no-cache-dir
 
 COPY run_model.sh .
 RUN sudo chmod +x /home/ray/workspace/run_model.sh
+
+# Fix for 'HIP error: invalid device ordinal' with Ray on ROCm. See #21457, #12572
+ENV RAY_EXPERIMENTAL_NOSET_ROCR_VISIBLE_DEVICES=1
+ENV RAY_EXPERIMENTAL_NOSET_HIP_VISIBLE_DEVICES=1
+# Performance variables
+ENV SAFETENSORS_FAST_GPU=1
+ENV HIP_FORCE_DEV_KERNARG=1
+
+CMD ["/bin/bash"]
+
 

@@ -4,7 +4,9 @@ import datetime
 import time
 import yaml
 
-URL = "http://0.0.0.0:8000"
+URL = "http://51.159.157.183:30001"
+API_KEY = "aad25d2f-b24c-42c2-8a2a-2b2df1ec8bbf"
+
 
 if __name__ == "__main__":
 
@@ -20,22 +22,22 @@ if __name__ == "__main__":
     # )
     # exit()
 
-    with open("templates/llamacpp/examples/qwen.yaml", "r") as f:
+    with open("templates/sglang/examples/qwen3-0.6b-rocm.yaml", "r") as f:
         values = yaml.safe_load(f)
         values_dict = {variable["name"]: variable['value'] for variable in values}
-    with open("templates/llamacpp/template.yaml", "r") as f:
+    with open("templates/sglang/template.yaml", "r") as f:
         template = f.read()
-    with open("templates/llamacpp/values.yaml", "r") as f:
+    with open("templates/sglang/values.yaml", "r") as f:
         defaults = f.read()
 
     response = requests.post(
         f"{URL}/v1/deploy_custom_job",
-        headers={"X-API-KEY": "7f027dfd-5177-4b76-9d1c-06115f12b5b6", "USER": "carlosfm"},
+        headers={"X-API-KEY": API_KEY, "USER": "carlosfm"},
         json={
             "template": template,
             "template_values": values_dict,
             "default_values": defaults,
-            "replicas": 2
+            "replicas": 1
         }
     )
     print(response.text)

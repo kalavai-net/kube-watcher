@@ -74,3 +74,76 @@ print("Completion result:", completion)
 ## Examples
 
 Check out the [qwen example](examples/qwen2.5-0.5B.yaml),ready for deployment.
+
+
+## ROCm
+
+---> From instructions https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html?device=rocm#build-an-image-with-vllm
+
+git clone https://github.com/vllm-project/vllm
+cd vllm
+git checkout v0.10.1
+DOCKER_BUILDKIT=1 docker build \
+    --build-arg BASE_IMAGE="rocm/vllm-dev:navi_base" \
+    --build-arg ARG_PYTORCH_ROCM_ARCH="gfx1100" \
+    --build-arg VLLM_BRANCH="v0.10.1" \
+    -f docker/Dockerfile.rocm \
+    -t vllm-rocm \
+    .
+
+docker run -it \
+    --network=host \
+    --privileged \
+    --group-add=video \
+    --ipc=host \
+    --cap-add=SYS_PTRACE \
+    --cap-add=CAP_SYS_ADMIN \
+    --security-opt seccomp=unconfined \
+    --security-opt apparmor=unconfined \
+    --device /dev/kfd \
+    --device /dev/dri \
+    --env "HIP_VISIBLE_DEVICES=0" \
+    --env NCCL_SOCKET_IFNAME=enp13s0 \
+    --env GLOO_SOCKET_IFNAME=enp13s0 \
+    -v ./models:/app/model \
+    bundenth/ray-vllm-rocm:latest \
+bash
+
+----------------
+
+docker run -it --rm \
+    --network=host \
+    --privileged \
+    --shm-size 16g \
+    --device=/dev/kfd \
+    --device=/dev/dri \
+    --group-add video \
+    --cap-add=SYS_PTRACE \
+    --cap-add=CAP_SYS_ADMIN \
+    --security-opt seccomp=unconfined \
+    --security-opt apparmor=unconfined \
+    --env "HIP_VISIBLE_DEVICES=0" \
+    --env NCCL_SOCKET_IFNAME=enp13s0 \
+    --env GLOO_SOCKET_IFNAME=enp13s0 \
+    -v ./models:/root/.cache/huggingface \
+    --name vllm_server "bundenth/ray-vllm-rocm:latest"
+
+
+export GLOO_SOCKET_IFNAME=enp13s0 # <-- substitute with the right network interface for external comms
+ray start --node-ip-address=69.57.212.209 --node-name=node1 --head
+ray start --address=69.57.212.209:6379 --node-ip-address=69.57.212.210 --node-name=node2
+
+vllm serve Qwen/Qwen2.5-0.5B \
+  --host 0.0.0.0 --port 8080 --tensor-parallel-size 2 --distributed-executor-backend ray --enforce-eager
+  
+
+curl http://localhost:8080/v1/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "Qwen/Qwen2.5-0.5B",
+        "prompt": "San Francisco is a",
+        "max_tokens": 100,
+        "temperature": 0
+    }'
+
+ModuleNotFoundError: No module named 'ray.experimental.channel.accelerator_context'

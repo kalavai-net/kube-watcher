@@ -51,10 +51,8 @@ download() {
     else
       echo $input_string
     fi
-# }
+}
 
-
-#source /workspace/env/bin/activate
 
 #################
 # download model #

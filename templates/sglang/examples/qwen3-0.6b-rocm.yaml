@@ -1,0 +1,43 @@
+- name: workers
+  value: 1
+  default: 1
+  description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
+
+- name: gpu_backend
+  value: "rocm"
+  default: "cuda"
+  editable: true
+  required: false
+  description: "Use 'cuda' (nvidia cards) or 'rocm' (AMD cards) backend"
+
+- name: hf_token
+  value: <token>
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface access token, only required to load gated model weights"
+
+- name: model_id
+  value: Qwen/Qwen3-0.6B #Qwen/Qwen3-4B-Instruct-2507
+  default: null
+  description: "Huggingface model id to load"
+
+- name: working_memory
+  value: 10
+  default: 5
+  description: "Pool storage to use to cache model weights"
+
+- name: memory
+  value: 16
+  default: 8
+  description: "RAM memory per single worker (final one = memory * num_workers)"
+
+- name: tool_call_parser
+  value: "qwen25"
+  default: "llama3"
+  description: "Tool call parser to use. https://docs.vllm.ai/en/latest/features/tool_calling.html#automatic-function-calling"
+
+- name: extra
+  value: "" #"--attention-backend triton"
+  default: ""
+  description: "Extra parameters to pass to the vLLM server. See https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#command-line-arguments-for-the-server"

@@ -137,11 +137,13 @@ spec:
               --model_id={{model_id}} \
               --remote_dir="/home/ray/cache";
             RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size={{workers}} --ray_object_store_memory={{memory * 500000000}};
-            sleep 30;
+            sleep 10;
           {% if gpu_backend == "cuda" %}
             nvidia-smi;
           {% else %}
             rocm-smi;
+            rocminfo;
+            python -c "import torch; print(torch.cuda.device_count(), torch.cuda.get_device_name(0))";
           {% endif %}
             ray status;
             # Run model
@@ -170,6 +172,8 @@ spec:
             value: {{lmcache_remote_url}}
           - name: LMCACHE_LOCAL_DISK
             value: {{lmcache_local_disk}}
+          # - name: VLLM_TARGET_DEVICE
+          #   value: {{gpu_backend}}
           ports:
           - containerPort: 8080
             name: model-port
@@ -259,6 +263,8 @@ spec:
             nvidia-smi;
           {% else %}
             rocm-smi;
+            rocminfo;
+            python -c "import torch; print(torch.cuda.device_count(), torch.cuda.get_device_name(0))";
           {% endif %}
             RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh worker --ray_address=$PS_HOST --ray_port=6379 --ray_object_store_memory={{memory * 500000000}} --ray_block=1
           env:
@@ -276,6 +282,8 @@ spec:
             value: {{lmcache_remote_url}}
           - name: LMCACHE_LOCAL_DISK
             value: {{lmcache_local_disk}}
+          # - name: VLLM_TARGET_DEVICE
+          #   value: {{gpu_backend}}
           resources:
             requests:
               cpu: {{cpus}}

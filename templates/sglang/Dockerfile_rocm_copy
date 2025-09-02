@@ -1,0 +1,21 @@
+FROM bundenth/ray:latest AS base
+
+FROM lmsysorg/sglang:v0.4.5-rocm630 AS build
+
+WORKDIR /home/ray/workspace
+
+# Get utils scripts
+COPY --from=base /home/ray/workspace/ .
+
+RUN sudo apt update && sudo apt install bc wget -y && \
+    sudo rm -rf /var/lib/apt/lists/*
+
+WORKDIR /home/ray/workspace
+
+#RUN pip install ray[serve-grpc,default]==2.43.0 --no-cache-dir
+
+COPY common_requirements.txt .
+#RUN pip install -r common_requirements.txt --no-cache-dir
+
+COPY run_model.sh .
+RUN sudo chmod +x /home/ray/workspace/run_model.sh
