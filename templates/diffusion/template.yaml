@@ -1,0 +1,156 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  tasks:
+{% if litellm_key != "" %}
+  - replicas: 1   # One ps pod specified
+    name: registrar
+    policies:
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
+    template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: registrar
+          image: docker.io/bundenth/kalavai-utils:latest
+          env:
+          - name: VC_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          command:
+          - sh
+          - -c
+          - |
+            echo $VC_NAMESPACE;
+            # wait for model to be served
+            echo "Waiting for model service..."
+            PS_HOST=`cat /etc/volcano/server.host`;
+            /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8000
+            # Register model with LiteLLM
+            PS_HOST=`cat /etc/volcano/server.host`;
+            LITELLM_MODEL_NAME="{{deployment_id}}";
+            echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
+            API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8000/v1";
+            /workspace/register_model.sh \
+              --litellm_base_url={{litellm_base_url}} \
+              --litellm_key={{litellm_key}} \
+              --litellm_model_name="$LITELLM_MODEL_NAME" \
+              --model_id=diffusers \
+              --provider=openai \
+              --api_base=$API_BASE \
+              --model_info='{"mode": "image_generation"}'
+          lifecycle:
+            preStop:
+              exec:
+                command: 
+                - sh
+                - -c
+                - |
+                  LITELLM_MODEL_NAME="{{deployment_id}}";         
+                  MODEL_ID=$(python3 /workspace/get_litellm_id.py \
+                    --litellm_url={{litellm_base_url}} \
+                    --api_key={{litellm_key}} \
+                    --model_name="$LITELLM_MODEL_NAME");
+                  curl -X POST "{{litellm_base_url}}/model/delete" \
+                      -H 'Authorization: Bearer {{litellm_key}}' \
+                      -H "accept: application/json" \
+                      -H "Content-Type: application/json" \
+                      -d '{ "id": "'$MODEL_ID'"}';
+          resources:
+            requests:
+              cpu: 0.1
+              memory: 0.1Gi
+            limits:
+              cpu: 0.1
+              memory: 0.1Gi
+        restartPolicy: OnFailure
+{% endif %}
+  - replicas: 1   # One ps pod specified
+    name: server
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+          role: leader
+      spec:
+        runtimeClassName: nvidia
+      {% if NODE_SELECTORS %}
+        nodeSelector:
+        {% for selector in NODE_SELECTORS %}
+          {{selector.name}}: {{selector.value}}
+        {% endfor %}
+      {% endif %}
+        containers:
+        - name: container
+          image: docker.io/bundenth/diffusion-gui:latest
+          imagePullPolicy: Always
+          command:
+          - sh
+          - -c
+          - |
+            nvidia-smi;
+            # download model
+            python3 download_model.py --model_id {{civitai_model_id}} --output_dir models/Stable-diffusion
+            # run GUI
+            chmod +x webui.sh;
+            export COMMANDLINE_ARGS="--listen"
+            bash webui.sh -f;
+          env:
+          - name: HF_TOKEN
+            value: {{hf_token}}
+          - name: CIVITAI_API_KEY
+            value: {{civitai_api_key}}
+          ports:
+          - containerPort: 7860
+            name: container-port
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              nvidia.com/gpu: {{gpus}}
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              nvidia.com/gpu: {{gpus}}
+          # readinessProbe:
+          #   httpGet:
+          #     path: /health
+          #     port: 8000
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
+        restartPolicy: OnFailure

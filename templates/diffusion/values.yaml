@@ -1,0 +1,81 @@
+############################
+### MUST HAVE THIS FIELDS ##
+# Either id_field pointing to another existing field
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  editable: false
+  required: false
+  description: "Field that contains the ID of the job"
+
+# must contain the list of ports to enable in the leader node
+- name: endpoint_ports
+  value: "7860"
+  default: "7860"
+  editable: false
+  required: false
+  description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
+############################
+
+- name: deployment_name
+  value: diffusion
+  default: diffusion
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+- name: civitai_api_key
+  value: <yout token>
+  default: null
+  editable: true
+  required: true
+  description: "CivitAI API KEY, required to load models"
+
+- name: civitai_model_id
+  value: null
+  default: null
+  editable: true
+  required: true
+  description: "CivitAI model id"
+
+- name: hf_token
+  value: <yout token>
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface access token, only required to load gated model weights"
+
+- name: cpus
+  value: 2
+  default: 2
+  editable: true
+  required: false
+  description: "Number of cpus per worker"
+
+- name: memory
+  value: 4
+  default: 4
+  editable: true
+  required: false
+  description: "Memory per worker"
+
+- name: gpus
+  value: 1
+  default: 1
+  editable: true
+  required: false
+  description: "Number of gpus per worker"
+
+- name: litellm_base_url
+  value: "http://litellm.default.svc.cluster.local:4000"
+  default: "http://litellm.default.svc.cluster.local:4000"
+  editable: true
+  required: false
+  description: "Base URL of the LiteLLM service (central registry)"
+
+- name: litellm_key
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Master key of the LiteLLM service (central registry)"
