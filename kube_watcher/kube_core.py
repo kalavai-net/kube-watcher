@@ -1,5 +1,6 @@
 import json
 import time
+import math
 import os
 import requests
 import base64
@@ -246,9 +247,13 @@ class KubeAPI():
                             data = gpu_data.split(",")
                             if len(data) < 6:
                                 continue
+                            try:
+                                mem = f"{math.floor(int(data[2])/1000)}G"
+                            except:
+                                mem = data[2]
                             gpu_info[n]["gpus"].append({
                                 "ready": node_states[n]["Ready"],
-                                "memory": data[2],
+                                "memory": mem,
                                 "model": data[4]
                             })
                 if backend == "amd.com/gpu":

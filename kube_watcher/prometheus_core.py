@@ -31,17 +31,20 @@ class PrometheusAPI():
         return self.prom.custom_query(query=query)
     
     def get_node_stats(self, node_id, start_time, end_time, chunk_size):
-        start_time = parse_datetime(start_time)
-        end_time = parse_datetime(end_time)
-        chunk_size = timedelta(minutes=chunk_size)
-        metric = self.prom.get_metric_range_data(
-            metric_name=f'kube_node_status_condition{{condition="Ready", status="true", node="{node_id}"}}',
-            start_time=start_time,
-            end_time=end_time,
-            chunk_size=chunk_size
-        )
-        metric_df = MetricRangeDataFrame(metric).reset_index()
-        return metric_df.to_dict(orient="list")
+        try:
+            start_time = parse_datetime(start_time)
+            end_time = parse_datetime(end_time)
+            chunk_size = timedelta(minutes=chunk_size)
+            metric = self.prom.get_metric_range_data(
+                metric_name=f'kube_node_status_condition{{condition="Ready", status="true", node="{node_id}"}}',
+                start_time=start_time,
+                end_time=end_time,
+                chunk_size=chunk_size
+            )
+            metric_df = MetricRangeDataFrame(metric).reset_index()
+            return metric_df.to_dict(orient="list")
+        except Exception as e:
+            return {"error": f"Error when inspecting node {node_id}. Does it exist? {str(e)}"}
 
 
 if __name__ == "__main__":

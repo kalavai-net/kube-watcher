@@ -81,7 +81,7 @@ async def verify_admin_key(request: Request):
     if not USE_AUTH:
         return None
     api_key = extract_auth_token(headers=request.headers)
-    if "error" in api_key:
+    if api_key is None or "error" in api_key:
         raise HTTPException(status_code=401, detail=f"Error when extracting auth token: {api_key}")
     if api_key != ADMIN_KEY:
         raise HTTPException(status_code=401, detail=f"Request requires Admin API Key.")
