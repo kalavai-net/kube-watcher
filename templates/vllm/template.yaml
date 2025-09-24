@@ -56,14 +56,18 @@ spec:
             /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8080
             # Register model with LiteLLM
             PS_HOST=`cat /etc/volcano/server.host`;
+            {% if model_name_override != "" %}
+            LITELLM_MODEL_NAME="{{model_name_override}}";
+            {% else %}
             LITELLM_MODEL_NAME="{{model_id}}";
-            echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
+            {% endif %}
+            echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME) - (job_id: {{deployment_id}})";
             API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8080/v1";
             /workspace/register_model.sh \
               --litellm_base_url={{litellm_base_url}} \
               --litellm_key={{litellm_key}} \
               --litellm_model_name="$LITELLM_MODEL_NAME" \
-              --model_id={{model_id}} \
+              --model_id="$LITELLM_MODEL_NAME" \
               --provider=hosted_vllm \
               --api_base=$API_BASE \
               --job_id={{deployment_id}} \
@@ -75,11 +79,15 @@ spec:
                 - sh
                 - -c
                 - |
-                  LITELLM_MODEL_NAME="{{model_id}}";         
+                {% if model_name_override != "" %}
+                  LITELLM_MODEL_NAME="{{model_name_override}}";
+                {% else %}
+                  LITELLM_MODEL_NAME="{{model_id}}";
+                {% endif %}
                   MODEL_ID=$(python3 /workspace/get_litellm_id.py \
                     --litellm_url={{litellm_base_url}} \
                     --api_key={{litellm_key}} \
-                    --job_id={{deployment_id}} \\
+                    --job_id={{deployment_id}} \
                     --model_name="$LITELLM_MODEL_NAME");
                   curl -X POST "{{litellm_base_url}}/model/delete" \
                       -H 'Authorization: Bearer {{litellm_key}}' \
@@ -132,24 +140,21 @@ spec:
           - sh
           - -c
           - |
-            # Download model weights
-            /home/ray/workspace/download_model.sh \
-              --model_id={{model_id}} \
-              --remote_dir="/home/ray/cache";
             RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size={{workers}} --ray_object_store_memory={{memory * 500000000}};
             sleep 10;
           {% if gpu_backend == "cuda" %}
             nvidia-smi;
           {% else %}
             rocm-smi;
-            rocminfo;
             python -c "import torch; print(torch.cuda.device_count(), torch.cuda.get_device_name(0))";
           {% endif %}
             ray status;
             # Run model
+            echo "Total parallelism: {{workers * gpus}}";
             /home/ray/workspace/run_model.sh \
               --model_path="/home/ray/cache/{{model_id}}" \
               --model_id={{model_id}} \
+              --model_name={{model_name_override}} \
               --extra='{{extra}}' \
               --template_url='{{template_url}}' \
               --tensor_parallel_size={{gpus}} \
@@ -172,8 +177,8 @@ spec:
             value: {{lmcache_remote_url}}
           - name: LMCACHE_LOCAL_DISK
             value: {{lmcache_local_disk}}
-          # - name: VLLM_TARGET_DEVICE
-          #   value: {{gpu_backend}}
+          # - name: HSA_OVERRIDE_GFX_VERSION
+          #   value: "10.3.0"
           ports:
           - containerPort: 8080
             name: model-port
@@ -255,15 +260,10 @@ spec:
           - -c
           - |
             PS_HOST=`cat /etc/volcano/server.host`;
-            # Download model weights
-            /home/ray/workspace/download_model.sh \
-              --model_id={{model_id}} \
-              --remote_dir="/home/ray/cache";
           {% if gpu_backend == "cuda" %}
             nvidia-smi;
           {% else %}
             rocm-smi;
-            rocminfo;
             python -c "import torch; print(torch.cuda.device_count(), torch.cuda.get_device_name(0))";
           {% endif %}
             RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh worker --ray_address=$PS_HOST --ray_port=6379 --ray_object_store_memory={{memory * 500000000}} --ray_block=1
@@ -282,8 +282,8 @@ spec:
             value: {{lmcache_remote_url}}
           - name: LMCACHE_LOCAL_DISK
             value: {{lmcache_local_disk}}
-          # - name: VLLM_TARGET_DEVICE
-          #   value: {{gpu_backend}}
+          # - name: HSA_OVERRIDE_GFX_VERSION
+          #   value: "10.3.0"
           resources:
             requests:
               cpu: {{cpus}}

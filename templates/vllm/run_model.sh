@@ -5,6 +5,7 @@ tool_call_parser="llama3_json"
 template_url=""
 tensor_parallel_size=1
 pipeline_parallel_size=1
+model_name=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -13,6 +14,9 @@ while [ $# -gt 0 ]; do
       ;;
     --model_id=*)
       model_id="${1#*=}"
+      ;;
+    --model_name=*)
+      model_name="${1#*=}"
       ;;
     --tensor_parallel_size=*)
       tensor_parallel_size="${1#*=}"
@@ -84,17 +88,25 @@ else
   template_str="--chat-template /home/ray/workspace/template.jinja"
 fi
 
+if [ -z "$model_name" ]
+then
+  name=$model_id
+else
+  name=$model_name
+fi
+
 HF_HUB_OFFLINE=1
 echo "----> [extra params] "$extra
-# python -m vllm.entrypoints.openai.api_server \
+#python -m vllm.entrypoints.openai.api_server \
 #  --model $model_path \
 vllm serve $model_id \
-  --served-model-name $model_id \
+  --served-model-name $name \
   --host 0.0.0.0 --port 8080 \
   --tensor-parallel-size $tensor_parallel_size \
   --pipeline-parallel-size $pipeline_parallel_size \
   --enable-auto-tool-choice \
   --tool-call-parser $tool_call_parser \
+  --distributed-executor-backend="ray" \
   $lora \
   $extra \
   $template_str

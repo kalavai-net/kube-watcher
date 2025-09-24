@@ -1,6 +1,7 @@
-FROM bundenth/ray-base:latest AS base
+FROM bundenth/ray:latest AS base
 
-FROM rayproject/ray:2.43.0-py312-gpu
+#FROM rayproject/ray:2.49.1-py312-gpu
+FROM vllm/vllm-openai:v0.10.1.1
 
 WORKDIR /home/ray/workspace
 
@@ -15,18 +16,19 @@ COPY common_requirements.txt .
 
 #pip3 install lmcache --prefer-binary --no-cache-dir && \
 # reinstalling Ray after vllm so we pin the version and submodules (otherwise vllm brings its own)
-RUN python3 -m venv /home/ray/workspace/env
-RUN . /home/ray/workspace/env/bin/activate && \
-    pip install vllm==0.10.1 --no-cache-dir && \
-    pip install -r common_requirements.txt --no-cache-dir && \
-    pip install ray[serve-grpc,default]==2.43.0 --no-cache-dir
+#RUN python3 -m venv /home/ray/workspace/env
+#RUN . /home/ray/workspace/env/bin/activate && \
+RUN pip install -r common_requirements.txt --no-cache-dir
+    #pip install vllm==0.10.1.1 --no-cache-dir
+    #pip install ray[serve-grpc,default]==2.43.0 --no-cache-dir
 
 # install torchdec https://github.com/QwenLM/Qwen2.5-VL?tab=readme-ov-file#installing-cuda-enabled-torchcodec 
 #pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --no-cache-dir && \
-RUN . /home/ray/workspace/env/bin/activate && \
-    pip install torchcodec --index-url=https://download.pytorch.org/whl/cu124 --no-cache-dir
+#RUN . /home/ray/workspace/env/bin/activate && \
+RUN pip install torchcodec --index-url=https://download.pytorch.org/whl/cu124 --no-cache-dir
 
 COPY run_model.sh .
 RUN sudo chmod +x /home/ray/workspace/run_model.sh
 
-CMD . /home/ray/workspace/env/bin/activate
+CMD ["/bin/bash"]
+#CMD . /home/ray/workspace/env/bin/activate

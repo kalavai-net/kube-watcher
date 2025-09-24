@@ -23,6 +23,12 @@
   required: false
   description: "Use 'cuda' (nvidia cards) or 'rocm' (AMD cards) backend"
 
+- name: model_name_override
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
 
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
@@ -100,6 +106,13 @@
   editable: true
   required: false
   description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
+
+- name: download_worker_weights
+  value: "True"
+  default: "True"
+  editable: true
+  required: false
+  description: "Whether to pre-download model weights on all workers. If not True, the model is only downloaded in the server node and weights are shared internally."
 
 - name: tool_call_parser
   value: "llama3_json"

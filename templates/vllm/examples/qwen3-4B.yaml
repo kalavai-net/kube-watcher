@@ -1,32 +1,43 @@
-- name: litellm_key
-  value: "sk-1234"
-  default: "sk-1234"
-  description: "Master key of the LiteLLM service (central registry)"
-
 - name: workers
-  value: 2
+  value: 1
   default: 1
   description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
 
+- name: gpu_backend
+  value: "cuda"
+  default: "cuda"
+  editable: true
+  required: false
+  description: "Use 'cuda' (nvidia cards) or 'rocm' (AMD cards) backend"
+
+- name: model_name_override
+  value: "qwen3-4B"
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
+
+- name: hf_token
+  value: <token>
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface access token, only required to load gated model weights"
+
 - name: model_id
-  value: Qwen/Qwen2.5-3B-Instruct
+  value: Qwen/Qwen3-4B-Instruct-2507-FP8
   default: null
   description: "Huggingface model id to load"
 
 - name: working_memory
-  value: 7
+  value: 9
   default: 5
   description: "Pool storage to use to cache model weights"
 
 - name: memory
-  value: 12
+  value: 16
   default: 8
   description: "RAM memory per single worker (final one = memory * num_workers)"
-
-- name: pipeline_parallel_size
-  value: 2
-  default: 1
-  description: "Pipeline parallelism (use the number of nodes)"
 
 - name: tool_call_parser
   value: "hermes"
@@ -34,6 +45,7 @@
   description: "Tool call parser to use. https://docs.vllm.ai/en/latest/features/tool_calling.html#automatic-function-calling"
 
 - name: extra
-  value: "--dtype float16"
+  value: "--enforce-eager"
   default: ""
   description: "Extra parameters to pass to the vLLM server. See https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#command-line-arguments-for-the-server"
+

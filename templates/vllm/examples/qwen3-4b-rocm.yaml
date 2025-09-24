@@ -1,5 +1,5 @@
 - name: workers
-  value: 2
+  value: 3
   default: 1
   description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
 
@@ -18,19 +18,26 @@
   description: "Huggingface access token, only required to load gated model weights"
 
 - name: model_id
-  value: Qwen/Qwen3-0.6B #Qwen/Qwen3-4B-Instruct-2507
+  value: Qwen/Qwen3-Coder-30B-A3B-Instruct
   default: null
   description: "Huggingface model id to load"
 
 - name: working_memory
-  value: 32
+  value: 120
   default: 5
   description: "Pool storage to use to cache model weights"
 
 - name: memory
-  value: 32
+  value: 64
   default: 8
   description: "RAM memory per single worker (final one = memory * num_workers)"
+
+- name: download_worker_weights
+  value: "True"
+  default: "True"
+  editable: true
+  required: false
+  description: "Whether to pre-download model weights on all workers. If not True, the model is only downloaded in the server node and weights are shared internally."
 
 - name: tool_call_parser
   value: "hermes"
@@ -38,6 +45,7 @@
   description: "Tool call parser to use. https://docs.vllm.ai/en/latest/features/tool_calling.html#automatic-function-calling"
 
 - name: extra
-  value: "--enforce-eager --dtype float16 --distributed-executor-backend ray" #"--max-model-len 60000"
+  value: "--enforce-eager --max-model-len 30000" #"--max-model-len 60000"
   default: ""
   description: "Extra parameters to pass to the vLLM server. See https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html#command-line-arguments-for-the-server"
+
