@@ -86,6 +86,13 @@
   required: false
   description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
 
+- name: parallel
+  value: 1
+  default: 1
+  editable: true
+  required: false
+  description: "Number of sequences to decode in parallel."
+
 - name: memory
   value: 4
   default: 4

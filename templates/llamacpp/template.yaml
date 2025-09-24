@@ -150,6 +150,7 @@ spec:
               --local_dir=/cache \
               --port=8080 \
               --rpc_servers=$WORKERS \
+              --parallel={{parallel}} \
               --extra='{{server_extra}}'
           env:
           - name: HF_TOKEN

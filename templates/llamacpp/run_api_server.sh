@@ -2,6 +2,7 @@
 
 local_dir=/tmp
 port=8080
+parallel="1"
 extra=""
 
 while [ $# -gt 0 ]; do
@@ -20,6 +21,9 @@ while [ $# -gt 0 ]; do
       ;;
     --port=*)
       port="${1#*=}"
+      ;;
+    --parallel=*)
+      parallel="${1#*=}"
       ;;
     --extra=*)
       extra="${1#*=}"
@@ -77,5 +81,6 @@ fi
   --alias $model \
   --host 0.0.0.0 \
   --port 8080 \
+  --parallel $parallel \
   $workers \
   $extra
