@@ -2,27 +2,19 @@
 ### MUST HAVE THIS FIELDS ##
 # Either id_field pointing to another existing field
 - name: id_field
-  value: deployment_name
-  default: deployment_name
+  value: model_id
+  default: model_id
   editable: false
   required: false
   description: "Field that contains the ID of the job"
-
-# must contain the list of ports to enable in the leader node
-- name: endpoint_ports
-  value: "8000"
-  default: "8000"
-  editable: false
-  required: false
-  description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
 
-- name: deployment_name
-  value: diffusers
-  default: diffusers
+- name: model_id
+  value: null
+  default: null
   editable: true
   required: true
-  description: "Name of the deployment job"
+  description: "Huggingface model id to deploy. One of the following: https://huggingface.co/models?library=diffusers&sort=downloads"
 
 - name: working_memory
   value: 5
@@ -93,3 +85,10 @@
   editable: true
   required: false
   description: "Master key of the LiteLLM service (central registry)"
+
+- name: max_retries
+  value: 1000
+  default: 1000
+  editable: true
+  required: false
+  description: "If the job fails, how many times to retry redeployment"

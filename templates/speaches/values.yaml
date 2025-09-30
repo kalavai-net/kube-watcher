@@ -7,14 +7,6 @@
   editable: false
   required: false
   description: "Field that contains the ID of the job"
-
-# must contain the list of ports to enable in the leader node
-- name: endpoint_ports
-  value: "8000"
-  default: "8000"
-  editable: false
-  required: false
-  description: "[DO NOT CHANGE] Ports opened on master node (will be shown as endpoints for the job)"
 ############################
 
 - name: cpus

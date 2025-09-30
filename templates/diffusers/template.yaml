@@ -10,6 +10,7 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
+  maxRetries: {{max_retries}}
   tasks:
 {% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
@@ -61,7 +62,7 @@ spec:
               --litellm_base_url={{litellm_base_url}} \
               --litellm_key={{litellm_key}} \
               --litellm_model_name="$LITELLM_MODEL_NAME" \
-              --model_id=diffusers \
+              --model_id={{model_id}} \
               --provider=openai \
               --api_base=$API_BASE \
               --model_info='{"mode": "image_generation"}'
@@ -125,10 +126,6 @@ spec:
           - sh
           - -c
           - |
-            # # Download model weights
-            # /home/ray/workspace/download_model.sh \
-            #   --model_id={{model_id}} \
-            #   --remote_dir="/home/ray/cache";
             RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size={{workers}} --ray_object_store_memory={{memory * 500000000}};
             sleep 30;
           {% if gpus and gpus > 0 %}
@@ -230,10 +227,6 @@ spec:
           - -c
           - |
             PS_HOST=`cat /etc/volcano/server.host`;
-            # # Download model weights
-            # /home/ray/workspace/download_model.sh \
-            #   --model_id={{model_id}} \
-            #   --remote_dir="/home/ray/cache";
           {% if gpus and gpus > 0 %}
             nvidia-smi;
           {% endif %}
@@ -269,3 +262,23 @@ spec:
             medium: Memory
             sizeLimit: {{memory * 0.5}}Gi
         restartPolicy: OnFailure
+---
+# deploy NodePort to expose model (if not using LiteLLM registration)
+{% if litellm_key == "" %}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+{% endif %}

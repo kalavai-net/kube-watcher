@@ -135,3 +135,21 @@ spec:
               cpu: 1
               memory: 1Gi
   
+---
+# deploy NodePort to expose model
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - port: 5678
+      targetPort: 5678
+      protocol: TCP

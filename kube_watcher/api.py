@@ -570,17 +570,18 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
             )
         )
         # deploy service
-        if job.ports is not None and len(job.ports) > 0:
-            service = ServiceRequest(
-                name=f"{job.job_name}-service",
-                labels=job.job_label,
-                selector_labels={ **job.job_label, **{"role": "leader"} },
-                service_type="NodePort",
-                ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
-            responses.append(kube_api.deploy_service(
-                namespace=namespace,
-                **service.model_dump()
-            ))
+        # DEPRECATED: this is now handled by the job template if required
+        # if job.ports is not None and len(job.ports) > 0:
+        #     service = ServiceRequest(
+        #         name=f"{job.job_name}-service",
+        #         labels=job.job_label,
+        #         selector_labels={ **job.job_label, **{"role": "leader"} },
+        #         service_type="NodePort",
+        #         ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
+        #     responses.append(kube_api.deploy_service(
+        #         namespace=namespace,
+        #         **service.model_dump()
+        #     ))
     return responses
 
 @app.post("/v1/deploy_custom_job", 
@@ -612,19 +613,20 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
             )
         )
         # deploy service
-        if job.ports is not None and len(job.ports) > 0:
-            service = ServiceRequest(
-                name=f"{job.job_name}-service",
-                labels=job.job_label,
-                selector_labels={ **job.job_label, **{"role": "leader"} },
-                service_type="NodePort",
-                ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
-            responses.append(
-                kube_api.deploy_service(
-                    namespace=namespace,
-                    **service.model_dump()
-                )
-            )
+        # DEPRECATED: this is now handled by the job template if required
+        # if job.ports is not None and len(job.ports) > 0:
+        #     service = ServiceRequest(
+        #         name=f"{job.job_name}-service",
+        #         labels=job.job_label,
+        #         selector_labels={ **job.job_label, **{"role": "leader"} },
+        #         service_type="NodePort",
+        #         ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
+        #     responses.append(
+        #         kube_api.deploy_service(
+        #             namespace=namespace,
+        #             **service.model_dump()
+        #         )
+        #     )
     return responses
 
 @app.post("/v1/deploy_ray", 

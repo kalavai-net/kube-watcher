@@ -80,3 +80,21 @@ spec:
               cpu: {{cpus}}
               memory: {{memory}}Gi
         restartPolicy: OnFailure
+---
+# deploy NodePort to expose model
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP

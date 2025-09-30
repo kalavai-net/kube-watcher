@@ -52,3 +52,21 @@ spec:
           # to make them available through job endpoints, make sure you list the ports in values.yaml, under endpoint_ports
           - containerPort: 8080
         restartPolicy: Never
+---
+# deploy NodePort to expose model
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP

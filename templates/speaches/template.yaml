@@ -172,4 +172,23 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
         restartPolicy: OnFailure
-
+---
+# deploy NodePort to expose model (if not using LiteLLM registration)
+{% if litellm_key == "" %}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+{% endif %}
