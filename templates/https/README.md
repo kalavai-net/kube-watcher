@@ -2,7 +2,11 @@
 
 Original library: https://github.com/SteveLTN/https-portal
 
-Example:
+## Manual deployment (docker compose)
+
+Make sure you copy the default.ssl.conf.erb file to the root folder of where you are deploying https.
+
+Then, create a yaml file as below. Example:
 
 ```yaml
 services:
@@ -23,7 +27,13 @@ services:
       # FORCE_RENEW: 'true'
     volumes: 
       - https-portal-data:/var/lib/https-portal
+      - ./default.ssl.conf.erb:/var/lib/nginx-conf/default.ssl.conf.erb:ro
 
 volumes:
   https-portal-data:
+```
+
+Then start the service:
+```bash
+docker compose -f https.yaml up -d
 ```
