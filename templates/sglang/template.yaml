@@ -56,7 +56,11 @@ spec:
             /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8080
             # Register model with LiteLLM
             PS_HOST=`cat /etc/volcano/server.host`;
+            {% if model_name_override != "" %}
+            LITELLM_MODEL_NAME="{{model_name_override}}";
+            {% else %}
             LITELLM_MODEL_NAME="{{model_id}}";
+            {% endif %}
             echo "Creating new entry on LiteLLM: (host: $PS_HOST) - (model id: $LITELLM_MODEL_NAME)";
             API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8080/v1";
             /workspace/register_model.sh \
@@ -75,7 +79,11 @@ spec:
                 - sh
                 - -c
                 - |
-                  LITELLM_MODEL_NAME="{{model_id}}";         
+                {% if model_name_override != "" %}
+                  LITELLM_MODEL_NAME="{{model_name_override}}";
+                {% else %}
+                  LITELLM_MODEL_NAME="{{model_id}}";
+                {% endif %}
                   MODEL_ID=$(python3 /workspace/get_litellm_id.py \
                     --litellm_url={{litellm_base_url}} \
                     --api_key={{litellm_key}} \
@@ -179,10 +187,10 @@ spec:
         volumes:
         - name: cache
           emptyDir: {}
-        - name: dshm
-          emptyDir:
-            medium: Memory
-            sizeLimit: {{memory * 0.5}}Gi
+        # - name: dshm
+        #   emptyDir:
+        #     medium: Memory
+        #     sizeLimit: {{memory * 0.5}}Gi
         restartPolicy: OnFailure
   - replicas: {{workers - 1}}
     name: worker
@@ -204,9 +212,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-      {% if gpu_backend == "cuda" %}
         runtimeClassName: nvidia
-      {% endif %}
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -261,10 +267,10 @@ spec:
         volumes:
         - name: cache
           emptyDir: {}
-        - name: dshm
-          emptyDir:
-            medium: Memory
-            sizeLimit: {{memory * 0.5}}Gi
+        # - name: dshm
+        #   emptyDir:
+        #     medium: Memory
+        #     sizeLimit: {{memory * 0.5}}Gi
         restartPolicy: OnFailure
 ---
 # deploy NodePort to expose model (if not using LiteLLM registration)

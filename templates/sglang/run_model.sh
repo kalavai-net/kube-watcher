@@ -53,7 +53,7 @@ fi
 
 HF_HUB_OFFLINE=1
 echo "---->"$extra
-python -m sglang.launch_server \
+python3 -m sglang.launch_server \
   --dist-init-addr $server_ip \
   --nnodes $num_nodes \
   --node-rank $node_rank \
