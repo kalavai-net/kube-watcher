@@ -203,6 +203,10 @@ spec:
     role: leader
     kalavai.job.name: {{deployment_id}}
   ports:
-    - port: 5000
+    - name: main
+      port: 5000
       targetPort: 5000
       protocol: TCP
+    {% if nodeport != "" %}
+      nodePort: {{nodeport}}
+    {% endif %}

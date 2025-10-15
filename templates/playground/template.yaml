@@ -95,6 +95,10 @@ spec:
     role: leader
     kalavai.job.name: {{deployment_id}}
   ports:
-    - port: 8080
+    - name: main
+      port: 8080
       targetPort: 8080
       protocol: TCP
+    {% if nodeport != "" %}
+      nodePort: {{nodeport}}
+    {% endif %}

@@ -70,3 +70,10 @@
   editable: true
   required: false
   description: "If the job fails, how many times to retry redeployment"
+
+- name: nodeport
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Specify the node port for the service that exposes the job"
