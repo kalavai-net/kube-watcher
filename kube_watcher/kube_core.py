@@ -407,6 +407,12 @@ class KubeAPI():
     
 
     def kube_deploy_plus(self, yaml_strs, force_namespace=None):
+        # create namespace if not exists, ignore if it does
+        try:
+            if force_namespace is not None:
+                self.create_namespace(name=force_namespace)
+        except:
+            pass
         yamls = yaml_strs.split("---")
         deployment_results = defaultdict(list)
         custom_api = client.CustomObjectsApi(client.api_client.ApiClient())

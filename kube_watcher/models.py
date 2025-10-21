@@ -21,6 +21,7 @@ class JobTemplate(Enum):
     flowise = 14
     diffusers = 15
     axolotl = 16
+    registrar = 17
     #flexible = 99
 
 class NodeStatusRequest(BaseModel):
