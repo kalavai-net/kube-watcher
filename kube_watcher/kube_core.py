@@ -31,19 +31,36 @@ class KubeAPI():
             config.load_kube_config()
         self.core_api = client.CoreV1Api()
 
-    def _extract_resources(self, fn, node_names=None):
+    def _extract_resources(self, fn, node_names=None, aggregate=True):
         """Generalisation to extract values in dict form"""
         nodes = self.core_api.list_node()
-        data = {"online": defaultdict(int), "total": defaultdict(int)}
+        if aggregate:
+            data = {"online": defaultdict(int), "total": defaultdict(int)}
+            def _add_value(data, node, status):
+                if status:
+                    data["online"]["n_nodes"] += 1
+                    parse_resource_value(resources=fn(node), out_data_dict=data["online"])
+                else:
+                    data["total"]["n_nodes"] += 1
+                    parse_resource_value(resources=fn(node), out_data_dict=data["total"])
+        else:
+            data = {
+                node.metadata.name: {"online": defaultdict(int), "total": defaultdict(int)}
+                for node in nodes.items
+            }
+            def _add_value(data, node, status):
+                if status:
+                    data[node.metadata.name]["online"]["n_nodes"] += 1
+                    parse_resource_value(resources=fn(node), out_data_dict=data[node.metadata.name]["online"])
+                else:
+                    data[node.metadata.name]["total"]["n_nodes"] += 1
+                    parse_resource_value(resources=fn(node), out_data_dict=data[node.metadata.name]["total"])
+        
         for node in nodes.items:
             if node_names is not None and node.metadata.name not in node_names:
                 continue
             status = True if self.extract_node_readiness(node).status == "True" else False
-            if status:
-                data["online"]["n_nodes"] += 1
-                parse_resource_value(resources=fn(node), out_data_dict=data["online"])
-            data["total"]["n_nodes"] += 1
-            parse_resource_value(resources=fn(node), out_data_dict=data["total"])
+            _add_value(data=data, node=node, status=status)
         return data
     
     
@@ -215,31 +232,59 @@ class KubeAPI():
             else:
                 node_labels[name] = node.metadata.annotations
         return node_labels
+
+    def get_node_available_resources(self, node_names=None):
+        """Gets available resources (not currently used) in the cluster disaggregated per node:
+        - cpu
+        - memory
+        - gpus
+        - pods
+        """
+        total_resources = self._extract_resources(fn=lambda node: node.status.allocatable, node_names=node_names, aggregate=False)
+        available_resources = {node: value["online"] for node, value in total_resources.items()}
+
+        # remove requested (and used) resources
+        pods = self.core_api.list_pod_for_all_namespaces(watch=False).items
+        for pod in pods:
+            node_name = pod.spec.node_name
+            if node_name not in available_resources:
+                continue
+            if node_name and pod.status.phase == 'Running':
+                available_resources[node_name]["pods"] -= 1
+                for container in pod.spec.containers:
+                    reqs = container.resources.requests
+                    if reqs:
+                        for resource in available_resources[node_name].keys():
+                            if resource in reqs:
+                                available_resources[node_name][resource] -= cast_resource_value(reqs[resource])
+
+        return available_resources
     
     def get_node_gpus(self, node_names=None, gpu_key="hami.io/node-nvidia-register"):
 
         nodes = self.core_api.list_node().items
 
-        gpu_info = {}
+        gpu_info = {n.metadata.name: {"gpus": []} for n in nodes}
+        # pre-fetch all info at once
+        annotations = self.get_node_annotations()
+        node_states = self.get_nodes_states()
+        node_resources = self.get_node_available_resources()
         for node in nodes:
             if node_names is not None and node.metadata.name not in node_names:
                 continue
-            resources = self.get_available_resources(node_names=[node.metadata.name])
             # parse different GPU backends (AMD, NVIDIA)
             for backend in ["nvidia.com/gpu", "amd.com/gpu"]:
                 gpu_capacity = node.status.capacity.get(backend, "0")
                 if gpu_capacity == "0":
                     continue
-                gpu_info[node.metadata.name] = {
-                    "available": resources[backend],
-                    "capacity": gpu_capacity,
-                    "gpus": []
-                }
+                gpu_info[node.metadata.name]["available"] = node_resources[node.metadata.name][backend]
+                gpu_info[node.metadata.name]["capacity"] = gpu_capacity
+
                 if backend == "nvidia.com/gpu":
                     # extract model information
-                    annotations = self.get_node_annotations(node_names=[node.metadata.name])
-                    node_states = self.get_nodes_states()
                     for n, node_annotations in annotations.items():
+                        if n != node.metadata.name:
+                            continue
                         if gpu_key not in node_annotations:
                             continue
                         gpus = node_annotations[gpu_key].split(":")
@@ -257,8 +302,6 @@ class KubeAPI():
                                 "model": data[4]
                             })
                 if backend == "amd.com/gpu":
-                    annotations = self.get_node_labels(node_names=[node.metadata.name])
-                    node_states = self.get_nodes_states()
                     
                     for n, node_annotations in annotations.items():
                         memory = None
