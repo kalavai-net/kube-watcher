@@ -70,7 +70,7 @@ app = FastAPI()
 if USE_AUTH:
     for key in [ADMIN_KEY, WRITE_KEY, READ_ONLY_KEY]:
         name = f"{key=}".split("=")[0]
-        assert key is not None, f"If you are using auth, you must set ADMIN_KEY, WRITE_KEY and READ_ONLY_KEY via env var"
+        assert key is not None, f"If you are using auth, you must set KW_ADMIN_KEY, KW_WRITE_KEY and KW_sREAD_ONLY_KEY via env var"
 else:
     logger.warning("Warning: Authentication is disabled. This should only be used for testing.")
 
@@ -91,7 +91,7 @@ async def verify_read_key(request: Request):
     if not USE_AUTH:
         return None
     api_key = extract_auth_token(headers=request.headers)
-    if "error" in api_key:
+    if api_key is None or "error" in api_key:
         raise HTTPException(status_code=401, detail=f"Error when extracting auth token: {api_key}")
     if api_key != READ_ONLY_KEY and api_key != ADMIN_KEY and api_key != WRITE_KEY:
         raise HTTPException(status_code=401, detail=f"Request requires a Read API Key")
@@ -435,7 +435,7 @@ async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str 
 async def get_deployments(api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
     ns_deployments = {}
     for namespace in namespaces:
-        ns_deployments[namespaces] = kube_api.list_deployments(
+        ns_deployments[namespace] = kube_api.list_deployments(
             namespace=namespace
         )
     return ns_deployments
