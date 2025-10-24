@@ -335,8 +335,11 @@ async def get_storage_usage(request: StorageRequest, api_key: str = Depends(veri
     tags=["workload_info"],
     description="Gets objects of a given type in a set of namespaces in the kalavai pool",
     response_description="Objects of the given type in the namespaces in the kalavai pool")
-async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+async def get_deployment_type(request: CustomObjectRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
     ns_objects = {}
+    if can_force_namespace and request.force_namespace is not None:
+        namespaces = [request.force_namespace]
+
     for namespace in namespaces:
         ns_objects[namespace] = kube_api.kube_get_custom_objects(
             group=request.group,
@@ -352,8 +355,11 @@ async def get_deployment_type(request: CustomObjectRequest, api_key: str = Depen
     tags=["workload_info"],
     description="Gets status for a given object in a set of namespaces in the kalavai pool",
     response_description="Status for the given object in the namespaces in the kalavai pool")
-async def get_status_for_object(request: CustomObjectRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+async def get_status_for_object(request: CustomObjectRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
     ns_objects = {}
+    if can_force_namespace and request.force_namespace is not None:
+        namespaces = [request.force_namespace]
+    
     for namespace in namespaces:
         objects = kube_api.kube_get_status_custom_object(
             group=request.group,
@@ -402,8 +408,10 @@ async def describe_pods_for_label(request: GetLabelledResourcesRequest, can_forc
     tags=["workload_info"],
     description="Gets pods status for a given label in a set of namespaces in the kalavai pool",
     response_description="Pods status for the given label in the namespaces in the kalavai pool")
-async def get_pods_status_for_label(request: GetLabelledResourcesRequest, api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+async def get_pods_status_for_label(request: GetLabelledResourcesRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
     ns_logs = {}
+    if can_force_namespace and request.force_namespace is not None:
+        namespaces = [request.force_namespace]
     for namespace in namespaces:
         ns_logs[namespace] = kube_api.get_pods_status_for_label(
             namespace=namespace,
@@ -426,13 +434,15 @@ async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str 
     )
     return services
 
-@app.post("/v1/get_deployments", 
+@app.get("/v1/get_deployments", 
     operation_id="get_deployments",
     summary="Get job and model deployments for a set of namespaces in the Kalavai compute pool",
     tags=["workload_info"],
     description="Gets job and model deployments for a set of namespaces in the kalavai pool",
     response_description="Deployments for the namespaces in the kalavai pool")
 async def get_deployments(api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+
+    # legacy
     ns_deployments = {}
     for namespace in namespaces:
         ns_deployments[namespace] = kube_api.list_deployments(
