@@ -40,9 +40,9 @@ class KubeAPI():
                 if status:
                     data["online"]["n_nodes"] += 1
                     parse_resource_value(resources=fn(node), out_data_dict=data["online"])
-                else:
-                    data["total"]["n_nodes"] += 1
-                    parse_resource_value(resources=fn(node), out_data_dict=data["total"])
+
+                data["total"]["n_nodes"] += 1
+                parse_resource_value(resources=fn(node), out_data_dict=data["total"])
         else:
             data = {
                 node.metadata.name: {"online": defaultdict(int), "total": defaultdict(int)}
@@ -52,9 +52,9 @@ class KubeAPI():
                 if status:
                     data[node.metadata.name]["online"]["n_nodes"] += 1
                     parse_resource_value(resources=fn(node), out_data_dict=data[node.metadata.name]["online"])
-                else:
-                    data[node.metadata.name]["total"]["n_nodes"] += 1
-                    parse_resource_value(resources=fn(node), out_data_dict=data[node.metadata.name]["total"])
+
+                data[node.metadata.name]["total"]["n_nodes"] += 1
+                parse_resource_value(resources=fn(node), out_data_dict=data[node.metadata.name]["total"])
         
         for node in nodes.items:
             if node_names is not None and node.metadata.name not in node_names:
@@ -178,7 +178,6 @@ class KubeAPI():
     
     def get_total_allocatable_resources(self, node_names=None):
         """Get total allocatable resources (available and used) in the cluster"""
-        
         total_resources = self._extract_resources(
             fn=lambda node: node.status.allocatable,
             node_names=node_names)

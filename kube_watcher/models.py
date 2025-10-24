@@ -115,6 +115,7 @@ class CustomObjectRequest(BaseModel):
     api_version: str
     plural: str
     name: str = ""
+    force_namespace: str = None
 
 class CustomObjectDeploymentRequest(BaseModel):
     object: CustomObjectRequest
