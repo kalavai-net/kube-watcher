@@ -573,12 +573,13 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
         print(f"-> [{replica}] Deployment parsed: ", deployment)
         
         # deploy job
-        responses.append(
-            kube_api.kube_deploy_plus(
+        responses.append({
+            "job_id": job.job_name,
+            "result":kube_api.kube_deploy_plus(
                 yaml_strs=deployment,
                 force_namespace=namespace
             )
-        )
+        })
         # deploy service
         # DEPRECATED: this is now handled by the job template if required
         # if job.ports is not None and len(job.ports) > 0:
@@ -616,12 +617,13 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
         print("--->", deployment)
         
         # deploy job
-        responses.append(
-            kube_api.kube_deploy_plus(
+        responses.append({
+            "job_id": job.job_name,
+            "result":kube_api.kube_deploy_plus(
                 yaml_strs=deployment,
                 force_namespace=namespace
             )
-        )
+        })
         # deploy service
         # DEPRECATED: this is now handled by the job template if required
         # if job.ports is not None and len(job.ports) > 0:

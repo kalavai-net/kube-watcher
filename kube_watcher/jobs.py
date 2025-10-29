@@ -3,6 +3,7 @@ import json
 import re
 import copy
 from os.path import commonprefix
+import uuid
 
 from kube_watcher.models import JobTemplate
 
@@ -27,8 +28,16 @@ def get_metadata_path(template: JobTemplate):
 def escape_field(text):
     return re.sub('[^0-9a-z]+', '-', text.lower())
 
-def parse_deployment_name(deployment_name):
-    return escape_field(commonprefix(deployment_name.split(",")))
+def parse_deployment_name(deployment_name, max_len=63, random_suffix=True):
+    """Make it kubernetes ready:
+    - Remove unacceptable characters
+    - Make it less than 59 (accommodate for further replica suffixing)"""
+    max_len = max_len if not random_suffix else max_len - 6
+    escaped_name = escape_field(commonprefix(deployment_name.split(",")))[:max_len]
+    if random_suffix:
+        escaped_name += f"-{str(uuid.uuid4())[:6]}"
+
+    return escaped_name
 
 class Job:
     def __init__(self, template: JobTemplate, template_str: str=None):
@@ -83,7 +92,7 @@ class Job:
                 if default["default"] not in local_values:
                     raise ValueError(f"Key value '{default['default']}' missing from values")
                 if replica is not None:
-                    local_values[TEMPLATE_ID_KEY] = parse_deployment_name(local_values[default["default"]] + f"_{replica}")
+                    local_values[TEMPLATE_ID_KEY] = parse_deployment_name(local_values[default["default"]], max_len=58) + f"-{replica}"
                 else:
                     local_values[TEMPLATE_ID_KEY] = parse_deployment_name(local_values[default["default"]])
                 continue
