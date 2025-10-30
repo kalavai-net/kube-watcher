@@ -132,6 +132,7 @@ class GetLabelledResourcesRequest(BaseModel):
     label:str
     value:Optional[str] = None
     force_namespace: str = None
+    tail_lines: int = 100
     
 class UserRequest(BaseModel):
     email: str

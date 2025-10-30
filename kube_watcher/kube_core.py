@@ -558,10 +558,11 @@ class KubeAPI():
         )
         return res
     
-    def get_logs_for_pod(self, pod, namespace):
+    def get_logs_for_pod(self, pod, namespace, tail_lines=100):
         response = self.core_api.read_namespaced_pod_log(
             name=pod,
-            namespace=namespace
+            namespace=namespace,
+            tail_lines=tail_lines
         )
         return response
 
@@ -597,7 +598,7 @@ class KubeAPI():
             namespace=namespace
         )
     
-    def get_logs_for_labels(self, label_key, label_value, namespace):
+    def get_logs_for_labels(self, label_key, label_value, namespace, tail_lines=100):
         """Get logs for all pods that match a label key:value"""
         pods = self.find_pods_with_label(
             namespace=namespace,
@@ -607,7 +608,7 @@ class KubeAPI():
         logs = {}
         for pod_name in pods.keys():
             logs[pod_name] = {
-                "logs": self.get_logs_for_pod(pod=pod_name, namespace=namespace),
+                "logs": self.get_logs_for_pod(pod=pod_name, namespace=namespace, tail_lines=tail_lines),
                 "pod": force_serialisation(self.get_specs_for_pod(pod_name=pod_name, namespace=namespace))
             }
         
@@ -1044,11 +1045,48 @@ class KubeAPI():
                 service_ports[service.metadata.name] = max(node_ports)
 
         return service_ports
+    
+    def get_job_info_for_labels(self, label_key, label_value, namespace, tail_lines=100):
+        """Aggregates kubectl describe and kubectl logs when available"""
+        job_info = defaultdict(dict)
+        try:
+            logs = self.get_logs_for_labels(
+                label_key=label_key,
+                label_value=label_value,
+                namespace=namespace,
+                tail_lines=tail_lines
+            )
+            for name, log in logs.items():
+                job_info[name] = log
+        except:
+            pass
+        try:
+            descriptions = self.describe_pods_for_labels(
+                label_key=label_key,
+                label_value=label_value,
+                namespace=namespace
+            )
+            for name, description in descriptions.items():
+                for key, value in description.items():
+                    job_info[name][key] = value
+        except:
+            pass
+
+        return job_info
 
 
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    res = api.get_total_allocatable_resources()
-    print(json.dumps(res, indent=2))
+    #res = api.describe_pods_for_labels(
+    res = api.get_job_info_for_labels(
+        label_key="kalavai.job.name",
+        label_value="qwen-qwen3-0-6b-99757a",
+        namespace="default",
+    )
+    #print(json.dumps(res, indent=2))
+    for name, data in res.items():
+        print(name)
+        print(data.keys())
+        print(data["logs"])

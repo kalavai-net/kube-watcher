@@ -384,8 +384,26 @@ async def get_logs_for_label(request: GetLabelledResourcesRequest, can_force_nam
     logs = kube_api.get_logs_for_labels(
         namespace=namespace,
         label_key=request.label,
-        label_value=request.value)
+        label_value=request.value,
+        tail_lines=request.tail_lines)
     return logs
+
+@app.post("/v1/get_job_details", 
+    operation_id="get_job_details",
+    summary="Get job details for a given label in a set of namespaces in the Kalavai compute pool",
+    tags=["workload_info"],
+    description="Gets job details, including logs, pod info and status, for a given label in a set of namespaces in the kalavai pool",
+    response_description="Job details for the given label in the namespaces in the kalavai pool")
+async def get_job_details_for_label(request: GetLabelledResourcesRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+    logs = kube_api.get_job_info_for_labels(
+        namespace=namespace,
+        label_key=request.label,
+        label_value=request.value,
+        tail_lines=request.tail_lines)
+    return logs
+
 
 @app.post("/v1/describe_pods_for_label", 
     operation_id="describe_pods_for_label",
