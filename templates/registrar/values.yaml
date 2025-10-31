@@ -1,71 +1,34 @@
 ############################
-### MUST HAVE THIS FIELDS ##
-# Either id_field pointing to another existing field
+### MUST HAVE THESE FIELDS ##
 - name: id_field
-  value: model_id
-  default: model_id
+  value: deployment_name
+  default: deployment_name
   editable: false
   required: false
   description: "Field that contains the ID of the job"
 ############################
 
-- name: cpus
-  value: 2
-  default: 2
-  editable: true
-  required: false
-  description: "CPUs to be used. Workers should have these many CPUs available."
-
-- name: gpus
-  value: 1
-  default: 1
-  editable: true
-  required: false
-  description: "GPUs to be used. Workers should have these many GPUs available."
-
-- name: memory
-  value: 4
-  default: 4
-  editable: true
-  required: false
-  description: "RAM memory to be used. Workers should have these much RAM available."
-
-- name: cuda_gpu_mem_percentage
-  value: 100
-  default: 100
-  editable: true
-  required: false
-  description: "Maximum memory fraction allowed to be used from the GPU vRAM."
-
-- name: model_id
-  value: "hexgrad/Kokoro-82M"
-  default: "hexgrad/Kokoro-82M"
+- name: deployment_name
+  value: "litellm-registrar" 
+  default: "litellm-registrar"
   editable: true
   required: true
-  description: "Model ID. hexagrad/Kokoro-82M for TTS and one of the following for STT: tiny.en, tiny, base.en, base, small.en, small, medium.en, medium, large-v1, large-v2, large-v3, large, distil-large-v2, distil-medium.en, distil-small.en, distil-large-v3, large-v3-turbo, turbo"
+  description: "Name of the job"
 
-- name: mode
-  value: "audio_speech"
-  default: "audio_speech"
+- name: model_id
+  value: null
+  default: null
   editable: true
-  required: false
-  description: "Mode of the model: audio_speech for TTS, audio_transcription for STT"
+  required: true
+  description: "Huggingface model id to deploy"
 
-- name: max_retries
-  value: 1000
-  default: 1000
-  editable: true
-  required: false
-  description: "If the job fails, how many times to retry redeployment"
-
-- name: nodeport
+- name: model_api_base
   value: ""
   default: ""
   editable: true
-  required: false
-  description: "Specify the node port for the service that exposes the job"
+  required: true
+  description: "Base URL for the model"
 
-## REGISTRAR SIDECAR
 - name: litellm_base_url
   value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
   default: "http://litellm.default.svc.cluster.local:4000"
@@ -93,6 +56,13 @@
   editable: true
   required: false
   description: "Extra information to store in the LiteLLM model registration (must be a dictionary)"
+
+- name: model_name_override
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
 
 - name: lago_url
   value: ""
@@ -128,3 +98,17 @@
   editable: true
   required: false
   description: "Interval in seconds to send the lago event"
+
+- name: max_retries
+  value: 1000
+  default: 1000
+  editable: true
+  required: false
+  description: "If the job fails, how many times to retry redeployment"
+
+- name: rpm_limit
+  value: 50000
+  default: 50000
+  editable: true
+  required: false
+  description: "Max Requests per Minute allowed for this model to handle"

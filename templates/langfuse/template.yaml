@@ -432,12 +432,33 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-      {% if NODE_SELECTORS %}
-        nodeSelector:
-        {% for selector in NODE_SELECTORS %}
-          {{selector.name}}: {{selector.value}}
-        {% endfor %}
-      {% endif %}
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
         containers:
         - image: docker.io/minio/minio
           name: minio
@@ -480,12 +501,33 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-      {% if NODE_SELECTORS %}
-        nodeSelector:
-        {% for selector in NODE_SELECTORS %}
-          {{selector.name}}: {{selector.value}}
-        {% endfor %}
-      {% endif %}
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
         containers:
         - image: docker.io/clickhouse/clickhouse-server
           name: clickhouse

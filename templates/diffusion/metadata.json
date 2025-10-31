@@ -1,0 +1,10 @@
+{
+    "name": "diffusers",
+    "type": "model",
+    "description": "Diffusers: State-of-the-art diffusion models for image, video, and audio generation in PyTorch and FLAX.",
+    "docs": "https://github.com/huggingface/diffusers",
+    "icon": "https://raw.githubusercontent.com/huggingface/diffusers/77aadfee6a891ab9fcfb780f87c693f7a5beeb8e/docs/source/imgs/diffusers_library.jpg",
+    "info": "Distributed implementation of Stable Diffusion inference, to run image generation with your favourite diffusion models.\nDoes not require GPUs but runs better on them",
+    "template_rules": "",
+    "values_rules": ""
+}

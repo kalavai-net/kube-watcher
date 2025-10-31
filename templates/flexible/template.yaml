@@ -29,12 +29,33 @@ spec:
           kalavai.job.name: {{deployment_id}}
           role: leader
       spec:
-      {% if NODE_SELECTORS %}
-        nodeSelector:
-        {% for selector in NODE_SELECTORS %}
-          {{selector.name}}: {{selector.value}}
-        {% endfor %}
-      {% endif %}
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
         containers:
         - name: container
           image: {{container_image}}
@@ -59,6 +80,7 @@ spec:
               memory: {{memory}}Gi
             {% if gpus and gpus > 0 %}
               nvidia.com/gpu: {{gpus}}
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
             {% endif %}
         restartPolicy: {{restart_policy}}
 ---

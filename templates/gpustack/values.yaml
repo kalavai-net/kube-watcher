@@ -71,6 +71,13 @@
   required: false
   description: "RAM memory per single worker (final one = memory * num_workers)"
 
+- name: cuda_gpu_mem_percentage
+  value: 100
+  default: 100
+  editable: true
+  required: false
+  description: "Maximum memory fraction allowed to be used from the GPU vRAM."
+
 - name: max_retries
   value: 1000
   default: 1000

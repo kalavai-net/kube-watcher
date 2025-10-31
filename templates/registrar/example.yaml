@@ -1,0 +1,48 @@
+- name: deployment_name
+  value: "free-registrar" 
+  default: "litellm-registrar"
+  editable: true
+  required: true
+  description: "Name of the job"
+
+- name: litellm_key
+  value: "sk-1234"
+  default: ""
+  editable: true
+  required: true
+  description: "Master key of the LiteLLM service (central model registry)"
+
+- name: litellm_access_group
+  value: "free"
+  default: ""
+  editable: true
+  required: false
+  description: "What access group to assign the model to (ringfencing)"
+
+- name: litellm_kalavai_extras
+  value: '{"tier": "free", "optimisation": "cost"}'
+  default: ""
+  editable: true
+  required: false
+  description: "Extra information to store in the LiteLLM model registration (must be a dictionary)"
+
+- name: model_name_override
+  value: "free/model"
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
+
+- name: model_id
+  value: "model"
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface model id to deploy"
+
+- name: model_api_base
+  value: "http://localhost:8080"
+  default: ""
+  editable: true
+  required: true
+  description: "Base URL for the model"

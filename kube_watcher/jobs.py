@@ -14,6 +14,7 @@ TEMPLATE_ID_KEY = "deployment_id"
 TEMPLATE_LABEL = "kalavai.job.name"
 ENDPOINT_PORTS_KEY = "endpoint_ports"
 NODE_SELECTOR = "NODE_SELECTORS"
+NODE_SELECTOR_OPS = "NODE_SELECTORS_OPS"
 
 
 def get_template_path(template: JobTemplate):
@@ -80,7 +81,7 @@ class Job:
             print("Error when getting metadata:", str(e))
             return None
 
-    def populate(self, values: dict, default_values=None, target_labels=None, replica=None):
+    def populate(self, values: dict, default_values=None, target_labels=None, target_labels_ops="AND", replica=None):
         if default_values is None:
             default_values = self.get_defaults()
 
@@ -110,11 +111,12 @@ class Job:
         self.ports = local_values[ENDPOINT_PORTS_KEY].split(",") if ENDPOINT_PORTS_KEY in local_values else []
         if target_labels is not None:
             local_values[NODE_SELECTOR] = [
-                {"name": key, "value": value} 
+                {"name": key, "value": value if isinstance(value, list) else [value]} 
                 for key, value in target_labels.items()
             ]
+            local_values[NODE_SELECTOR_OPS] = target_labels_ops
 
-        return Template(self.template_str).render(local_values)
+        return Template(self.template_str, lstrip_blocks=True, trim_blocks=True).render(local_values)
 
         
 if __name__ == "__main__":

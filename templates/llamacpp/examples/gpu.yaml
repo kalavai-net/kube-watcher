@@ -1,0 +1,55 @@
+
+
+- name: litellm_key
+  value: ""
+  default: "sk-1234"
+  description: "Master key of the LiteLLM service (central registry)"
+
+- name: workers
+  value: 2
+  default: 1
+  description: "Number of remote workers"
+
+- name: working_memory
+  value: 40
+  default: 5
+  editable: true
+  required: true
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
+
+
+- name: repo_id
+  value: bartowski/Mistral-Nemo-Instruct-2407-GGUF
+  default: null
+  description: "Huggingface model id to load"
+
+- name: model_filename
+  value: "Mistral-Nemo-Instruct-2407-Q8_0.gguf"
+  default: "None"
+  description: "Specific model file to use (handy for quantized models such as gguf)"
+
+- name: hf_token
+  value: token
+  default: null
+  description: "Huggingface token, required to load model weights"
+
+- name: cpus
+  value: 2
+  default: 2
+  description: "CPUs per single worker (final one = cpus * num_workers)"
+
+- name: gpus
+  value: 1
+  default: 0
+  description: "CPUs per single worker (final one = cpus * num_workers)"
+
+- name: memory
+  value: 14
+  default: 4
+  description: "RAM memory per single worker (final one = memory * num_workers)"
+
+
+- name: server_extra
+  value: "-ngl 80"
+  default: ""
+  description: ""

@@ -27,12 +27,33 @@ spec:
     name: ps
     template: # Definition of the ps pod
       spec:
-      {% if NODE_SELECTORS %}
-        nodeSelector:
-        {% for selector in NODE_SELECTORS %}
-          {{selector.name}}: {{selector.value}}
-        {% endfor %}
-      {% endif %}
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
         containers:
         - name: nginx
           # docker image to use as base for each worker
@@ -43,10 +64,12 @@ spec:
               cpu: "100m"
               memory: "1Gi"
               nvidia.com/gpu: "1"
+              nvidia.com/gpumem-percentage: 0.95
             requests:
               cpu: "50m"
               memory: "1Gi"
               nvidia.com/gpu: "1"
+              nvidia.com/gpumem-percentage: 0.95
           ports:
           # what port to make available
           # to make them available through job endpoints, make sure you list the ports in values.yaml, under endpoint_ports

@@ -1,0 +1,34 @@
+- name: deployment_name
+  value: comfyui-large
+  default: comfyui
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+- name: working_memory
+  value: 120
+  default: 50
+  editable: true
+  required: true
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
+
+- name: cpus
+  value: 2
+  default: 2
+  editable: true
+  required: false
+  description: "Number of cpus per worker"
+
+- name: memory
+  value: 32
+  default: 8
+  editable: true
+  required: false
+  description: "Memory per worker"
+
+- name: nodeport
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Specify the node port for the service that exposes the job"

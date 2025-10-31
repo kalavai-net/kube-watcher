@@ -7,14 +7,14 @@
   description: "Master key of the LiteLLM service (central model registry)"
 
 - name: model_name_override
-  value: "mistralai/Mistral-Nemo-Instruct-2407"
+  value: "Qwen/Qwen3-0.6B"
   default: ""
   editable: true
   required: false
   description: "Model name to use (defaults to model_id) during inference"
 
 - name: working_memory
-  value: 80
+  value: 10
   default: 5
   editable: true
   required: true
@@ -28,7 +28,7 @@
   description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
 
 - name: model_id
-  value: "mistralai/Mistral-Nemo-Instruct-2407"
+  value: "Qwen/Qwen3-0.6B"
   default: null
   editable: true
   required: true
@@ -63,15 +63,22 @@
   description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
 
 - name: memory
-  value: 14
+  value: 8
   default: 8
   editable: true
   required: false
   description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
 
 - name: extra
-  value: "--quantization fp8 --stream-interval 2"
+  value: "--max-model-len 4000 --quantization fp8 --enforce-eager"
   default: ""
   editable: true
   required: false
   description: "Extra parameters to pass to the SGLang server. See https://docs.sglang.ai/backend/server_arguments.html"
+
+- name: tool_call_parser
+  value: "mistral"
+  default: "llama3_json"
+  editable: true
+  required: false
+  description: "Tool call parser to use. https://docs.vllm.ai/en/latest/features/tool_calling.html#automatic-function-calling"

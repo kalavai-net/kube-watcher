@@ -30,12 +30,33 @@ spec:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
-      {% if NODE_SELECTORS %}
-        nodeSelector:
-        {% for selector in NODE_SELECTORS %}
-          {{selector.name}}: {{selector.value}}
-        {% endfor %}
-      {% endif %}
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
         containers:
         - name: gpustack-leader
           image: docker.io/gpustack/gpustack:latest
@@ -79,14 +100,37 @@ spec:
       action: CompleteJob
     template: # Definition of worker pods
       metadata:
-        annotations:
-          # must have these annotations
-          {{nouse_gputype}}
-          {{use_gputype}}
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
         runtimeClassName: nvidia
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
         containers:
         - name: gpustack-worker
           image: docker.io/gpustack/gpustack:latest
@@ -114,6 +158,7 @@ spec:
               cpu: {{cpus}}
               memory: {{memory}}Gi
               nvidia.com/gpu: {{gpus}}
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
             - name: cache

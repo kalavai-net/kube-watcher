@@ -10,36 +10,43 @@
 ############################
 
 - name: deployment_name
-  value: flex
-  default: flex
+  value: comfyui
+  default: comfyui
   editable: true
   required: true
   description: "Name of the deployment job"
-  
-- name: workers
-  value: 1
-  default: 1
+
+- name: hf_token
+  value: <yout token>
+  default: null
   editable: true
   required: true
-  description: "Number of workers"
+  description: "Huggingface access token, only required to load gated model weights"
+
+- name: working_memory
+  value: 50
+  default: 50
+  editable: true
+  required: true
+  description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
 
 - name: cpus
-  value: 1
-  default: 1
+  value: 2
+  default: 2
   editable: true
   required: false
   description: "Number of cpus per worker"
 
 - name: memory
-  value: 2
-  default: 1
+  value: 8
+  default: 8
   editable: true
   required: false
   description: "Memory per worker"
 
 - name: gpus
-  value: 0
-  default: 0
+  value: 1
+  default: 1
   editable: true
   required: false
   description: "Number of gpus per worker"
@@ -50,34 +57,6 @@
   editable: true
   required: false
   description: "Maximum memory fraction allowed to be used from the GPU vRAM."
-
-- name: command
-  value: "sleep 1;"
-  default: "sleep 1;"
-  editable: true
-  required: true
-  description: "Command to run in the container of workers"
-
-- name: container_image
-  value: busybox
-  default: busybox
-  editable: true
-  required: true
-  description: "Docker image for the workers"
-
-- name: restart_policy
-  value: OnFailure
-  default: OnFailure
-  editable: true
-  required: false
-  description: "Container restart policy [OnFailure, Always, Never]"
-
-- name: max_retries
-  value: 1000
-  default: 1000
-  editable: true
-  required: false
-  description: "If the job fails, how many times to retry redeployment"
 
 - name: nodeport
   value: ""

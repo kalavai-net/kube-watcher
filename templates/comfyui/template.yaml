@@ -6,14 +6,12 @@ metadata:
     # must have this label
     kalavai.job.name: {{deployment_id}}
 spec:
-  queue: default
   schedulerName: volcano
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetries: {{max_retries}}
   tasks:
-  - replicas: {{replicas}}   # One ps pod specified
+  - replicas: 1   # One ps pod specified
     name: server
     policies:
     - event: PodEvicted
@@ -27,9 +25,10 @@ spec:
     template: # Definition of the ps pod
       metadata:
         labels:
-          role: leader
           kalavai.job.name: {{deployment_id}}
+          role: leader
       spec:
+        runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -58,48 +57,39 @@ spec:
             {% endif %}
         {% endif %}
         containers:
-        - name: leader
-          image: ghcr.io/open-webui/open-webui:main
-          # command:
-          # - sh
-          # - -c
-          # - |
-          #   open-webui serve --host 0.0.0.0 --port 8080;
+        - name: container
+          image: docker.io/bundenth/comfyui:cuda-latest
+          imagePullPolicy: Always
+          command:
+          - sh
+          - -c
+          - |
+            nvidia-smi;
+            python3 main.py --listen 0.0.0.0 --port 8188 --multi-user;
           env:
-          - name: OPENAI_API_BASE_URL
-            value: {{litellm_base_url}}/v1
-          - name: OPENAI_API_KEY
-            value: {{litellm_key}}
-          - name: ENABLE_OLLAMA_API
-            value: "False"
-          - name: WEBUI_AUTH
-            value: "{{webui_auth}}"
-          - name: ENABLE_LOGIN_FORM
-            value: "True"
-          - name: ENABLE_SIGNUP
-            value: "True"
-          - name: DEFAULT_USER_ROLE
-            value: "{{default_user_role}}" #"admin"
-          - name: OFFLINE_MODE
-            value: "True"
-          - name: DATA_DIR
-            value: "./data"
-          - name: ENABLE_MESSAGE_RATING
-            value: "False"
-          - name: ENABLE_COMMUNITY_SHARING
-            value: "False"
-          - name: BYPASS_MODEL_ACCESS_CONTROL
-            value: "True"
+          - name: HF_TOKEN
+            value: {{hf_token}}
           ports:
-          - containerPort: 8080
-            name: model-port
+          - containerPort: 8188
+            name: container-port
           resources:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+              nvidia.com/gpu: {{gpus}}
+              ephemeral-storage: {{working_memory}}Gi
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+              nvidia.com/gpu: {{gpus}}
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+              ephemeral-storage: {{working_memory}}Gi
+          # readinessProbe:
+          #   httpGet:
+          #     path: /health
+          #     port: 8000
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
         restartPolicy: OnFailure
 ---
 # deploy NodePort to expose model
@@ -117,8 +107,8 @@ spec:
     kalavai.job.name: {{deployment_id}}
   ports:
     - name: main
-      port: 8080
-      targetPort: 8080
+      port: 8188
+      targetPort: 8188
       protocol: TCP
     {% if nodeport != "" %}
       nodePort: {{nodeport}}

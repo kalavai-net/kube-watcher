@@ -586,6 +586,7 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
         deployment = job.populate(
             values=request.template_values,
             target_labels=request.target_labels,
+            target_labels_ops=request.target_labels_ops,
             replica=replica if request.replicas > 1 else None)
         
         print(f"-> [{replica}] Deployment parsed: ", deployment)
@@ -631,6 +632,7 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
             values=request.template_values,
             default_values=yaml_defaults,
             target_labels=request.target_labels,
+            target_labels_ops=request.target_labels_ops,
             replica=replica if request.replicas > 1 else None)
         print("--->", deployment)
         

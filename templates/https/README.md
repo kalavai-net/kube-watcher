@@ -17,7 +17,7 @@ services:
       - '443:443'
     restart: always
     environment:
-      DOMAINS: 'api.cogenai.kalavai.net -> http://51.159.182.127:30379'
+      DOMAINS: 'api.cogenai.kalavai.net -> http://51.159.161.139:31851, demo1.kalavai.net -> http://51.159.161.139:32111, demo2.kalavai.net -> http://51.159.161.139:32222'
       STAGE: 'production' # Don't use production until staging works
       KEEPALIVE_TIMEOUT: 3600
       PROXY_CONNECT_TIMEOUT: 3600
@@ -37,3 +37,4 @@ Then start the service:
 ```bash
 docker compose -f https.yaml up -d
 ```
+

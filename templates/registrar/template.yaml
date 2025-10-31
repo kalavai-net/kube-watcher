@@ -1,0 +1,145 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  queue: default
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  maxRetries: {{max_retries}}
+  tasks:
+  - replicas: 1   # One ps pod specified
+    name: registrar
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
+        containers:
+        - name: registrar-leader
+          image: docker.io/bundenth/kalavai-utils:latest
+          command:
+          - sh
+          - -c
+          - |
+            # echo "Waiting for model to be served..."
+            # PS_HOST=`cat /etc/volcano/server.host`;
+            # /workspace/wait_for_service.sh --servers="$PS_HOST" --port=8080
+            # API_BASE="http://"$PS_HOST"."$VC_NAMESPACE":8080/v1";
+            /workspace/start_point.sh \
+              --litellm_kalavai_extras='{{litellm_kalavai_extras}}' \
+              --litellm_access_group={{litellm_access_group}} \
+              --rpm_limit={{rpm_limit}}
+          # # Register model with LiteLLM
+          # {% if model_name_override != "" %}
+          # LITELLM_MODEL_NAME="{{model_name_override}}";
+          # {% else %}
+          # LITELLM_MODEL_NAME="{{model_id}}";
+          # {% endif %}
+          # echo "Creating new entry on LiteLLM: (host: {{model_api_base}}) - (model id: $LITELLM_MODEL_NAME)";
+          # /workspace/register_model.sh \
+          #   --litellm_base_url={{litellm_base_url}} \
+          #   --litellm_key={{litellm_key}} \
+          #   --litellm_model_name="$LITELLM_MODEL_NAME" \
+          #   --model_id={{model_id}} \
+          #   --provider=hosted_vllm \
+          #   --api_base={{model_api_base}} \
+          # {% if litellm_access_group != "" %}--model_info='{"access_groups": ["{{litellm_access_group}}"]}' \{% endif %}
+          # {% if litellm_kalavai_extras != "" %}--litellm_kalavai_extras='{{litellm_kalavai_extras}}' \{% endif %}
+          #   --job_id={{deployment_id}}
+          env:
+          - name: VC_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: LITELLM_MODEL_NAME
+          {% if model_name_override != "" %}
+            value: "{{model_name_override}}"
+          {% else %}
+            value: "{{model_id}}"
+          {% endif %}
+          - name: LITELLM_BASE_URL
+            value: {{litellm_base_url}}
+          - name: LITELLM_KEY
+            value: {{litellm_key}}
+          - name: MODEL_ID
+            value: {{model_id}}
+          - name: DEPLOYMENT_ID
+            value: {{deployment_id}}
+          - name: PROVIDER
+            value: hosted_vllm
+          - name: MODEL_API_BASE
+            value: {{model_api_base}}
+          lifecycle:
+            preStop:
+              exec:
+                command: 
+                - sh
+                - -c
+                - |
+                  /workspace/cleanup.sh
+                # {% if model_name_override != "" %}
+                #   LITELLM_MODEL_NAME="{{model_name_override}}";
+                # {% else %}
+                #   LITELLM_MODEL_NAME="{{model_id}}";
+                # {% endif %}
+                #   MODEL_ID=$(python3 /workspace/get_litellm_id.py \
+                #     --litellm_url={{litellm_base_url}} \
+                #     --api_key={{litellm_key}} \
+                #     --job_id={{deployment_id}} \
+                #     --model_name="$LITELLM_MODEL_NAME");
+                #   curl -X POST "{{litellm_base_url}}/model/delete" \
+                #       -H 'Authorization: Bearer {{litellm_key}}' \
+                #       -H "accept: application/json" \
+                #       -H "Content-Type: application/json" \
+                #       -d '{ "id": "'$MODEL_ID'"}';
+          resources:
+            requests:
+              cpu: 0.05
+              memory: 0.05Gi
+            limits:
+              cpu: 0.05
+              memory: 0.05Gi
+        restartPolicy: OnFailure

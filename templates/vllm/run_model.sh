@@ -7,6 +7,7 @@ tensor_parallel_size=1
 pipeline_parallel_size=1
 model_name=""
 
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --model_path=*)

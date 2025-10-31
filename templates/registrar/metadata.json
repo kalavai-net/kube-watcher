@@ -1,0 +1,10 @@
+{
+    "name": "Registrar",
+    "type": "platform",
+    "description": "Register models to a LiteLLM instance.",
+    "docs": "",
+    "icon": "https://opensource.muenchen.de/logo/litellm.png",
+    "info": "Register models to the API gateway LiteLLM",
+    "template_rules": "",
+    "values_rules": ""
+}

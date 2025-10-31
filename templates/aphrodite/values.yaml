@@ -8,20 +8,6 @@
   description: "Field that contains the ID of the job"
 ############################
 
-- name: litellm_base_url
-  value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
-  default: "http://litellm.default.svc.cluster.local:4000"
-  editable: true
-  required: false
-  description: "Base URL of the LiteLLM service (central model registry). This can be an external LiteLLM instance or an internal deployment in the pool (default)"
-
-- name: litellm_key
-  value: ""
-  default: ""
-  editable: true
-  required: false
-  description: "Master key of the LiteLLM service (central model registry)"
-
 - name: working_memory
   value: 10
   default: 10
@@ -63,6 +49,13 @@
   editable: true
   required: false
   description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
+
+- name: cuda_gpu_mem_percentage
+  value: 100
+  default: 100
+  editable: true
+  required: false
+  description: "Maximum memory fraction allowed to be used from the GPU vRAM."
 
 - name: memory
   value: 8
@@ -112,3 +105,67 @@
   editable: true
   required: false
   description: "Specify the node port for the service that exposes the job"
+
+## REGISTRAR SIDECAR
+- name: litellm_base_url
+  value: "http://litellm.default.svc.cluster.local:4000" #"http://192.168.68.67:30219"
+  default: "http://litellm.default.svc.cluster.local:4000"
+  editable: true
+  required: false
+  description: "Base URL of the LiteLLM service (central model registry). This can be an external LiteLLM instance or an internal deployment in the pool (default)"
+
+- name: litellm_key
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Master key of the LiteLLM service (central model registry)"
+
+- name: litellm_access_group
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "What access group to assign the model to (ringfencing)"
+
+- name: litellm_kalavai_extras
+  value: "{}"
+  default: "{}"
+  editable: true
+  required: false
+  description: "Extra information to store in the LiteLLM model registration (must be a dictionary)"
+
+- name: lago_url
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Base URL of the Lago service (payment system)"
+
+- name: lago_api_key
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Master key of the Lago service"
+
+- name: lago_external_subscription_id
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "ID of the Lago subscription to send events to"
+
+- name: lago_event_code
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Event code to use when submitting event to Lago payment API"
+
+- name: lago_event_interval
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Interval in seconds to send the lago event"

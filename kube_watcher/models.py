@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Literal
 from pydantic import BaseModel
 from enum import Enum
 
@@ -143,6 +143,7 @@ class JobTemplateRequest(BaseModel):
     template_values: dict = None
     template: str
     target_labels: dict[str, str] = None
+    target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
 
 class CustomJobTemplateRequest(BaseModel):
@@ -151,6 +152,7 @@ class CustomJobTemplateRequest(BaseModel):
     default_values: str
     template: str
     target_labels: dict[str, str] = None
+    target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
 
 class RayClusterRequest(BaseModel):
