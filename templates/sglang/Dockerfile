@@ -1,7 +1,7 @@
 FROM bundenth/ray:latest AS base
 
-#FROM lmsysorg/sglang:v0.5.2-cu126
-FROM lmsysorg/sglang:v0.4.7.post1-cu124
+FROM lmsysorg/sglang:v0.5.2-cu126
+#FROM lmsysorg/sglang:v0.4.7.post1-cu124
 
 ARG DEBIAN_FRONTEND=noninteractive
 

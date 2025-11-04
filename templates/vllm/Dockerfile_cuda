@@ -19,6 +19,7 @@ COPY common_requirements.txt .
 #RUN . /home/ray/workspace/env/bin/activate && \
 RUN pip install -r common_requirements.txt --no-cache-dir
 RUN pip install vllm==0.10.1.1 --no-cache-dir
+#RUN pip install -U vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
     #pip install ray[serve-grpc,default]==2.43.0 --no-cache-dir
 
 # install torchdec https://github.com/QwenLM/Qwen2.5-VL?tab=readme-ov-file#installing-cuda-enabled-torchcodec 

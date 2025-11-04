@@ -168,13 +168,15 @@ spec:
           - |
             PS_HOST=`cat /etc/volcano/server.host`;
             # Download model weights
-            /home/ray/workspace/download_model.sh \
-              --model_id={{model_id}} \
-              --remote_dir="/home/ray/cache";
+            # /home/ray/workspace/download_model.sh \
+            #   --model_id={{model_id}} \
+            #   --remote_dir="/home/ray/cache";
             nvidia-smi;
             # Run model
+            # --model_path="/home/ray/cache/{{model_id}}" \
             /home/ray/workspace/run_model.sh \
-              --model_path="/home/ray/cache/{{model_id}}" \
+              --command="server" \
+              --model_path="{{model_id}}" \
               --model_id={{model_id}} \
               --server_ip=$PS_HOST:5000 \
               --extra='{{extra}}' \
@@ -211,15 +213,13 @@ spec:
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
-            - name: cache
-              mountPath: /home/ray/cache
+            - name: shm
+              mountPath: /dev/shm
         volumes:
-        - name: cache
-          emptyDir: {}
-        # - name: dshm
-        #   emptyDir:
-        #     medium: Memory
-        #     sizeLimit: {{memory * 0.5}}Gi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{memory * 0.5}}Gi
         restartPolicy: OnFailure
   - replicas: {{workers - 1}}
     name: worker
@@ -274,15 +274,17 @@ spec:
           - |
             PS_HOST=`cat /etc/volcano/server.host`;
             # Download model weights
-            /home/ray/workspace/download_model.sh \
-              --model_id={{model_id}} \
-              --remote_dir="/home/ray/cache";
+            # /home/ray/workspace/download_model.sh \
+            #   --model_id={{model_id}} \
+            #   --remote_dir="/home/ray/cache";
             nvidia-smi;
             # Run model
             RANK=$(($VC_TASK_INDEX + 1));
             echo "Node rank: "$RANK;
+            # --model_path="/home/ray/cache/{{model_id}}" \
             /home/ray/workspace/run_model.sh \
-              --model_path="/home/ray/cache/{{model_id}}" \
+              --command="worker" \
+              --model_path="{{model_id}}" \
               --model_id={{model_id}} \
               --server_ip=$PS_HOST:5000 \
               --extra='{{extra}}' \
@@ -309,15 +311,13 @@ spec:
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
-            - name: cache
-              mountPath: /home/ray/cache
+            - name: shm
+              mountPath: /dev/shm
         volumes:
-        - name: cache
-          emptyDir: {}
-        # - name: dshm
-        #   emptyDir:
-        #     medium: Memory
-        #     sizeLimit: {{memory * 0.5}}Gi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{memory * 0.5}}Gi
         restartPolicy: OnFailure
 ---
 # deploy NodePort to expose model (if not using LiteLLM registration)

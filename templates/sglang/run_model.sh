@@ -2,6 +2,9 @@
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --command=*)
+      command="${1#*=}"
+      ;;
     --model_id=*)
       model_id="${1#*=}"
       ;;
@@ -41,7 +44,15 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-#source /home/ray/workspace/env/bin/activate
+echo ">>>>>>>>>>>>>>>>>>>>>>"
+echo "Server IP: $server_ip"
+echo "Model ID: $model_id"
+echo "Node rank: $node_rank"
+echo "Num nodes: $num_nodes"
+echo "---->"$extra
+echo ">>>>>>>>>>>>>>>>>>>>>>"
+
+HF_HUB_OFFLINE=1
 
 if [ -z "$template_url" ]
 then
@@ -51,17 +62,32 @@ else
   template_str="--chat-template /home/ray/workspace/template.jinja"
 fi
 
-HF_HUB_OFFLINE=1
-echo "---->"$extra
-python3 -m sglang.launch_server \
+if [ "$command" = "server" ]; then
+  echo ">> Running as server..."
+  python3 -m sglang.launch_server \
+    --dist-init-addr $server_ip \
+    --nnodes $num_nodes \
+    --node-rank $node_rank \
+    --model-path $model_path \
+    --served-model-name $model_id \
+    --host 0.0.0.0 --port 8080 \
+    --tp-size $tensor_parallel_size \
+    --pp-size $pipeline_parallel_size \
+    --tool-call-parser $tool_call_parser \
+    $extra \
+    $template_str
+else
+  echo ">> Running as worker..."
+  python3 -m sglang.launch_server \
   --dist-init-addr $server_ip \
   --nnodes $num_nodes \
   --node-rank $node_rank \
   --model-path $model_path \
   --served-model-name $model_id \
-  --host 0.0.0.0 --port 8080 \
   --tp-size $tensor_parallel_size \
   --pp-size $pipeline_parallel_size \
   --tool-call-parser $tool_call_parser \
   $extra \
   $template_str
+fi
+
