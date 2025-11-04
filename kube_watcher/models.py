@@ -15,7 +15,7 @@ class JobTemplate(Enum):
     #gpustack = 8
     speaches = 9
     sglang = 10
-    https = 11
+    #https = 11
     langfuse = 12
     n8n = 13
     flowise = 14
@@ -29,7 +29,7 @@ class NodeStatusRequest(BaseModel):
     node_labels: dict = None
     start_time: str = "1h"
     end_time: str = "now"
-    chunk_size: int = 1
+    step: str = "1m"
 
 class StorageClaimRequest(BaseModel):
     name: str
@@ -145,6 +145,7 @@ class JobTemplateRequest(BaseModel):
     target_labels: dict[str, str] = None
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
+    random_suffix: bool = True
 
 class CustomJobTemplateRequest(BaseModel):
     force_namespace: str = None
@@ -154,6 +155,7 @@ class CustomJobTemplateRequest(BaseModel):
     target_labels: dict[str, str] = None
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
+    random_suffix: bool = True
 
 class RayClusterRequest(BaseModel):
     force_namespace: str = None
