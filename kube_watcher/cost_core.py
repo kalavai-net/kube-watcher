@@ -21,12 +21,13 @@ class OpenCostAPI():
     
     def _form_url(self, endpoint):
         # merge base url with endpoint ensuring there's no double slash
-        return f"{self.base_url.rstrip('/')}/api/v1/{endpoint.lstrip('/')}"
+        return f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
     
     def get_nodes_computation(self, nodes: list=None, **kwargs):
         # https://docs.kubecost.com/apis/apis-overview/allocation
         kwargs["aggregate"] = "node"
         endpoint = self._form_url(endpoint="/allocation/compute")
+
         print(f"Reaching external url: {endpoint}")
         result = requests.get(
             endpoint,

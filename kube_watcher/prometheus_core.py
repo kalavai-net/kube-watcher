@@ -30,17 +30,24 @@ class PrometheusAPI():
     def query(self, query):
         return self.prom.custom_query(query=query)
     
-    def get_node_stats(self, node_id, start_time, end_time, chunk_size):
+    def get_node_stats(self, node_id, start_time, end_time, step="5s"):
         try:
             start_time = parse_datetime(start_time)
             end_time = parse_datetime(end_time)
-            chunk_size = timedelta(minutes=chunk_size)
-            metric = self.prom.get_metric_range_data(
-                metric_name=f'kube_node_status_condition{{condition="Ready", status="true", node="{node_id}"}}',
+
+            query = f"""
+            avg_over_time(
+                kube_node_status_condition{{condition="Ready", status="true", node="{node_id}"}}
+                [{step}]
+            )
+            """
+            metric = self.prom.custom_query_range(
+                query=query,
                 start_time=start_time,
                 end_time=end_time,
-                chunk_size=chunk_size
+                step=step
             )
+
             metric_df = MetricRangeDataFrame(metric).reset_index()
             return metric_df.to_dict(orient="list")
         except Exception as e:

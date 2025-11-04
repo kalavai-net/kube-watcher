@@ -51,8 +51,8 @@ logging.basicConfig(
 
 IN_CLUSTER = not os.getenv("IN_CLUSTER", "True").lower() in ("false", "0", "f", "no")
 KALAVAI_API_ENDPOINT = os.getenv("KALAVAI_API_ENDPOINT", "https://platform.kalavai.net/_/api")
-PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "prometheus-server.prometheus-system.svc.cluster.local:80")
-OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "opencost.opencost.svc.cluster.local:9003")
+PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://localhost:9090")#"prometheus-server.prometheus-system.svc.cluster.local:80")
+OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://localhost:32115")
 IS_SHARED_POOL = not os.getenv("IS_SHARED_POOL", "True").lower() in ("false", "0", "f", "no")
 ALLOW_UNREGISTERED_USER = not os.getenv("ALLOW_UNREGISTERED_USER", "True").lower() in ("false", "0", "f", "no")
 
@@ -268,7 +268,7 @@ async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_r
             node_id=name,
             start_time=request.start_time,
             end_time=request.end_time,
-            chunk_size=request.chunk_size
+            step=request.step
         )
         for name in request.node_names
     }
@@ -587,7 +587,8 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
             values=request.template_values,
             target_labels=request.target_labels,
             target_labels_ops=request.target_labels_ops,
-            replica=replica if request.replicas > 1 else None)
+            replica=replica if request.replicas > 1 else None,
+            random_suffix=request.random_suffix)
         
         print(f"-> [{replica}] Deployment parsed: ", deployment)
         
@@ -633,7 +634,8 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
             default_values=yaml_defaults,
             target_labels=request.target_labels,
             target_labels_ops=request.target_labels_ops,
-            replica=replica if request.replicas > 1 else None)
+            replica=replica if request.replicas > 1 else None,
+            random_suffix=request.random_suffix)
         print("--->", deployment)
         
         # deploy job
