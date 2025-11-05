@@ -293,6 +293,7 @@ spec:
               --pipeline_parallel_size={{workers}} \
               --tool_call_parser={{tool_call_parser}} \
               --node_rank=$RANK \
+              --dist-timeout={{dist_timeout}} \
               --num_nodes={{workers}};
             exit 1
           env:

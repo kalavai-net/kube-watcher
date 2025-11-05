@@ -1,4 +1,5 @@
 #!/bin/bash
+dist_timeout=360000
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -34,6 +35,9 @@ while [ $# -gt 0 ]; do
       ;;
     --tool_call_parser=*)
       tool_call_parser="${1#*=}"
+      ;;
+    --dist_timeout=*)
+      dist_timeout="${1#*=}"
       ;;
     *)
       printf "***************************\n"
@@ -74,20 +78,22 @@ if [ "$command" = "server" ]; then
     --tp-size $tensor_parallel_size \
     --pp-size $pipeline_parallel_size \
     --tool-call-parser $tool_call_parser \
+    --dist-timeout $dist_timeout \
     $extra \
     $template_str
 else
   echo ">> Running as worker..."
   python3 -m sglang.launch_server \
-  --dist-init-addr $server_ip \
-  --nnodes $num_nodes \
-  --node-rank $node_rank \
-  --model-path $model_path \
-  --served-model-name $model_id \
-  --tp-size $tensor_parallel_size \
-  --pp-size $pipeline_parallel_size \
-  --tool-call-parser $tool_call_parser \
-  $extra \
-  $template_str
+    --dist-init-addr $server_ip \
+    --nnodes $num_nodes \
+    --node-rank $node_rank \
+    --model-path $model_path \
+    --served-model-name $model_id \
+    --tp-size $tensor_parallel_size \
+    --pp-size $pipeline_parallel_size \
+    --tool-call-parser $tool_call_parser \
+    --dist-timeout $dist_timeout \
+    $extra \
+    $template_str
 fi
 

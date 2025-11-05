@@ -92,6 +92,13 @@
   required: false
   description: "Extra parameters to pass to the SGLang server. See https://docs.sglang.ai/backend/server_arguments.html"
 
+- name: dist_timeout
+  value: 360000
+  default: 360000
+  editable: true
+  required: false
+  description: "Distributed torch parameter to control remote timeouts (if model is inactive it'll shutdown)."
+
 - name: max_retries
   value: 1000
   default: 1000
