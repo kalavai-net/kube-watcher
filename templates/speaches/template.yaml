@@ -17,13 +17,13 @@ spec:
     name: registrar
     policies:
     - event: PodEvicted
-      action: RestartJob
+      action: RestartTask
     - event: PodFailed
-      action: RestartJob
+      action: RestartTask
     - event: TaskCompleted
-      action: RestartJob
+      action: RestartTask
     - event: Unknown
-      action: RestartJob
+      action: RestartTask
     template: # Definition of the ps pod
       terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
       metadata:

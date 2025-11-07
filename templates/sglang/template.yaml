@@ -18,13 +18,13 @@ spec:
     name: registrar
     policies:
     - event: PodEvicted
-      action: RestartJob
+      action: RestartTask
     - event: PodFailed
-      action: RestartJob
+      action: RestartTask
     - event: TaskCompleted
-      action: RestartJob
+      action: RestartTask
     - event: Unknown
-      action: RestartJob
+      action: RestartTask
     template: # Definition of the ps pod
       terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
       metadata:
@@ -184,6 +184,7 @@ spec:
               --tensor_parallel_size={{gpus}} \
               --pipeline_parallel_size={{workers}} \
               --tool_call_parser={{tool_call_parser}} \
+              --dist_timeout={{dist_timeout}} \
               --node_rank=0 \
               --num_nodes={{workers}};
             exit 1
@@ -293,7 +294,7 @@ spec:
               --pipeline_parallel_size={{workers}} \
               --tool_call_parser={{tool_call_parser}} \
               --node_rank=$RANK \
-              --dist-timeout={{dist_timeout}} \
+              --dist_timeout={{dist_timeout}} \
               --num_nodes={{workers}};
             exit 1
           env:
