@@ -4,6 +4,7 @@ from typing import List
 import logging
 import requests
 import yaml
+from collections import defaultdict
 
 import uvicorn
 from starlette.requests import Request
@@ -420,14 +421,17 @@ async def describe_pods_for_label(request: GetLabelledResourcesRequest, can_forc
     description="Gets pods status for a given label in a set of namespaces in the kalavai pool",
     response_description="Pods status for the given label in the namespaces in the kalavai pool")
 async def get_pods_status_for_label(request: GetLabelledResourcesRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
-    ns_logs = {}
+    ns_logs = defaultdict(dict)
     if can_force_namespace and request.force_namespace is not None:
         namespaces = [request.force_namespace]
-    for namespace in namespaces:
-        ns_logs[namespace] = kube_api.get_pods_status_for_label(
-            namespace=namespace,
-            label_key=request.label,
-            label_value=request.value)
+
+    pods = kube_api.get_pods_status_for_label(
+        label_key=request.label,
+        label_value=request.value)
+    for pod, values in pods.items():
+        if values["namespace"] in namespaces:
+            ns_logs[values["namespace"]][pod] = values
+
     return ns_logs
 
 

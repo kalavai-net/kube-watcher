@@ -573,19 +573,22 @@ class KubeAPI():
         )
         return force_serialisation(response)
     
-    def find_pods_with_label(self, namespace:str, label_key:str, label_value=None):
+    def find_pods_with_label(self, label_key:str, label_value=None, namespace: str=None):
 
         resources_found = {}
         resource_types = {
-            'pod': self.core_api.list_namespaced_pod
+            'pod': self.core_api.list_pod_for_all_namespaces #self.core_api.list_namespaced_pod
         }
         label_selector = label_key if label_value is None else f"{label_key}={label_value}"
 
         for resource_type, list_func in resource_types.items():
             try:
-                resources = list_func(namespace, label_selector=label_selector)
+                #resources = list_func(namespace, label_selector=label_selector)
+                resources = list_func(label_selector=label_selector)
                 if resources.items:
                     for resource in resources.items:
+                        if namespace is not None and namespace != resource.metadata.namespace:
+                            continue
                         resources_found[resource.metadata.name] = resource.to_dict()
             except Exception as e:
                 print(f"Exception when checking for {resource_type}: {e}")
@@ -688,7 +691,7 @@ class KubeAPI():
             namespace=namespace
         )
     
-    def get_pods_status_for_label(self, label_key, label_value, namespace):
+    def get_pods_status_for_label(self, label_key, label_value, namespace=None):
         res = self.find_pods_with_label(
             label_key=label_key,
             label_value=label_value,
@@ -703,7 +706,8 @@ class KubeAPI():
             pod_statuses[pod["metadata"]["name"]] = {
                 "status": status,
                 "conditions": force_serialisation(pod["status"]["container_statuses"]),
-                "node_name": pod["spec"]["node_name"]
+                "node_name": pod["spec"]["node_name"],
+                "namespace": pod["metadata"]["namespace"]
             }
 
         return pod_statuses
@@ -1080,13 +1084,13 @@ if __name__ == "__main__":
     api = KubeAPI(in_cluster=False)
 
     #res = api.describe_pods_for_labels(
-    res = api.get_job_info_for_labels(
-        label_key="kalavai.job.name",
-        label_value="qwen-qwen3-0-6b-99757a",
-        namespace="default",
+    res = api.get_pods_status_for_label(
+            label_key="role",
+            label_value="leader"
     )
-    #print(json.dumps(res, indent=2))
-    for name, data in res.items():
-        print(name)
-        print(data.keys())
-        print(data["logs"])
+    print(json.dumps(res, indent=2))
+    for key, values in res.items():
+        print("----------------------")
+        print(key)
+        print(values.keys())
+        print(values["namespace"])
