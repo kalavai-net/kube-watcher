@@ -1,13 +1,3 @@
-############################
-### MUST HAVE THESE FIELDS ##
-- name: id_field
-  value: deployment_name
-  default: deployment_name
-  editable: false
-  required: false
-  description: "Field that contains the ID of the job"
-############################
-
 - name: deployment_name
   value: "gpustack"
   default: "gpustack"
@@ -19,18 +9,18 @@
   value: "password"
   default: "password"
   editable: true
-  required: true
+  required: false
   description: "Default password name for admin user"
 
 - name: working_memory
-  value: 5
+  value: 100
   default: 5
   editable: true
   required: false
   description: "Temporary storage to use to cache model weights (in GB)"
 
 - name: workers
-  value: 1
+  value: 4
   default: 1
   editable: true
   required: true
@@ -40,14 +30,14 @@
   value: "sometoken"
   default: "sometoken"
   editable: true
-  required: true
+  required: false
   description: " to load"
 
 - name: hf_token
-  value: <your token>
+  value: 
   default: null
   editable: true
-  required: true
+  required: false
   description: "Huggingface token, required to load model weights"
 
 - name: cpus
@@ -86,7 +76,7 @@
   description: "If the job fails, how many times to retry redeployment"
 
 - name: nodeport
-  value: ""
+  value: "30963"
   default: ""
   editable: true
   required: false

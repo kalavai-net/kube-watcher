@@ -12,18 +12,18 @@ spec:
     env: []
     svc: ["--disable-network-policy=true"]
   maxRetries: {{max_retries}}
-  policies: 
-  - event: PodEvicted
-    action: RestartJob
-  - event: PodFailed
-    action: RestartJob
-  - event: TaskCompleted
-    action: RestartJob
-  - event: Unknown
-    action: RestartJob
   tasks:
   - replicas: 1   # One ps pod specified
     name: server
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
     template: # Definition of the ps pod
       metadata:
         labels:
@@ -69,11 +69,18 @@ spec:
               --port 8080 \
               --cache-dir /cache \
               --token {{token}} \
+              --enable-ray \
               --bootstrap-password {{admin_password}}
               #--database_url <>
           env:
           - name: HF_TOKEN
             value: {{hf_token}}
+          - name: GPUSTACK_DB_POOL_SIZE
+            value: "20"
+          - name: GPUSTACK_DB_MAX_OVERFLOW
+            value: "50"
+          - name: GPUSTACK_DB_POOL_TIMEOUT
+            value: "120"
           ports:
           - containerPort: 8080
             name: model-port
@@ -81,11 +88,11 @@ spec:
             requests:
               cpu: 2
               memory: 2Gi
-              ephemeral-storage: {{working_memory}}Gi
+              #ephemeral-storage: {{working_memory}}Gi
             limits:
               cpu: 2
               memory: 2Gi
-              ephemeral-storage: {{working_memory}}Gi
+              #ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
             - name: cache
               mountPath: /cache
@@ -96,8 +103,14 @@ spec:
   - replicas: {{workers}}
     name: worker
     policies:
-    - event: TaskCompleted  # The job will be marked as completed when two worker pods finish tasks.
-      action: CompleteJob
+    - event: PodEvicted
+      action: RestartTask
+    - event: PodFailed
+      action: RestartTask
+    - event: TaskCompleted
+      action: RestartTask
+    - event: Unknown
+      action: RestartTask
     template: # Definition of worker pods
       metadata:
         labels:
@@ -144,6 +157,7 @@ spec:
             gpustack start \
               --server-url http://$PS_HOST:8080 \
               --cache-dir /cache \
+              --enable-ray \
               --token {{token}}
           env:
           - name: HF_TOKEN
