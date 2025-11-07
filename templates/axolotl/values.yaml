@@ -1,0 +1,59 @@
+############################
+### MUST HAVE THIS FIELDS ##
+# Either id_field pointing to another existing field
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  editable: false
+  required: false
+  description: "Field that contains the ID of the job"
+############################
+
+- name: deployment_name
+  value: axolotl
+  default: axolotl
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+- name: workers
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
+
+- name: hf_token
+  value: <yout token>
+  default: null
+  editable: true
+  required: false
+  description: "Huggingface access token, only required to load gated model weights"
+
+- name: cpus
+  value: 2
+  default: 2
+  editable: true
+  required: false
+  description: "Number of cpus per worker"
+
+- name: memory
+  value: 4
+  default: 4
+  editable: true
+  required: false
+  description: "Memory per worker"
+
+- name: gpus
+  value: 1
+  default: 1
+  editable: true
+  required: false
+  description: "Number of gpus per worker"
+
+- name: max_retries
+  value: 1000
+  default: 1000
+  editable: true
+  required: false
+  description: "If the job fails, how many times to retry redeployment"
