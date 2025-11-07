@@ -30,17 +30,26 @@ class PrometheusAPI():
     def query(self, query):
         return self.prom.custom_query(query=query)
     
-    def get_node_stats(self, node_id, start_time, end_time, step="5s"):
+    def get_node_stats(self, node_ids, start_time, end_time, step="1h", aggregate_results=False):
         try:
             start_time = parse_datetime(start_time)
             end_time = parse_datetime(end_time)
 
+            # query = f"""
+            # avg_over_time(
+            #     kube_node_status_condition{{condition="Ready", status="true", node="{node_id}"}}
+            #     [{step}]
+            # )
+            # """
+            node_str = "|".join(node_ids)
             query = f"""
             avg_over_time(
-                kube_node_status_condition{{condition="Ready", status="true", node="{node_id}"}}
+                kube_node_status_condition{{condition="Ready", status="true", node=~"{node_str}"}}
                 [{step}]
             )
             """
+            if aggregate_results:
+                query = f"sum({query})"
             metric = self.prom.custom_query_range(
                 query=query,
                 start_time=start_time,
@@ -51,7 +60,7 @@ class PrometheusAPI():
             metric_df = MetricRangeDataFrame(metric).reset_index()
             return metric_df.to_dict(orient="list")
         except Exception as e:
-            return {"error": f"Error when inspecting node {node_id}. Does it exist? {str(e)}"}
+            return {"error": f"Error when inspecting node {node_ids}. Does it exist? {str(e)}"}
 
 
 if __name__ == "__main__":

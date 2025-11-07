@@ -13,6 +13,8 @@ import os
 import json
 import requests
 from urllib.parse import urljoin
+from collections import defaultdict
+import numbers
 
 
 class OpenCostAPI():
@@ -23,7 +25,7 @@ class OpenCostAPI():
         # merge base url with endpoint ensuring there's no double slash
         return f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
     
-    def get_nodes_computation(self, nodes: list=None, **kwargs):
+    def get_nodes_computation(self, nodes: list=None, aggregate_results: bool=False, **kwargs):
         # https://docs.kubecost.com/apis/apis-overview/allocation
         kwargs["aggregate"] = "node"
         endpoint = self._form_url(endpoint="/allocation/compute")
@@ -34,11 +36,19 @@ class OpenCostAPI():
             params=kwargs
         )
         data = result.json()['data']
-        if nodes is None:
-            return data
-        else:
-            return {name: info for block in data for name, info in block.items() if name in nodes}
+        if nodes is not None:
+            data = {name: info for block in data for name, info in block.items() if name in nodes}
 
+        # aggregate (optional) results from all nodes
+        if aggregate_results:
+            final_data = defaultdict(float)
+            for _, info in data.items():
+                for key, value in info.items():
+                    if isinstance(value, numbers.Number):
+                        final_data[key] += value
+            return final_data
+        else:
+            return data
 
     def get_namespaces_cost(self, namespaces: list=None, **kwargs):
         # https://docs.kubecost.com/apis/apis-overview/allocation

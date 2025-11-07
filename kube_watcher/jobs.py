@@ -29,10 +29,11 @@ def get_metadata_path(template: JobTemplate):
 def escape_field(text):
     return re.sub('[^0-9a-z]+', '-', text.lower())
 
-def parse_deployment_name(name, max_len=63, random_suffix=True):
-    """Make it kubernetes ready:
+def parse_deployment_name(name, max_len=50, random_suffix=True):
+    """
+    Make it kubernetes ready:
     - Remove unacceptable characters
-    - Make it less than 59 (accommodate for further replica suffixing)"""
+    - Make it less than 50 (accommodate for further appending of task name and number)"""
     max_len = max_len if not random_suffix else max_len - 6
     escaped_name = escape_field(commonprefix(name.split(",")))[:max_len]
     if random_suffix:

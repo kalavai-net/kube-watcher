@@ -154,25 +154,35 @@ async def verify_force_namespace(request: Request):
 #############################
 
 
-@app.get("/v1/get_cluster_total_resources", 
+@app.post("/v1/get_cluster_total_resources", 
     operation_id="get_cluster_total_resources",
     summary="Get all resources available in the Kalavai compute pool",
     tags=["pool_info"],
     description="Gets information regarding all resources (CPU, GPU, memory, etc.) in the kalavai pool. This helps identify resource availability",
     response_description="Resource information for the kalavai pool")
 async def total_resources(request: NodesRequest, api_key: str = Depends(verify_read_key)):
-    cluster_capacity = kube_api.get_total_allocatable_resources(node_names=request.node_names)
-    return cluster_capacity
+    if request.node_labels is not None:
+        request.node_names = kube_api.get_nodes_with_labels(
+            labels=request.node_labels)
+    if request.detailed:
+        return kube_api.get_nodes_resources(node_names=request.node_names)
+    else:
+        return kube_api.get_total_allocatable_resources(node_names=request.node_names)
 
-@app.get("/v1/get_cluster_available_resources", 
+@app.post("/v1/get_cluster_available_resources", 
     operation_id="get_cluster_available_resources",
     summary="Get available resources in the Kalavai compute pool",
     tags=["pool_info"],
     description="Gets information regarding available resources (CPU, GPU, memory, etc.) in the kalavai pool. This helps identify if there are resources available for deployments",
     response_description="Resource information for the kalavai pool")
 async def available_resources(request: NodesRequest, api_key: str = Depends(verify_read_key)):
-    cluster_capacity = kube_api.get_available_resources(node_names=request.node_names)
-    return cluster_capacity
+    if request.node_labels is not None:
+        request.node_names = kube_api.get_nodes_with_labels(
+            labels=request.node_labels)
+    if request.detailed:
+        return kube_api.get_node_available_resources(node_names=request.node_names)
+    else:
+        return kube_api.get_available_resources(node_names=request.node_names)
 
 @app.get("/v1/get_cluster_labels", 
     operation_id="get_cluster_labels",
@@ -232,21 +242,6 @@ async def pods_with_status(request: PodsWithStatusRequest, api_key: str = Depend
 async def get_nodes(api_key: str = Depends(verify_read_key)):
     return kube_api.get_nodes_states()
 
-@app.post("/v1/get_nodes_resources", 
-    operation_id="get_nodes_resources",
-    summary="Get resource usage for a set of nodes in the Kalavai compute pool",
-    tags=["pool_info"],
-    description="Gets resource usage for a set of nodes in the kalavai pool",
-    response_description="Resource usage for the nodes in the kalavai pool")
-async def get_nodes_resources(request: NodesRequest, api_key: str = Depends(verify_read_key)):
-    if request.node_names is None:
-        if request.node_labels is None:
-            raise HTTPException(status_code=400, detail="node_names or node_labels must be provided")
-        
-        request.node_names = kube_api.get_nodes_with_labels(
-            labels=request.node_labels)
-    return kube_api.get_nodes_resources(node_names=request.node_names)
-
 @app.post("/v1/get_node_stats", 
     operation_id="get_node_stats",
     summary="Get node runtime stats for a set of nodes in the Kalavai compute pool",
@@ -263,15 +258,13 @@ async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_r
         request.node_names = kube_api.get_nodes_with_labels(
             labels=request.node_labels)
     
-    result = {
-        name: client.get_node_stats(
-            node_id=name,
-            start_time=request.start_time,
-            end_time=request.end_time,
-            step=request.step
-        )
-        for name in request.node_names
-    }
+    result = client.get_node_stats(
+        node_ids=request.node_names,
+        start_time=request.start_time,
+        end_time=request.end_time,
+        step=request.step,
+        aggregate_results=request.aggregate_results
+    )
     return result
 
 @app.post("/v1/delete_nodes", 
@@ -489,6 +482,7 @@ async def node_cost(request: NodeCostRequest, api_key: str = Depends(verify_read
 
     return opencost.get_nodes_computation(
         nodes=request.node_names,
+        aggregate_results=request.aggregate_results,
         **request.kubecost_params.model_dump())
 
 @app.post("/v1/get_namespaces_cost", 

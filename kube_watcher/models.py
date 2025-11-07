@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Dict, Literal, Union
 from pydantic import BaseModel
 from enum import Enum
 
@@ -12,7 +12,7 @@ class JobTemplate(Enum):
     litellm = 5
     playground = 6
     #boinc = 7
-    #gpustack = 8
+    gpustack = 8
     speaches = 9
     sglang = 10
     #https = 11
@@ -20,7 +20,7 @@ class JobTemplate(Enum):
     n8n = 13
     flowise = 14
     diffusers = 15
-    axolotl = 16
+    #axolotl = 16
     registrar = 17
     #flexible = 99
 
@@ -30,6 +30,7 @@ class NodeStatusRequest(BaseModel):
     start_time: str = "1h"
     end_time: str = "now"
     step: str = "1m"
+    aggregate_results: bool = False
 
 class StorageClaimRequest(BaseModel):
     name: str
@@ -64,6 +65,7 @@ class NodeCostRequest(BaseModel):
     node_names: List[str] = None
     node_labels: dict = None
     kubecost_params: KubecostParameters
+    aggregate_results: bool = False
 
 class PodsWithStatusRequest(BaseModel):
     node_names: List[str] = None
@@ -100,6 +102,7 @@ class NodesRequest(BaseModel):
     node_names: List[str] = None
     node_labels: dict = None
     schedulable: bool = True
+    detailed: bool = False
 
 class GenericDeploymentRequest(BaseModel):
     config: str
@@ -142,7 +145,7 @@ class JobTemplateRequest(BaseModel):
     force_namespace: str = None
     template_values: dict = None
     template: str
-    target_labels: dict[str, str] = None
+    target_labels: dict[str, Union[str, List]] = None
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
     random_suffix: bool = True
@@ -152,7 +155,7 @@ class CustomJobTemplateRequest(BaseModel):
     template_values: dict = None
     default_values: str
     template: str
-    target_labels: dict[str, str] = None
+    target_labels: dict[str, Union[str, List]] = None
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
     random_suffix: bool = True
