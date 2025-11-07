@@ -266,6 +266,7 @@ class KubeAPI():
         gpu_info = {n.metadata.name: {"gpus": []} for n in nodes}
         # pre-fetch all info at once
         annotations = self.get_node_annotations()
+        labels = self.get_node_labels()
         node_states = self.get_nodes_states()
         node_resources = self.get_node_available_resources()
         for node in nodes:
@@ -282,6 +283,7 @@ class KubeAPI():
                 if backend == "nvidia.com/gpu":
                     # extract model information
                     for n, node_annotations in annotations.items():
+                        
                         if n != node.metadata.name:
                             continue
                         if gpu_key not in node_annotations:
@@ -302,14 +304,16 @@ class KubeAPI():
                             })
                 if backend == "amd.com/gpu":
                     
-                    for n, node_annotations in annotations.items():
+                    for n, node_annotations in labels.items():
+                        if n != node.metadata.name:
+                            continue
+                        
                         memory = None
                         model = None
                         if "amd.com/gpu.vram" in node_annotations:
                             memory = node_annotations["amd.com/gpu.vram"]
                         if "amd.com/gpu.family" in node_annotations:
                             model = node_annotations["amd.com/gpu.family"]
-                        
                         if memory is not None and model is not None:
                             gpu_info[n]["gpus"].append({
                                 "ready": node_states[n]["Ready"],
