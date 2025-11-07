@@ -15,6 +15,13 @@
   required: false
   description: "Default port for the RPC server"
 
+- name: model_name_override
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
+
 - name: working_memory
   value: 5
   default: 5

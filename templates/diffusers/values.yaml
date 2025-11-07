@@ -16,6 +16,13 @@
   required: true
   description: "Huggingface model id to deploy. One of the following: https://huggingface.co/models?library=diffusers&sort=downloads"
 
+- name: model_name_override
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
+
 - name: working_memory
   value: 5
   default: 5

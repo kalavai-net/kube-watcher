@@ -8,6 +8,13 @@
   description: "Field that contains the ID of the job"
 ############################
 
+- name: model_name_override
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
+
 - name: working_memory
   value: 10
   default: 10

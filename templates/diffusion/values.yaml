@@ -16,6 +16,13 @@
   required: true
   description: "Name of the deployment job"
 
+- name: model_name_override
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
+
 - name: civitai_api_key
   value: <yout token>
   default: null
