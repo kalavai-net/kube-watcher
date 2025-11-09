@@ -29,12 +29,19 @@
   required: false
   description: "Temporary storage to use to cache model weights (in GB)"
 
-- name: workers
+- name: cuda_workers
   value: 1
   default: 1
   editable: true
   required: true
-  description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
+  description: "Number of remote NVIDIA workers (for tensor and pipeline parallelism). This is in addition to the main node"
+
+- name: rocm_workers
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Number of remote AMD ROCm workers (for tensor and pipeline parallelism). This is in addition to the main node"
 
 - name: token
   value: "sometoken"
