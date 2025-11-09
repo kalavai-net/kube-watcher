@@ -6,23 +6,18 @@ metadata:
     # must have this label
     kalavai.job.name: {{deployment_id}}
 spec:
+  minAvailable: 1
   queue: default
   schedulerName: volcano
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetries: {{max_retries}}
+  maxRetry: {{max_retries}}
   tasks:
   - replicas: 1   # One ps pod specified
     name: server
     policies:
-    - event: PodEvicted
-      action: RestartJob
-    - event: PodFailed
-      action: RestartJob
-    - event: TaskCompleted
-      action: RestartJob
-    - event: Unknown
+    - event: "*"
       action: RestartJob
     template: # Definition of the ps pod
       metadata:
@@ -57,6 +52,8 @@ spec:
               {% endfor %}
             {% endif %}
         {% endif %}
+        # nodeSelector:
+        #   kalavai/role: server
         containers:
         - name: gpustack-leader
           image: docker.io/gpustack/gpustack:latest
@@ -100,17 +97,11 @@ spec:
         - name: cache
           emptyDir: {}
         restartPolicy: OnFailure
-  - replicas: {{workers}}
-    name: worker
+  - replicas: {{cuda_workers}}
+    name: cuda-worker
     policies:
-    - event: PodEvicted
-      action: RestartTask
-    - event: PodFailed
-      action: RestartTask
-    - event: TaskCompleted
-      action: RestartTask
-    - event: Unknown
-      action: RestartTask
+    - event: "*"
+      action: RestartPod
     template: # Definition of worker pods
       metadata:
         labels:
@@ -167,7 +158,7 @@ spec:
               cpu: {{cpus}}
               memory: {{memory}}Gi
               nvidia.com/gpu: {{gpus}}
-              ephemeral-storage: {{working_memory}}Gi
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
@@ -181,6 +172,78 @@ spec:
         - name: cache
           emptyDir: {}
         restartPolicy: OnFailure
+  - replicas: {{rocm_workers}}
+    name: rocm-worker
+    policies:
+    - event: "*"
+      action: RestartPod
+    template: # Definition of worker pods
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
+        containers:
+        - name: gpustack-worker
+          image: docker.io/gpustack/gpustack:latest-rocm
+          command:
+          - sh
+          - -c
+          - |
+            PS_HOST=`cat /etc/volcano/server.host`;
+            echo $PS_HOST;
+            sleep 30;
+            /root/.local/bin/gpustack start \
+              --server-url http://$PS_HOST:8080 \
+              --cache-dir /cache \
+              --enable-ray \
+              --token {{token}}
+          env:
+          - name: HF_TOKEN
+            value: {{hf_token}}
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              amd.com/gpu: {{gpus}}
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              amd.com/gpu: {{gpus}}
+              ephemeral-storage: {{working_memory}}Gi
+          volumeMounts:
+            - name: cache
+              mountPath: /cache
+        volumes:
+        - name: cache
+          emptyDir: {}
+        restartPolicy: OnFailure      
 ---
 # deploy NodePort to expose model
 apiVersion: v1

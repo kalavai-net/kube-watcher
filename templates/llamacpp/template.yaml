@@ -11,7 +11,7 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetries: {{max_retries}}
+  maxRetry: {{max_retries}}
   tasks:
 {% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified

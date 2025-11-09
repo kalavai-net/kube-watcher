@@ -12,8 +12,8 @@ spec:
   plugins:
     env: []
     svc: []
-  maxRetries: {{max_retries}}
-  policies: 
+  maxRetry: {{max_retries}}
+  policies: # https://pkg.go.dev/volcano.sh/apis/pkg/apis/bus/v1alpha1
   - event: PodEvicted
     action: RestartJob
   - event: PodFailed
