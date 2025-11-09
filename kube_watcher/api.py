@@ -512,24 +512,67 @@ async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: 
     # create namespace for user
     if can_force_namespace and request.force_namespace is not None:
         namespace = request.force_namespace
-    
-    kube_api.create_namespace(
-        name=namespace,
-        labels={"monitor-pods-datasets": "enabled"})
-
-    # add annotation to user node
-    if request.user_id is not None and request.node_name is not None:
-        kube_api.add_annotation_to_node(
-            node_labels={"kubernetes.io/hostname": request.node_name},
-            annotation={KALAVAI_USER_KEY: request.user_id}
-        )
 
     try:
-        # deploy for new workspace
-        kube_api.deploy_generic_model(request.config, force_namespace=namespace)
+        kube_api.create_namespace(
+            name=namespace,
+            labels={"monitor-pods-datasets": "enabled"})
+
+        # add annotation to user node
+        if request.user_id is not None and request.node_name is not None:
+            kube_api.add_annotation_to_node(
+                node_labels={"kubernetes.io/hostname": request.node_name},
+                annotation={KALAVAI_USER_KEY: request.user_id}
+            )
+        # apply optional resource quotas
+        if request.quota:
+            kube_api.set_resource_quota(
+                namespace=namespace,
+                quotas=request.quota)
+
     except Exception as e:
-        return {"status": str(e)}
+        return {"error": str(e)}
     return {"status": "success"}
+
+@app.post("/v1/set_space_quota", 
+    operation_id="set_space_quota",
+    summary="Set the resource quota for a given namespace",
+    tags=["pool_management"],
+    description="Set the resource quota for a given namespace",
+    response_description="None")
+async def set_user_quota(request: UserWorkspaceRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    # create namespace for user
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+
+    if request.quota is None:
+        raise HTTPException(status_code=400, detail="quota must be provided")
+        
+    try:
+        kube_api.set_resource_quota(
+            namespace=namespace,
+            quotas=request.quota)
+    except Exception as e:
+        return {"error": str(e)}
+    return {"status": "success"}
+
+@app.get("/v1/get_space_quota", 
+    operation_id="get_space_quota",
+    summary="get the resource quota for a given namespace",
+    tags=["pool_management"],
+    description="get the resource quota for a given namespace",
+    response_description="None")
+async def get_user_quota(request: UserWorkspaceRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    # create namespace for user
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+
+    if request.quota is None:
+        raise HTTPException(status_code=400, detail="quota must be provided")
+    quotas = kube_api.get_resource_quotas(
+        namespace=namespace)
+
+    return quotas
 
 @app.get("/v1/get_job_templates", 
     operation_id="get_job_templates",

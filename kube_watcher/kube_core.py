@@ -7,6 +7,7 @@ import base64
 import yaml
 from collections import defaultdict
 
+from jinja2 import Template
 from kubernetes import config, client, utils
 
 from kube_watcher.utils import (
@@ -477,6 +478,7 @@ class KubeAPI():
                             namespace = yaml_obj["metadata"]["namespace"]
                         else:
                             namespace = "default"
+                    print(namespace)
                     plural = yaml_obj["kind"].lower() + "s"
                     res = custom_api.create_namespaced_custom_object(
                         group,
@@ -1081,20 +1083,63 @@ class KubeAPI():
             pass
 
         return job_info
+    
+    def set_resource_quota(self, namespace: str, quotas: str):
+        """
+        Set resource quota for a given namespace
+        
+        If exists, it will update it
+        """
+
+        try:
+            self.core_api.delete_namespaced_resource_quota(
+                name="resource-quota",
+                namespace=namespace
+            )
+        except:
+            pass
+
+        result = self.core_api.create_namespaced_resource_quota(
+            namespace=namespace,
+            body=client.V1ResourceQuota(
+                api_version="v1",
+                kind="ResourceQuota",
+                metadata={"name": "resource-quota"},
+                spec=client.V1ResourceQuotaSpec(
+                    hard=quotas
+                )
+            )
+        )
+        return force_serialisation(result)
+
+    def get_resource_quotas(self, namespace: str):
+        """
+        Get the resource quota for a given namespace, or [] if none exists
+        """
+        try:
+            resource_quotas = self.core_api.list_namespaced_resource_quota(namespace=namespace)
+            return force_serialisation(resource_quotas.items)
+        except:
+            return []
 
 
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    #res = api.describe_pods_for_labels(
-    res = api.get_pods_status_for_label(
-            label_key="role",
-            label_value="leader"
+    # res = api.set_resource_quota(
+    #     namespace="carlosfm",
+    #     quotas={
+    #         "requests.cpu": "1",
+    #         "requests.memory": "1Gi",
+    #         "requests.nvidia.com/gpu": 1,
+    #         "limits.cpu": "4",
+    #         "limits.memory": "4Gi",
+    #         "limits.nvidia.com/gpu": 20
+    #     }
+    # )
+    res = api.get_resource_quotas(
+        namespace="carlosfm2"
     )
     print(json.dumps(res, indent=2))
-    for key, values in res.items():
-        print("----------------------")
-        print(key)
-        print(values.keys())
-        print(values["namespace"])
+    

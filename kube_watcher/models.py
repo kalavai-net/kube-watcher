@@ -112,6 +112,7 @@ class UserWorkspaceRequest(BaseModel):
     force_namespace: str = None
     user_id: str = None
     node_name: str = None
+    quota: dict = None
 
 class CustomObjectRequest(BaseModel):
     group: str
