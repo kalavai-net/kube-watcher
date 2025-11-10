@@ -608,17 +608,14 @@ async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: 
     tags=["pool_management"],
     description="Set the resource quota for a given namespace",
     response_description="None")
-async def set_user_quota(request: UserWorkspaceRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
-    # create namespace for user
-    if can_force_namespace and request.force_namespace is not None:
-        namespace = request.force_namespace
-
+async def set_user_quota(request: UserWorkspaceRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    # set namespace for user
     if request.quota is None:
         raise HTTPException(status_code=400, detail="quota must be provided")
         
     try:
         kube_api.set_resource_quota(
-            namespace=namespace,
+            namespace=request.user_id,
             quotas=request.quota)
     except Exception as e:
         return {"error": str(e)}
@@ -630,15 +627,10 @@ async def set_user_quota(request: UserWorkspaceRequest, can_force_namespace: boo
     tags=["pool_management"],
     description="get the resource quota for a given namespace",
     response_description="None")
-async def get_user_quota(request: UserWorkspaceRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
-    # create namespace for user
-    if can_force_namespace and request.force_namespace is not None:
-        namespace = request.force_namespace
-
-    if request.quota is None:
-        raise HTTPException(status_code=400, detail="quota must be provided")
+async def get_user_quota(user_id: str, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    # get resource quota for the user
     quotas = kube_api.get_resource_quotas(
-        namespace=namespace)
+        namespace=user_id)
 
     return quotas
 
