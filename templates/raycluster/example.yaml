@@ -1,0 +1,62 @@
+- name: deployment_name
+  value: "ray-cluster" 
+  default: "ray-cluster"
+  editable: true
+  required: true
+  description: "Name of the job"
+
+- name: workers
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Number of desired starting workers"
+
+- name: min_workers
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Minimum desired workers for autoscaling"
+
+- name: max_workers
+  value: 2
+  default: 1
+  editable: true
+  required: true
+  description: "Maximum workers for autoscaling"
+
+- name: cpus
+  value: 1
+  default: 2
+  editable: true
+  required: false
+  description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
+
+- name: memory
+  value: 3
+  default: 8
+  editable: true
+  required: false
+  description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
+
+- name: ray_version
+  value: "2.49.0"
+  default: "2.49.0"
+  editable: true
+  required: false
+  description: "Ray version to use in the cluster"
+
+- name: python_version
+  value: "312"
+  default: "312"
+  editable: true
+  required: false
+  description: "Python version to use in the cluster (39, 310, 311, 312)"
+
+- name: cuda_version
+  value: "cu124"
+  default: "cu124"
+  editable: true
+  required: false
+  description: "CUDA version to use in the cluster (cu117 to cu128)"

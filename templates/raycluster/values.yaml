@@ -1,0 +1,107 @@
+############################
+### MUST HAVE THESE FIELDS ##
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  editable: false
+  required: false
+  description: "Field that contains the ID of the job"
+############################
+
+- name: deployment_name
+  value: "ray-cluster" 
+  default: "ray-cluster"
+  editable: true
+  required: true
+  description: "Name of the job"
+
+- name: workers
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Number of desired starting workers"
+
+- name: min_workers
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Minimum desired workers for autoscaling"
+
+- name: max_workers
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Maximum workers for autoscaling"
+
+- name: cpus
+  value: 2
+  default: 2
+  editable: true
+  required: false
+  description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
+
+- name: gpus
+  value: 1
+  default: 1
+  editable: true
+  required: false
+  description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
+
+- name: memory
+  value: 8
+  default: 8
+  editable: true
+  required: false
+  description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
+
+- name: cuda_gpu_mem_percentage
+  value: 100
+  default: 100
+  editable: true
+  required: false
+  description: "Maximum memory fraction allowed to be used from the GPU vRAM."
+
+- name: ray_version
+  value: "2.49.0"
+  default: "2.49.0"
+  editable: true
+  required: false
+  description: "Ray version to use in the cluster"
+
+- name: python_version
+  value: "312"
+  default: "312"
+  editable: true
+  required: false
+  description: "Python version to use in the cluster (39, 310, 311, 312)"
+
+- name: cuda_version
+  value: "cu124"
+  default: "cu124"
+  editable: true
+  required: false
+  description: "CUDA version to use in the cluster (cu117 to cu128)"
+
+- name: upscaling_mode
+  value: "Default"
+  default: "Default"
+  editable: true
+  required: false
+  description: "Defines autoscale mode. One of: Conservative, Default or Aggressive. https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/configuring-autoscaling.html#scale-up-and-scale-down-speed"
+
+- name: idle_timeout_seconds
+  value: 60
+  default: 60
+  editable: true
+  required: false
+  description: "Defines the waiting time in seconds before scaling down an idle worker pod. Aggressive. https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/configuring-autoscaling.html#scale-up-and-scale-down-speed"
+
+- name: max_retries
+  value: 1000
+  default: 1000
+  editable: true
+  required: false
+  description: "If the job fails, how many times to retry redeployment"
