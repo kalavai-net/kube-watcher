@@ -19,8 +19,15 @@
   required: false
   description: "Temporary storage to use to cache model weights (in GB)"
 
-- name: workers
+- name: cuda_workers
   value: 4
+  default: 1
+  editable: true
+  required: true
+  description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
+
+- name: rocm_workers
+  value: 10
   default: 1
   editable: true
   required: true
@@ -41,7 +48,7 @@
   description: "Huggingface token, required to load model weights"
 
 - name: cpus
-  value: 2
+  value: 4
   default: 2
   editable: true
   required: false

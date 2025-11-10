@@ -52,8 +52,8 @@ spec:
               {% endfor %}
             {% endif %}
         {% endif %}
-        # nodeSelector:
-        #   kalavai/role: server
+        nodeSelector:
+          kalavai/role: server
         containers:
         - name: gpustack-leader
           image: docker.io/gpustack/gpustack:latest
@@ -144,12 +144,13 @@ spec:
           - |
             PS_HOST=`cat /etc/volcano/server.host`;
             echo $PS_HOST;
-            sleep 30;
             gpustack start \
               --server-url http://$PS_HOST:8080 \
               --cache-dir /cache \
               --enable-ray \
               --token {{token}}
+            # fail if the connection was terminated
+            exit 1
           env:
           - name: HF_TOKEN
             value: {{hf_token}}
@@ -218,12 +219,13 @@ spec:
           - |
             PS_HOST=`cat /etc/volcano/server.host`;
             echo $PS_HOST;
-            sleep 30;
             /root/.local/bin/gpustack start \
               --server-url http://$PS_HOST:8080 \
               --cache-dir /cache \
               --enable-ray \
               --token {{token}}
+            # fail if the connection was terminated
+            exit 1
           env:
           - name: HF_TOKEN
             value: {{hf_token}}
