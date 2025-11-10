@@ -399,6 +399,38 @@ async def get_job_details_for_label(request: GetLabelledResourcesRequest, can_fo
         tail_lines=request.tail_lines)
     return logs
 
+@app.post("/v1/get_jobs_overview", 
+    operation_id="get_jobs_overview",
+    summary="Get pods status and endpoints for given labels in a set of namespaces in the Kalavai compute pool",
+    tags=["workload_info"],
+    description="Gets pods status and service endpoints for a given list of jobs in a set of namespaces in the kalavai pool",
+    response_description="Pods status and services for the given labels in the namespaces in the kalavai pool")
+async def get_jobs_overview(requests: List[GetLabelledResourcesRequest], can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_logs = defaultdict(dict)
+    for request in requests:
+        if can_force_namespace and request.force_namespace is not None:
+            namespaces = [request.force_namespace]
+
+        pods = kube_api.get_pods_status_for_label(
+            label_key=request.label,
+            label_value=request.value)
+        
+        for pod, values in pods.items():
+            if values["namespace"] not in namespaces:
+                continue
+            if request.value not in ns_logs[values["namespace"]]:
+                ns_logs[values["namespace"]][request.value] = {"pods": [], "services": []}
+            ns_logs[values["namespace"]][request.value]["pods"].append({pod: values})
+            ns_logs[values["namespace"]][request.value]["services"].append(
+                kube_api.get_ports_for_services(
+                    label_key=request.label,
+                    label_value=request.value,
+                    types=["NodePort"]
+                )
+            )
+
+    return ns_logs
+
 
 @app.post("/v1/describe_pods_for_label", 
     operation_id="describe_pods_for_label",
