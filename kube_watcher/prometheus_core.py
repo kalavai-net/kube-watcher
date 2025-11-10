@@ -182,10 +182,6 @@ class PrometheusAPI():
 
                 total_seconds = sum(samples) * avg_step
 
-                # Convert CPU millicores → cores
-                if resource == "cpu":
-                    total_seconds /= 1000.0
-
                 resource_hours[resource] += total_seconds / 3600.0
 
             # Optional normalization (to average per hour)
