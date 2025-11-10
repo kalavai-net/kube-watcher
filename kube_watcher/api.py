@@ -32,7 +32,8 @@ from kube_watcher.models import (
     StorageRequest,
     RayClusterRequest,
     UserWorkspaceRequest,
-    NodeLabelsRequest
+    NodeLabelsRequest,
+    ComputeUsageRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -465,6 +466,41 @@ async def get_deployments(api_key: str = Depends(verify_read_key), namespaces: s
         )
     return ns_deployments
 
+@app.post("/v1/get_compute_usage", 
+    operation_id="get_compute_usage",
+    summary="Get compute usage for a set of resources in the Kalavai compute pool",
+    tags=["pool_info"],
+    description="Gets the compute usage for a set of nodes/namespaces in the kalavai pool as monitored by prometheus.",
+    response_description="Compute usage for the nodes/namespaces in the kalavai pool")
+async def compute_usage(request: ComputeUsageRequest, api_key: str = Depends(verify_read_key)):
+    prometheus = PrometheusAPI(url=PROMETHEUS_ENDPOINT)
+
+    if request.node_names is None:
+        if request.node_labels is None:
+            raise HTTPException(status_code=400, detail="node_names or node_labels must be provided")
+        
+        request.node_names = kube_api.get_nodes_with_labels(
+            labels=request.node_labels
+        )
+    print(f"Getting compute usage for nodes: {request.node_names}")
+
+    metrics = prometheus.get_cumulative_compute_usage(
+        resources=request.resources,
+        start_time=request.start_time,
+        end_time=request.end_time,
+        nodes=request.node_names,
+        namespaces=request.namespaces,
+        normalize=request.normalize,
+        step_seconds=request.step_seconds)
+    
+    aggregate = defaultdict(float)
+    for resource, value in metrics.items():
+        if resource in request.resource_mapping:
+            key = request.resource_mapping[resource]
+            aggregate[key] += value
+        else:
+            aggregate[resource] = value
+    return aggregate
 
 @app.post("/v1/get_nodes_cost", 
     operation_id="get_nodes_cost",

@@ -60,6 +60,16 @@ class KubecostParameters(BaseModel):
     step: str = None
     resolution: str = None
 
+class ComputeUsageRequest(BaseModel):
+    resources: List[str] = ["amd_com_gpu", "nvidia_com_gpu", "cpu", "memory"]
+    resource_mapping: dict = {"amd_com_gpu": "gpus", "nvidia_com_gpu": "gpus", "memory": "ram"}
+    node_names: List[str] = None
+    namespaces: List[str] = None
+    start_time: str
+    end_time: str
+    step_seconds: int = 300
+    node_labels: dict = None
+    normalize: bool = False
 
 class NodeCostRequest(BaseModel):
     node_names: List[str] = None
