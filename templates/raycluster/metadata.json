@@ -1,0 +1,10 @@
+{
+    "name": "Ray Cluster",
+    "type": "platform",
+    "description": "An open source framework to build and scale your ML and Python applications easily",
+    "docs": "https://docs.ray.io/en/latest",
+    "icon": "https://github.com/ray-project/ray/raw/master/doc/source/images/ray_header_logo.png",
+    "info": "Create distributed GPU clusters for ML workloads",
+    "template_rules": "",
+    "values_rules": ""
+}
