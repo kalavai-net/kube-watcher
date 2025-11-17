@@ -15,6 +15,13 @@
   required: true
   description: "Name of the job"
 
+- name: head_is_worker
+  value: "no"
+  default: "no"
+  editable: true
+  required: false
+  description: "If the head acts as a worker (with GPU, CPU and MEMORY allocation)"
+
 - name: workers
   value: 1
   default: 1
@@ -23,38 +30,38 @@
   description: "Number of desired starting workers"
 
 - name: min_workers
-  value: 1
-  default: 1
+  value: 0
+  default: 0
   editable: true
   required: true
-  description: "Minimum desired workers for autoscaling"
+  description: "Minimum workers to always have running (can be 0)"
 
 - name: max_workers
   value: 1
   default: 1
   editable: true
   required: true
-  description: "Maximum workers for autoscaling"
+  description: "Maximum target workers for autoscaling"
 
 - name: cpus
   value: 2
   default: 2
   editable: true
-  required: false
+  required: true
   description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
 
 - name: gpus
   value: 1
   default: 1
   editable: true
-  required: false
+  required: true
   description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
 
 - name: memory
   value: 8
   default: 8
   editable: true
-  required: false
+  required: true
   description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
 
 - name: cuda_gpu_mem_percentage
@@ -98,6 +105,13 @@
   editable: true
   required: false
   description: "Defines the waiting time in seconds before scaling down an idle worker pod. Aggressive. https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/configuring-autoscaling.html#scale-up-and-scale-down-speed"
+
+- name: enable_auth
+  value: "false"
+  default: "false"
+  editable: true
+  required: false
+  description: "Configure Ray cluster with authentication and access control: https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html"
 
 - name: max_retries
   value: 1000

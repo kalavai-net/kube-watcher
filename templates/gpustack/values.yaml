@@ -20,13 +20,13 @@
   default: "password"
   editable: true
   required: true
-  description: "Default password name for admin user"
+  description: "Default password name for <admin> user"
 
 - name: working_memory
-  value: 5
-  default: 5
+  value: 30
+  default: 30
   editable: true
-  required: false
+  required: true
   description: "Temporary storage to use to cache model weights (in GB)"
 
 - name: cuda_workers
@@ -61,21 +61,21 @@
   value: 2
   default: 2
   editable: true
-  required: false
+  required: true
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
 - name: gpus
   value: 1
   default: 1
   editable: true
-  required: false
+  required: true
   description: "GPUs per single worker (final one = gpus * num_workers)"
 
 - name: memory
-  value: 12
-  default: 12
+  value: 8
+  default: 8
   editable: true
-  required: false
+  required: true
   description: "RAM memory per single worker (final one = memory * num_workers)"
 
 - name: cuda_gpu_mem_percentage

@@ -26,6 +26,7 @@ spec:
   - replicas: 1   # One ps pod specified
     name: ps
     template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 60
       spec:
         {% if NODE_SELECTORS %}
         affinity:

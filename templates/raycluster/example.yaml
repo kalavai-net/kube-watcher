@@ -5,6 +5,13 @@
   required: true
   description: "Name of the job"
 
+- name: head_is_worker
+  value: "no"
+  default: "no"
+  editable: true
+  required: false
+  description: "If the head acts as a worker (with GPU, CPU and MEMORY allocation)"
+
 - name: workers
   value: 1
   default: 1
@@ -20,21 +27,21 @@
   description: "Minimum desired workers for autoscaling"
 
 - name: max_workers
-  value: 2
+  value: 1
   default: 1
   editable: true
   required: true
   description: "Maximum workers for autoscaling"
 
 - name: cpus
-  value: 1
+  value: 4
   default: 2
   editable: true
   required: false
   description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
 
 - name: memory
-  value: 3
+  value: 8
   default: 8
   editable: true
   required: false

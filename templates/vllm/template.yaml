@@ -123,6 +123,7 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
@@ -261,6 +262,7 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of worker pods
+      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}

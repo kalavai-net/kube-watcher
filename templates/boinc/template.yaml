@@ -25,6 +25,7 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
@@ -109,6 +110,7 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 60
       metadata:
         annotations:
           # must have these annotations
@@ -194,6 +196,7 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
+      terminationGracePeriodSeconds: 60
       metadata:
         annotations:
         labels:

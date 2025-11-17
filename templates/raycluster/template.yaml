@@ -27,6 +27,9 @@ spec:
       dashboard-host: "0.0.0.0"
       num-cpus: "0" # avoid workload on head
     template: # Pod template
+    {% if enable_auth == "true" %}
+      serviceAccountName: {{deployment_id}}-account
+    {% endif %}
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
@@ -40,11 +43,11 @@ spec:
           imagePullPolicy: IfNotPresent
           resources:
             limits:
-              cpu: {{cpus}}
-              memory: {{memory}}Gi
+              cpu: 2
+              memory: 2Gi
             requests:
-              cpu: {{cpus}}
-              memory: {{memory}}Gi
+              cpu: 2
+              memory: 2Gi
           lifecycle:
             preStop:
               exec:
@@ -58,6 +61,22 @@ spec:
             name: client
           - containerPort: 8000
             name: serve
+      {% if enable_auth == "true" %}
+        - name: {{deployment_id}}-rbac
+          image: quay.io/brancz/kube-rbac-proxy:v0.18.1
+          args:
+          - "--insecure-listen-address=0.0.0.0:8265"
+          - "--upstream=http://127.0.0.1:8443/"
+          - "--config-file=/etc/kube-rbac-proxy/config-file.yaml"
+          - "--logtostderr=true"
+          volumeMounts:
+          - name: config
+            mountPath: /etc/kube-rbac-proxy
+        volumes:
+        - name: config
+          configMap:
+            name: {{deployment_id}}-rbac
+      {% endif %}
   workerGroupSpecs:
   # worker group of up to 4 GPU workers
   - groupName: gpu-group
@@ -71,6 +90,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        runtimeClassName: nvidia
       {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -101,7 +121,6 @@ spec:
         containers:
         - name: ml-work-group
           image: docker.io/rayproject/ray:{{ray_version}}-py{{python_version}}-{{cuda_version}}
-          runtimeClassName: nvidia
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -151,3 +170,101 @@ spec:
       port: 8000
       targetPort: 8000
       protocol: TCP
+---
+# Authentication
+# https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html
+{% if enable_auth == "true" %}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{deployment_id}}-rbac
+data:
+  config-file.yaml: |
+    authorization:
+      resourceAttributes:
+        namespace: default
+        apiVersion: v1
+        apiGroup: ray.io
+        resource: rayclusters
+        name: {{deployment_id}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{deployment_id}}-rbac
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{deployment_id}}-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{deployment_id}}-rbac
+subjects:
+- kind: ServiceAccount
+  name: {{deployment_id}}-rbac
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{deployment_id}}-rbac
+rules:
+- apiGroups: ["authentication.k8s.io"]
+  resources:
+  - tokenreviews
+  verbs: ["create"]
+- apiGroups: ["authorization.k8s.io"]
+  resources:
+  - subjectaccessreviews
+  verbs: ["create"]
+{% endif %}
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   labels:
+#     # must have this!
+#     kalavai.job.name: {{deployment_id}}
+#   annotations:
+#     cert-manager.io/cluster-issuer: letsencrypt-stage # use "letsencrypt-stage" for testing
+#     kubernetes.io/tls-acme: "true"
+#   name: {{deployment_id}}-ingress
+# spec:
+#   ingressClassName: traefik
+#   rules:
+#   - host: {{USER_ID}}-{{deployment_id}}.platform.kalavai.net
+#     http:
+#       paths:
+#       - backend:
+#           service:
+#             name: {{deployment_id}}-service
+#             port:
+#               number: 8265
+#         path: /dashboard
+#         pathType: Prefix
+#       - backend:
+#           service:
+#             name: {{deployment_id}}-service
+#             port:
+#               number: 6379
+#         path: /gcs
+#         pathType: Prefix
+#       - backend:
+#           service:
+#             name: {{deployment_id}}-service
+#             port:
+#               number: 10001
+#         path: /client
+#         pathType: Prefix
+#       - backend:
+#           service:
+#             name: {{deployment_id}}-service
+#             port:
+#               number: 8000
+#         path: /serve
+#         pathType: Prefix
+#   tls:
+#   - hosts:
+#     - {{USER_ID}}-{{deployment_id}}.platform.kalavai.net
+#     secretName: {{deployment_id}}.platform.kalavai.net-tls 
