@@ -103,7 +103,7 @@ docker run -it --rm \
     --env "HIP_VISIBLE_DEVICES=0" \
     --env NCCL_SOCKET_IFNAME=enp13s0 \
     --env GLOO_SOCKET_IFNAME=enp13s0 \
-    bundenth/ray-vllm-rocm:latest
+    kalavai/ray-vllm-rocm:latest
 
 vllm serve Qwen/Qwen3-4B-Instruct-2507 \
   --host 0.0.0.0 --port 8080 --distributed-executor-backend="ray" --max-model-len 5000 --cpu-offload-gb 64 --pipeline-parallel-size=3 

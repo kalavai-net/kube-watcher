@@ -131,7 +131,7 @@ spec:
             {% endif %}
         {% endif %}
         containers:
-        - image: docker.io/bundenth/litellm:latest
+        - image: docker.io/kalavai/litellm:latest
           name: litellm-server
           command:
           - sh

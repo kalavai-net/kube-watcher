@@ -60,7 +60,7 @@ spec:
         {% endif %}
         containers:
         - name: registrar-leader
-          image: docker.io/bundenth/kalavai-utils:latest
+          image: docker.io/kalavai/kalavai-utils:latest
           command:
           - sh
           - -c
@@ -161,7 +161,7 @@ spec:
         {% endif %}
         containers:
         - name: vllm-leader
-          image: docker.io/bundenth/ray-vllm-{{gpu_backend}}:latest
+          image: docker.io/kalavai/ray-vllm-{{gpu_backend}}:latest
           command:
           - sh
           - -c
@@ -299,7 +299,7 @@ spec:
         {% endif %}
         containers:
         - name: vllm-worker
-          image: docker.io/bundenth/ray-vllm-{{gpu_backend}}:latest #v1.1.4
+          image: docker.io/kalavai/ray-vllm-{{gpu_backend}}:latest #v1.1.4
           command:
           - sh
           - -c

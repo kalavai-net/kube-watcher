@@ -59,7 +59,7 @@ spec:
         {% endif %}
         containers:
         - name: registrar-leader
-          image: docker.io/bundenth/kalavai-utils:latest
+          image: docker.io/kalavai/kalavai-utils:latest
           command:
           - sh
           - -c
@@ -160,7 +160,7 @@ spec:
         {% if gpus > 0 %}
           image: ghcr.io/speaches-ai/speaches:0.7-cuda-12.4.1
         {% else %}
-          image: docker.io/bundenth/speaches:cpu-latest
+          image: ghcr.io/speaches-ai/speaches:latest-cpu
         {% endif %}
           imagePullPolicy: Always
           command:

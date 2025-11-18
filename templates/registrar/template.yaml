@@ -59,7 +59,7 @@ spec:
         {% endif %}
         containers:
         - name: registrar-leader
-          image: docker.io/bundenth/kalavai-utils:latest
+          image: docker.io/kalavai/kalavai-utils:latest
           command:
           - sh
           - -c

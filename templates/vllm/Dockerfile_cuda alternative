@@ -1,4 +1,4 @@
-FROM bundenth/ray:latest AS base
+FROM kalavai/ray-base:latest AS base
 
 #FROM rayproject/ray:2.49.1-py312-gpu
 FROM vllm/vllm-openai:v0.10.1.1

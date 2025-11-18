@@ -59,7 +59,7 @@ spec:
         {% endif %}
         containers:
         - name: container
-          image: docker.io/bundenth/comfyui:cuda-latest
+          image: docker.io/kalavai/comfyui-cuda:latest
           imagePullPolicy: Always
           command:
           - sh

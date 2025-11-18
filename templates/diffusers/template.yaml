@@ -59,7 +59,7 @@ spec:
         {% endif %}
         containers:
         - name: registrar-leader
-          image: docker.io/bundenth/kalavai-utils:latest
+          image: docker.io/kalavai/kalavai-utils:latest
           command:
           - sh
           - -c
@@ -159,7 +159,7 @@ spec:
         {% endif %}
         containers:
         - name: container
-          image: docker.io/bundenth/ray-diffusers:latest
+          image: docker.io/kalavai/ray-diffusers:latest
           imagePullPolicy: Always
           command:
           - sh
@@ -280,7 +280,7 @@ spec:
         {% endif %}
         containers:
         - name: vllm-worker
-          image: docker.io/bundenth/ray-diffusers:latest #v1.1.4
+          image: docker.io/kalavai/ray-diffusers:latest #v1.1.4
           command:
           - sh
           - -c

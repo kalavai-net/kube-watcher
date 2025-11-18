@@ -59,7 +59,7 @@ spec:
             {% endif %}
         {% endif %}
         containers:
-        - image: docker.io/bundenth/boinc-cpu:latest
+        - image: docker.io/kalavai/boinc-cpu:latest
           name: boinc
           command:
           - sh
@@ -148,7 +148,7 @@ spec:
             {% endif %}
         {% endif %}
         containers:
-        - image: docker.io/bundenth/boinc-gpu:latest
+        - image: docker.io/kalavai/boinc-gpu:latest
           name: boinc
           command:
           - sh
@@ -230,7 +230,7 @@ spec:
             {% endif %}
         {% endif %}
         containers:
-        - image: docker.io/bundenth/boinc-cpu:latest
+        - image: docker.io/kalavai/boinc-cpu:latest
           name: boinc
           command:
           - sh

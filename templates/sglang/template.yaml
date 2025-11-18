@@ -60,7 +60,7 @@ spec:
         {% endif %}
         containers:
         - name: registrar-leader
-          image: docker.io/bundenth/kalavai-utils:latest
+          image: docker.io/kalavai/kalavai-utils:latest
           command:
           - sh
           - -c
@@ -162,7 +162,7 @@ spec:
         {% endif %}
         containers:
         - name: sglang-leader
-          image: docker.io/bundenth/ray-sglang-cuda:latest
+          image: docker.io/kalavai/ray-sglang-cuda:latest
           command:
           - sh
           - -c
@@ -270,7 +270,7 @@ spec:
         {% endif %}
         containers:
         - name: sglang-worker
-          image: docker.io/bundenth/ray-sglang-cuda:latest
+          image: docker.io/kalavai/ray-sglang-cuda:latest
           command:
           - sh
           - -c

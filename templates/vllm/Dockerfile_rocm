@@ -1,5 +1,5 @@
 # # reference https://github.com/vllm-project/vllm/blob/936416e5e4bf72d412d7317398935b66a100716f/docker/Dockerfile.rocm
-FROM bundenth/ray:latest AS base
+FROM kalavai/ray-base:latest AS base
 
 #FROM rocm/vllm:rocm6.4.1_vllm_0.9.1_20250715
 FROM rocm/vllm:rocm6.4.1_vllm_0.10.1_20250909

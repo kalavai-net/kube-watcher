@@ -1,0 +1,19 @@
+FROM kalavai/ray-base:latest AS base
+
+FROM alpindale/aphrodite-openai:v0.9.0
+
+WORKDIR /home/ray/workspace
+
+# copy over ray scripts
+COPY --from=base /home/ray/workspace/ .
+
+RUN apt update && apt install bc
+
+# workaround dependency issue with gguf https://github.com/PygmalionAI/aphrodite-engine/issues/783
+RUN pip3 install aphrodite-engine --no-cache-dir && \
+    pip3 install gguf==0.10.0 --no-cache-dir
+
+COPY run_model.sh .
+
+RUN chmod +x /home/ray/workspace/run_model.sh
+

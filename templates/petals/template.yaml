@@ -61,7 +61,7 @@ spec:
             {% endif %}
         {% endif %}
         containers:
-        - image: docker.io/bundenth/health.petals:latest
+        - image: docker.io/kalavai/health.petals:latest
           name: petals-health
           command:
           - sh
@@ -86,7 +86,7 @@ spec:
             limits:
               cpu: 1
               memory: 1Gi
-        - image: docker.io/bundenth/chat.petals:latest
+        - image: docker.io/kalavai/chat.petals:latest
           name: petals-chat
           command:
           - sh

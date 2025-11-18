@@ -58,7 +58,7 @@ spec:
         {% endif %}
         containers:
         - name: registrar-leader
-          image: docker.io/bundenth/kalavai-utils:latest
+          image: docker.io/kalavai/kalavai-utils:latest
           command:
           - sh
           - -c
@@ -156,7 +156,7 @@ spec:
         {% endif %}
         containers:
         - name: container
-          image: docker.io/bundenth/diffusion-gui:latest
+          image: docker.io/kalavai/diffusion-gui:latest
           imagePullPolicy: Always
           command:
           - sh

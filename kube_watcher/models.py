@@ -6,7 +6,7 @@ from enum import Enum
 class JobTemplate(Enum):
     custom = 0
     vllm = 1
-    #aphrodite = 2
+    aphrodite = 2
     llamacpp = 3
     #petals = 4
     litellm = 5
