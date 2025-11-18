@@ -530,14 +530,18 @@ class KubeAPI():
     
     def kube_get_custom_objects(self, group, api_version, namespace, plural, label_selector=None):
 
-        objects =  client.CustomObjectsApi().list_namespaced_custom_object(
-            group,
-            api_version,
-            namespace,
-            plural,
-            label_selector=label_selector)
-        
-        return objects
+        try:
+            objects =  client.CustomObjectsApi().list_namespaced_custom_object(
+                group,
+                api_version,
+                namespace,
+                plural,
+                label_selector=label_selector)
+            
+            return objects
+        except Exception as e:
+            print(f"[WARNING]: Error when getting custom objects: {str(e)}")
+            return []
     
     def kube_get_status_custom_object(self, name, group, api_version, namespace, plural):
         try:
@@ -581,21 +585,20 @@ class KubeAPI():
     
     def find_pods_with_label(self, label_key:str, label_value=None, namespace: str=None):
 
-        resources_found = {}
+        resources_found = defaultdict(dict)
         resource_types = {
-            'pod': self.core_api.list_pod_for_all_namespaces #self.core_api.list_namespaced_pod
+            'pod': self.core_api.list_pod_for_all_namespaces if namespace is None else self.core_api.list_namespaced_pod
         }
         label_selector = label_key if label_value is None else f"{label_key}={label_value}"
 
         for resource_type, list_func in resource_types.items():
             try:
-                #resources = list_func(namespace, label_selector=label_selector)
-                resources = list_func(label_selector=label_selector)
+                resources = list_func(label_selector=label_selector) if namespace is None else list_func(namespace, label_selector=label_selector)
                 if resources.items:
                     for resource in resources.items:
-                        if namespace is not None and namespace != resource.metadata.namespace:
-                            continue
-                        resources_found[resource.metadata.name] = resource.to_dict()
+                        # place pod under the label value it matched against
+                        resources_found[resource.metadata.labels[label_key]][resource.metadata.name] = resource.to_dict()
+                        #resources_found[resource.metadata.name] = resource.to_dict()
             except Exception as e:
                 print(f"Exception when checking for {resource_type}: {e}")
 
@@ -607,32 +610,35 @@ class KubeAPI():
             namespace=namespace
         )
     
-    def get_logs_for_labels(self, label_key, label_value, namespace, tail_lines=100):
+    def get_logs_for_labels(self, label_key, label_value=None, namespace=None, tail_lines=100):
         """Get logs for all pods that match a label key:value"""
-        pods = self.find_pods_with_label(
+        match = self.find_pods_with_label(
             namespace=namespace,
             label_key=label_key,
             label_value=label_value
         )
-        logs = {}
-        for pod_name in pods.keys():
-            logs[pod_name] = {
-                "logs": self.get_logs_for_pod(pod=pod_name, namespace=namespace, tail_lines=tail_lines),
-                "pod": force_serialisation(self.get_specs_for_pod(pod_name=pod_name, namespace=namespace))
-            }
+        logs = defaultdict(dict)
+        for label_match, pods in match.items():
+            for pod_name in pods.keys():
+                logs[label_match][pod_name] = self.get_logs_for_pod(pod=pod_name, namespace=namespace, tail_lines=tail_lines)
+                # {
+                #     "logs": self.get_logs_for_pod(pod=pod_name, namespace=namespace, tail_lines=tail_lines),
+                #     "pod": force_serialisation(self.get_specs_for_pod(pod_name=pod_name, namespace=namespace))
+                # }
         
         return logs
     
     def describe_pods_for_labels(self, label_key, label_value, namespace):
         """Get describe for all pods that match a label key:value"""
-        pods = self.find_pods_with_label(
+        match = self.find_pods_with_label(
             namespace=namespace,
             label_key=label_key,
             label_value=label_value
         )
-        logs = {}
-        for pod_name in pods.keys():
-            logs[pod_name] = self.describe_pod(pod=pod_name, namespace=namespace)
+        logs = defaultdict(dict)
+        for label_match, pods in match.items():
+            for pod_name, pod in pods.items():
+                logs[label_match][pod_name] = self.describe_pod(pod=pod_name, namespace=namespace)
         
         return logs
     
@@ -697,47 +703,57 @@ class KubeAPI():
             namespace=namespace
         )
     
-    def get_pods_status_for_label(self, label_key, label_value, namespace=None):
+    def get_pods_status_for_label(self, label_key, label_value=None, namespace=None):
         res = self.find_pods_with_label(
             label_key=label_key,
             label_value=label_value,
             namespace=namespace
         )
-        pod_statuses = {}
-        for pod in res.values():
-            if pod["status"]["phase"] == "Running":
-                status = "Ready" if all([s["ready"] for s in pod["status"]["container_statuses"]]) else "Working"
-            else:
-                status = pod["status"]["phase"]
-            pod_statuses[pod["metadata"]["name"]] = {
-                "status": status,
-                "conditions": force_serialisation(pod["status"]["container_statuses"]),
-                "node_name": pod["spec"]["node_name"],
-                "namespace": pod["metadata"]["namespace"]
-            }
+        pod_statuses = defaultdict(dict)
+        for match_label_value, pods in res.items():
+
+            for pod in pods.values():
+                if pod["status"]["phase"] == "Running":
+                    status = "Ready" if all([s["ready"] for s in pod["status"]["container_statuses"]]) else "Working"
+                else:
+                    status = pod["status"]["phase"]
+                pod_statuses[match_label_value][pod["metadata"]["name"]] = {
+                    "status": status,
+                    "conditions": force_serialisation(pod["status"]["container_statuses"]),
+                    "node_name": pod["spec"]["node_name"],
+                    "namespace": pod["metadata"]["namespace"]
+                }
 
         return pod_statuses
     
-    def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"]):
+    def get_ports_for_services(self, label_key:str, label_value=None, types=["NodePort"], namespace=None):
         # pull only the service with the given label
         label_selector = label_key if label_value is None else f"{label_key}={label_value}"
-        resources = self.core_api.list_service_for_all_namespaces(watch=False, label_selector=label_selector)
-        service_ports = {}   
+        if namespace is None:
+            resources = self.core_api.list_service_for_all_namespaces(watch=False, label_selector=label_selector)
+        else:
+            resources = self.core_api.list_namespaced_service(watch=False, namespace=namespace, label_selector=label_selector)
+        service_ports = defaultdict(dict)
         def to_dict(service_port):
             return {
                 "node_port": service_port.node_port,
                 "port": service_port.port,
                 "protocol": service_port.protocol,
-                "target_port": service_port.target_port
+                "target_port": service_port.target_port,
+                "name": service_port.name
             }
         if resources.items:
             for service in resources.items:
-                if service.spec.type not in types:
+                if types is not None and service.spec.type not in types:
                     continue
-                service_ports[service.metadata.name] = {
+                service_ports[service.metadata.labels[label_key]][service.metadata.name] = {
                     "type": service.spec.type,
                     "ports": [to_dict(p) for p in service.spec.ports]
                 }
+                # service_ports[service.metadata.name] = {
+                #     "type": service.spec.type,
+                #     "ports": [to_dict(p) for p in service.spec.ports]
+                # }
 
         return service_ports
     
@@ -954,6 +970,7 @@ class KubeAPI():
 
         core_api = client.CoreV1Api()
         apps_api = client.AppsV1Api()
+        networking_api = client.NetworkingV1Api()
 
         deleted_resources = []
         failed_resources = []
@@ -971,7 +988,8 @@ class KubeAPI():
             'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws),
             'raycluster': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster),
             'job': (self.list_namespaced_vcjob, self.delete_namespaced_vcjob),
-            'secret': (core_api.list_namespaced_secret, core_api.delete_namespaced_secret)
+            'secret': (core_api.list_namespaced_secret, core_api.delete_namespaced_secret),
+            "ingress": (networking_api.list_namespaced_ingress, networking_api.delete_namespaced_ingress)
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():
@@ -1060,26 +1078,30 @@ class KubeAPI():
         """Aggregates kubectl describe and kubectl logs when available"""
         job_info = defaultdict(dict)
         try:
-            logs = self.get_logs_for_labels(
+            match = self.get_logs_for_labels(
                 label_key=label_key,
                 label_value=label_value,
                 namespace=namespace,
                 tail_lines=tail_lines
             )
-            for name, log in logs.items():
-                job_info[name] = log
-        except:
+            for label_match, info in match.items():
+                job_info[label_match] = defaultdict(dict)
+                for pod_name, logs in info.items():
+                    job_info[label_match][pod_name]["logs"] = logs
+        except Exception as e:
+            print(f"Error in get_job_info_for_labels: {str(e)}")
             pass
         try:
-            descriptions = self.describe_pods_for_labels(
+            match = self.describe_pods_for_labels(
                 label_key=label_key,
                 label_value=label_value,
                 namespace=namespace
             )
-            for name, description in descriptions.items():
-                for key, value in description.items():
-                    job_info[name][key] = value
-        except:
+            for label_match, descriptions in match.items():
+                for pod_name, description in descriptions.items():
+                    job_info[label_match][pod_name]["describe"] = description
+        except Exception as e:
+            print(f"Error in get_job_info_for_labels: {str(e)}")
             pass
 
         return job_info
@@ -1094,10 +1116,12 @@ class KubeAPI():
         try:
             self.core_api.delete_namespaced_resource_quota(
                 name="resource-quota",
-                namespace=namespace
+                namespace=namespace,
+                grace_period_seconds=0
             )
-        except:
-            pass
+            time.sleep(2)
+        except Exception as e:
+            print(f"[WARNING]: Error deleting quota for {namespace}: {str(e)}")
 
         result = self.core_api.create_namespaced_resource_quota(
             namespace=namespace,
@@ -1127,19 +1151,17 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    # res = api.set_resource_quota(
-    #     namespace="carlosfm",
-    #     quotas={
-    #         "requests.cpu": "1",
-    #         "requests.memory": "1Gi",
-    #         "requests.nvidia.com/gpu": 1,
-    #         "limits.cpu": "4",
-    #         "limits.memory": "4Gi",
-    #         "limits.nvidia.com/gpu": 20
-    #     }
-    # )
-    res = api.get_resource_quotas(
-        namespace="carlosfm2"
+    
+    res = api.get_job_info_for_labels(
+        label_key="kalavai.job.name",
+        label_value="litellm-441fb2",
+        namespace="default"
     )
-    print(json.dumps(res, indent=2))
+    for label, data in res.items():
+        print("Label", label)
+        for pod_name, info in data.items():
+            print("Pod name", pod_name)
+            print(info["describe"].keys())
+
+    #print(json.dumps(res, indent=2))
     

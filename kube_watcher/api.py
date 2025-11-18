@@ -33,7 +33,8 @@ from kube_watcher.models import (
     RayClusterRequest,
     UserWorkspaceRequest,
     NodeLabelsRequest,
-    ComputeUsageRequest
+    ComputeUsageRequest,
+    GetJobsOverviewRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -166,6 +167,8 @@ async def total_resources(request: NodesRequest, api_key: str = Depends(verify_r
     if request.node_labels is not None:
         request.node_names = kube_api.get_nodes_with_labels(
             labels=request.node_labels)
+        if request.node_names is None or len(request.node_names) == 0:
+            return {}
     if request.detailed:
         return kube_api.get_nodes_resources(node_names=request.node_names)
     else:
@@ -181,6 +184,8 @@ async def available_resources(request: NodesRequest, api_key: str = Depends(veri
     if request.node_labels is not None:
         request.node_names = kube_api.get_nodes_with_labels(
             labels=request.node_labels)
+        if request.node_names is None or len(request.node_names) == 0:
+            return {}
     if request.detailed:
         return kube_api.get_node_available_resources(node_names=request.node_names)
     else:
@@ -259,6 +264,9 @@ async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_r
         
         request.node_names = kube_api.get_nodes_with_labels(
             labels=request.node_labels)
+        
+        if request.node_names is None or len(request.node_names) == 0:
+            return {}
     
     result = client.get_node_stats(
         node_ids=request.node_names,
@@ -336,11 +344,13 @@ async def get_deployment_type(request: CustomObjectRequest, can_force_namespace:
         namespaces = [request.force_namespace]
 
     for namespace in namespaces:
-        ns_objects[namespace] = kube_api.kube_get_custom_objects(
+        objects = kube_api.kube_get_custom_objects(
             group=request.group,
             namespace=namespace,
             api_version=request.api_version,
             plural=request.plural)
+        if len(objects) > 0:
+            ns_objects[namespace] = objects
     return ns_objects
 
 
@@ -405,29 +415,26 @@ async def get_job_details_for_label(request: GetLabelledResourcesRequest, can_fo
     tags=["workload_info"],
     description="Gets pods status and service endpoints for a given list of jobs in a set of namespaces in the kalavai pool",
     response_description="Pods status and services for the given labels in the namespaces in the kalavai pool")
-async def get_jobs_overview(requests: List[GetLabelledResourcesRequest], can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+async def get_jobs_overview(request: GetJobsOverviewRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespaces = [request.force_namespace]
     ns_logs = defaultdict(dict)
-    for request in requests:
-        if can_force_namespace and request.force_namespace is not None:
-            namespaces = [request.force_namespace]
+    for namespace in namespaces:
 
-        pods = kube_api.get_pods_status_for_label(
-            label_key=request.label,
-            label_value=request.value)
-        
-        for pod, values in pods.items():
-            if values["namespace"] not in namespaces:
-                continue
-            if request.value not in ns_logs[values["namespace"]]:
-                ns_logs[values["namespace"]][request.value] = {"pods": [], "services": []}
-            ns_logs[values["namespace"]][request.value]["pods"].append({pod: values})
-            ns_logs[values["namespace"]][request.value]["services"].append(
-                kube_api.get_ports_for_services(
-                    label_key=request.label,
-                    label_value=request.value,
-                    types=["NodePort"]
-                )
+        for label in request.labels:
+            pods_status = kube_api.get_pods_status_for_label(
+                label_key=label,
+                namespace=namespace)
+            pods_services = kube_api.get_ports_for_services(
+                label_key=label,
+                types=["NodePort"],
+                namespace=namespace
             )
+            ns_logs[namespace] = defaultdict(dict)
+            for key, status in pods_status.items():
+                ns_logs[namespace][key]["pods"] = status
+            for key, services in pods_services.items():
+                ns_logs[namespace][key]["services"] = services
 
     return ns_logs
 
@@ -458,12 +465,12 @@ async def get_pods_status_for_label(request: GetLabelledResourcesRequest, can_fo
     if can_force_namespace and request.force_namespace is not None:
         namespaces = [request.force_namespace]
 
-    pods = kube_api.get_pods_status_for_label(
-        label_key=request.label,
-        label_value=request.value)
-    for pod, values in pods.items():
-        if values["namespace"] in namespaces:
-            ns_logs[values["namespace"]][pod] = values
+    for namespace in namespaces:
+        pods_status = kube_api.get_pods_status_for_label(
+            label_key=request.label,
+            label_value=request.value,
+            namespace=namespace)
+        ns_logs[namespace] = pods_status
 
     return ns_logs
 
@@ -478,7 +485,8 @@ async def get_ports_for_services(request: ServiceWithLabelRequest, api_key: str 
     services = kube_api.get_ports_for_services(
         label_key=request.label,
         label_value=request.value,
-        types=request.types
+        types=request.types,
+        namespace=request.namespace
     )
     return services
 
@@ -507,23 +515,26 @@ async def get_deployments(api_key: str = Depends(verify_read_key), namespaces: s
 async def compute_usage(request: ComputeUsageRequest, api_key: str = Depends(verify_read_key)):
     prometheus = PrometheusAPI(url=PROMETHEUS_ENDPOINT)
 
-    if request.node_names is None:
-        if request.node_labels is None:
-            raise HTTPException(status_code=400, detail="node_names or node_labels must be provided")
+    if request.node_names is None and request.node_labels is None:
+        raise HTTPException(status_code=400, detail="node_names or node_labels must be provided")
         
+    if request.node_labels is not None:
         request.node_names = kube_api.get_nodes_with_labels(
             labels=request.node_labels
         )
-    print(f"Getting compute usage for nodes: {request.node_names}")
+    if request.node_names is None or len(request.node_names) == 0:
+        metrics = {resource: 0 for resource in request.resources}
+    else:
+        print(f"Getting compute usage for nodes: {request.node_names}")
 
-    metrics = prometheus.get_cumulative_compute_usage(
-        resources=request.resources,
-        start_time=request.start_time,
-        end_time=request.end_time,
-        nodes=request.node_names,
-        namespaces=request.namespaces,
-        normalize=request.normalize,
-        step_seconds=request.step_seconds)
+        metrics = prometheus.get_cumulative_compute_usage(
+            resources=request.resources,
+            start_time=request.start_time,
+            end_time=request.end_time,
+            nodes=request.node_names,
+            namespaces=request.namespaces,
+            normalize=request.normalize,
+            step_seconds=request.step_seconds)
     
     aggregate = defaultdict(float)
     for resource, value in metrics.items():
@@ -612,7 +623,10 @@ async def set_user_quota(request: UserWorkspaceRequest, can_force_namespace: boo
     # set namespace for user
     if request.quota is None:
         raise HTTPException(status_code=400, detail="quota must be provided")
-        
+    
+    kube_api.create_namespace(
+        name=request.user_id,
+        labels={"monitor-pods-datasets": "enabled"})
     try:
         kube_api.set_resource_quota(
             namespace=request.user_id,
@@ -659,9 +673,9 @@ async def get_job_templates(type: str=None, api_key: str = Depends(verify_read_k
     tags=["workload_info"],
     description="Gets default values for a job template in the kalavai pool",
     response_description="Default values for the job template in the kalavai pool")
-async def get_job_defaults(request: JobTemplateRequest, api_key: str = Depends(verify_read_key)):
+async def get_job_defaults(template_name: str, api_key: str = Depends(verify_read_key)):
     try:
-        job = Job(template=request.template)
+        job = Job(template=template_name)
         return {
             "defaults": job.get_defaults(),
             "metadata": job.get_metadata()
@@ -689,7 +703,8 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
             target_labels=request.target_labels,
             target_labels_ops=request.target_labels_ops,
             replica=replica if request.replicas > 1 else None,
-            random_suffix=request.random_suffix)
+            random_suffix=request.random_suffix,
+            user_id=namespace)
         
         print(f"-> [{replica}] Deployment parsed: ", deployment)
         
@@ -736,7 +751,8 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
             target_labels=request.target_labels,
             target_labels_ops=request.target_labels_ops,
             replica=replica if request.replicas > 1 else None,
-            random_suffix=request.random_suffix)
+            random_suffix=request.random_suffix,
+            user_id=namespace)
         print("--->", deployment)
         
         # deploy job

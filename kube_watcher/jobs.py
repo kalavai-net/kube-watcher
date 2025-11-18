@@ -13,8 +13,10 @@ TEMPLATE_ID_FIELD = "id_field"
 TEMPLATE_ID_KEY = "deployment_id"
 TEMPLATE_LABEL = "kalavai.job.name"
 ENDPOINT_PORTS_KEY = "endpoint_ports"
+# system template variables
 NODE_SELECTOR = "NODE_SELECTORS"
 NODE_SELECTOR_OPS = "NODE_SELECTORS_OPS"
+USER_ID_KEY = "USER_ID"
 
 
 def get_template_path(template: JobTemplate):
@@ -88,7 +90,8 @@ class Job:
         target_labels=None,
         target_labels_ops="AND",
         replica=None,
-        random_suffix=True
+        random_suffix=True,
+        user_id=None
     ):
         if default_values is None:
             default_values = self.get_defaults()
@@ -122,12 +125,15 @@ class Job:
         self.job_name = local_values[TEMPLATE_ID_KEY]
         self.job_label = {TEMPLATE_LABEL: self.job_name}
         self.ports = local_values[ENDPOINT_PORTS_KEY].split(",") if ENDPOINT_PORTS_KEY in local_values else []
+        # Set system template values
         if target_labels is not None:
             local_values[NODE_SELECTOR] = [
                 {"name": key, "value": value if isinstance(value, list) else [value]} 
                 for key, value in target_labels.items()
             ]
             local_values[NODE_SELECTOR_OPS] = target_labels_ops
+        if user_id is not None:
+            local_values[USER_ID_KEY] = user_id
 
         return Template(self.template_str, lstrip_blocks=True, trim_blocks=True).render(local_values)
 

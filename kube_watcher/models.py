@@ -84,8 +84,9 @@ class PodsWithStatusRequest(BaseModel):
 
 class ServiceWithLabelRequest(BaseModel):
     label: str
-    value: str
-    types: list = ["NodePort"]
+    value: str = None
+    types: list = None
+    namespace: str = None
     
 
 class NamespacesCostRequest(BaseModel):
@@ -141,6 +142,10 @@ class CustomObjectDeploymentRequest(BaseModel):
 class DeleteLabelledResourcesRequest(BaseModel):
     label:str
     value:Optional[str] = None
+    force_namespace: str = None
+
+class GetJobsOverviewRequest(BaseModel):
+    labels: List[str]
     force_namespace: str = None
 
 class GetLabelledResourcesRequest(BaseModel):
