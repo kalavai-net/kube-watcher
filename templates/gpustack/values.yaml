@@ -29,26 +29,26 @@
   required: true
   description: "Temporary storage to use to cache model weights (in GB)"
 
-- name: cuda_workers
+- name: nvidia_gpus
   value: 1
   default: 1
   editable: true
   required: true
-  description: "Number of remote NVIDIA workers (for tensor and pipeline parallelism). This is in addition to the main node"
-
-- name: rocm_workers
-  value: 1
-  default: 1
+  description: "Number of NVIDIA GPUs (tensor and pipeline parallelism)."
+  
+- name: amd_gpus
+  value: 0
+  default: 0
   editable: true
   required: true
-  description: "Number of remote AMD ROCm workers (for tensor and pipeline parallelism). This is in addition to the main node"
+  description: "Number of remote AMD ROCm GPUs (for tensor and pipeline parallelism)."
 
 - name: token
   value: "sometoken"
   default: "sometoken"
   editable: true
   required: true
-  description: " to load"
+  description: "Internal token to use to join workers"
 
 - name: hf_token
   value: <your token>
@@ -63,13 +63,6 @@
   editable: true
   required: true
   description: "CPUs per single worker (final one = cpus * num_workers)"
-
-- name: gpus
-  value: 1
-  default: 1
-  editable: true
-  required: true
-  description: "GPUs per single worker (final one = gpus * num_workers)"
 
 - name: memory
   value: 8

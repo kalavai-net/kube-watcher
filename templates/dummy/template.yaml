@@ -70,7 +70,6 @@ spec:
               cpu: "50m"
               memory: "1Gi"
               nvidia.com/gpu: "1"
-              nvidia.com/gpumem-percentage: 0.95
           ports:
           # what port to make available
           # to make them available through job endpoints, make sure you list the ports in values.yaml, under endpoint_ports

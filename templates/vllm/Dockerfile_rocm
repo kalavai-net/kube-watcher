@@ -1,19 +1,20 @@
 # # reference https://github.com/vllm-project/vllm/blob/936416e5e4bf72d412d7317398935b66a100716f/docker/Dockerfile.rocm
 FROM kalavai/ray-base:latest AS base
 
-#FROM rocm/vllm:rocm6.4.1_vllm_0.9.1_20250715
+#FROM rocm/vllm:rocm6.3.1_vllm_0.8.5_20250521
 FROM rocm/vllm:rocm6.4.1_vllm_0.10.1_20250909
 WORKDIR /home/ray/workspace
 
 # Get utils scripts
 COPY --from=base /home/ray/workspace/ .
 
-RUN sudo apt update && sudo apt install bc wget ffmpeg curl -y && \
+RUN sudo apt update && sudo apt install bc wget ffmpeg curl tini -y && \
     sudo rm -rf /var/lib/apt/lists/*
 
 # install dependencies
 COPY common_requirements.txt .
-RUN pip install -r common_requirements.txt --no-cache-dir
+RUN pip install -r common_requirements.txt --no-cache-dir && \
+    pip install git+https://github.com/foundation-model-stack/fastsafetensors.git --no-cache-dir
 # RUN pip install ray[default,serve-grpc]==2.44.1 --no-cache-dir
 
 # install cupy (required for pipeline parallelism)
@@ -32,6 +33,6 @@ ENV RAY_EXPERIMENTAL_NOSET_HIP_VISIBLE_DEVICES=1
 ENV SAFETENSORS_FAST_GPU=1
 ENV HIP_FORCE_DEV_KERNARG=1
 
-CMD ["/bin/bash"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
 

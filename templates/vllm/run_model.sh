@@ -96,7 +96,7 @@ else
   name=$model_name
 fi
 
-HF_HUB_OFFLINE=1
+#HF_HUB_OFFLINE=1
 echo "----> [extra params] "$extra
 #python -m vllm.entrypoints.openai.api_server \
 #  --model $model_path \

@@ -7,7 +7,7 @@ WORKDIR /home/ray/workspace
 # copy over ray scripts
 COPY --from=base /home/ray/workspace/ .
 
-RUN sudo apt update && sudo apt install bc wget ffmpeg curl -y && \
+RUN sudo apt update && sudo apt install bc wget ffmpeg curl tini -y && \
     sudo rm -rf /var/lib/apt/lists/*
 
 # install dependencies
@@ -30,5 +30,4 @@ RUN pip install torchcodec --index-url=https://download.pytorch.org/whl/cu124 --
 COPY run_model.sh .
 RUN sudo chmod +x /home/ray/workspace/run_model.sh
 
-CMD ["/bin/bash"]
-#CMD . /home/ray/workspace/env/bin/activate
+ENTRYPOINT [ "/usr/bin/tini", "--"]

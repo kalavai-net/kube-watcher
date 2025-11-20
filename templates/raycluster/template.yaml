@@ -130,7 +130,6 @@ spec:
               memory: {{memory}}Gi
             requests:
               nvidia.com/gpu: {{gpus}}
-              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
               cpu: {{cpus}}
               memory: {{memory}}Gi
           lifecycle:

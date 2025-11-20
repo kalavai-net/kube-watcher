@@ -57,7 +57,7 @@ spec:
           kalavai/role: server
         containers:
         - name: gpustack-leader
-          image: docker.io/gpustack/gpustack:latest
+          image: docker.io/gpustack/gpustack:main-cpu
           command:
           - sh
           - -c
@@ -98,7 +98,7 @@ spec:
         - name: cache
           emptyDir: {}
         restartPolicy: OnFailure
-  - replicas: {{cuda_workers}}
+  - replicas: {{nvidia_gpus}}
     name: cuda-worker
     policies:
     - event: "*"
@@ -139,7 +139,7 @@ spec:
         {% endif %}
         containers:
         - name: gpustack-worker
-          image: docker.io/gpustack/gpustack:latest
+          image: docker.io/gpustack/gpustack:main-cuda12.8
           command:
           - sh
           - -c
@@ -160,12 +160,11 @@ spec:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-              nvidia.com/gpu: {{gpus}}
-              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+              nvidia.com/gpu: 1
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-              nvidia.com/gpu: {{gpus}}
+              nvidia.com/gpu: 1
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
@@ -175,7 +174,7 @@ spec:
         - name: cache
           emptyDir: {}
         restartPolicy: OnFailure
-  - replicas: {{rocm_workers}}
+  - replicas: {{amd_gpus}}
     name: rocm-worker
     policies:
     - event: "*"
@@ -215,7 +214,7 @@ spec:
         {% endif %}
         containers:
         - name: gpustack-worker
-          image: docker.io/gpustack/gpustack:latest-rocm
+          image: docker.io/gpustack/gpustack:main-rocm
           command:
           - sh
           - -c
@@ -236,11 +235,11 @@ spec:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-              amd.com/gpu: {{gpus}}
+              amd.com/gpu: 1
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-              amd.com/gpu: {{gpus}}
+              amd.com/gpu: 1
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
             - name: cache

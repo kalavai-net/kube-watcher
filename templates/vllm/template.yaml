@@ -151,10 +151,8 @@ spec:
               - matchExpressions:
               {% for selector in NODE_SELECTORS %}
                 {% for vals in selector.value %}
-                - key: {{selector.name}}
-                  operator: In
-                  values:
-                  - "{{vals}}"
+                - key: {{selector.name}}ENTRYPOINT ["/usr/bin/tini", "--"]
+
                 {% endfor %}
               {% endfor %}
             {% endif %}
@@ -167,7 +165,7 @@ spec:
           - -c
           - |
             RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size={{workers}} --ray_object_store_memory={{memory * 500000000}};
-            sleep 10;
+            sleep 30;
           {% if gpu_backend == "cuda" %}
             nvidia-smi;
           {% else %}
@@ -203,6 +201,8 @@ spec:
             value: {{lmcache_remote_url}}
           - name: LMCACHE_LOCAL_DISK
             value: {{lmcache_local_disk}}
+          - name: VLLM_LOGGING_LEVEL
+            value: DEBUG
           # - name: HSA_OVERRIDE_GFX_VERSION
           #   value: "10.3.0"
           ports:
