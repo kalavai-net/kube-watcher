@@ -15,12 +15,12 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetry: -1
+  maxRetry: 100000
   tasks:
   {% if external_postgreSQL_url == "" %}
   - replicas: 1   # One ps pod specified
     name: db
-    maxRetry: -1
+    maxRetry: 100000
     policies:
     - event: PodEvicted
       action: RestartJob
@@ -88,7 +88,7 @@ spec:
   {% endif %}
   - replicas: {{replicas}}   # One ps pod specified
     name: server
-    maxRetry: -1
+    maxRetry: 100000
     policies:
     - event: PodEvicted
       action: RestartTask

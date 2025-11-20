@@ -12,11 +12,11 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetry: -1
+  maxRetry: 100000
   tasks:
   - replicas: 1   # One ps pod specified
     name: server
-    maxRetry: -1
+    maxRetry: 100000
     policies:
     - event: "*"
       action: RestartJob
@@ -101,7 +101,7 @@ spec:
         restartPolicy: OnFailure
   - replicas: {{nvidia_gpus}}
     name: cuda-worker
-    maxRetry: -1
+    maxRetry: 100000
     policies:
     - event: "*"
       action: RestartPod
@@ -178,7 +178,7 @@ spec:
         restartPolicy: OnFailure
   - replicas: {{amd_gpus}}
     name: rocm-worker
-    maxRetry: -1
+    maxRetry: 100000
     policies:
     - event: "*"
       action: RestartPod

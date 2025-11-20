@@ -12,7 +12,7 @@ spec:
   plugins:
     env: []
     svc: []
-  maxRetry: -1
+  maxRetry: 100000
   policies: # https://pkg.go.dev/volcano.sh/apis/pkg/apis/bus/v1alpha1
   - event: PodEvicted
     action: RestartJob
@@ -25,7 +25,7 @@ spec:
   tasks:
   - replicas: 1   # One ps pod specified
     name: ps
-    maxRetry: -1
+    maxRetry: 100000
     template: # Definition of the ps pod
       terminationGracePeriodSeconds: 60
       spec:

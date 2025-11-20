@@ -11,11 +11,11 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetry: -1
+  maxRetry: 100000
   tasks:
   - replicas: 1  # One ps pod specified
     name: manager
-    maxRetry: -1
+    maxRetry: 100000
     policies:
     - event: PodEvicted
       action: RestartTask
@@ -101,7 +101,7 @@ spec:
         restartPolicy: OnFailure
   - replicas: {{gpu_workers}}  # One ps pod specified
     name: gpu
-    maxRetry: -1
+    maxRetry: 100000
     policies:
     - event: PodEvicted
       action: RestartTask
@@ -188,7 +188,7 @@ spec:
         restartPolicy: OnFailure
   - replicas: {{cpu_workers}}  # One ps pod specified
     name: cpu
-    maxRetry: -1
+    maxRetry: 100000
     policies:
     - event: PodEvicted
       action: RestartTask
