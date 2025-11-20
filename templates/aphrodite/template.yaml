@@ -11,11 +11,12 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetry: {{max_retries}}
+  maxRetry: -1
   tasks:
 {% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
     name: registrar
+    maxRetry: -1
     policies:
     - event: PodEvicted
       action: RestartJob
@@ -112,6 +113,7 @@ spec:
 {% endif %}
   - replicas: 1   # One ps pod specified
     name: server
+    maxRetry: -1
     policies:
     - event: PodEvicted
       action: RestartJob
@@ -128,7 +130,9 @@ spec:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+      {% if gpu_backend == "cuda" %}
         runtimeClassName: nvidia
+      {% endif %}
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -199,13 +203,21 @@ spec:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
               nvidia.com/gpu: {{gpus}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
               ephemeral-storage: {{working_memory}}Gi
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
               nvidia.com/gpu: {{gpus}}
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
             - mountPath: /dev/shm
@@ -222,6 +234,7 @@ spec:
         restartPolicy: OnFailure
   - replicas: {{workers - 1}}
     name: worker
+    maxRetry: -1
     policies:
     - event: PodEvicted
       action: RestartJob
@@ -240,7 +253,9 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+      {% if gpu_backend == "cuda" %}
         runtimeClassName: nvidia
+      {% endif %}
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -289,13 +304,21 @@ spec:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
               nvidia.com/gpu: {{gpus}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
               ephemeral-storage: {{working_memory}}Gi
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
               nvidia.com/gpu: {{gpus}}
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
             - mountPath: /dev/shm

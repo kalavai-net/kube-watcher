@@ -15,33 +15,33 @@
   required: true
   description: "Name of the job"
 
-- name: head_is_worker
-  value: "no"
-  default: "no"
-  editable: true
-  required: false
-  description: "If the head acts as a worker (with GPU, CPU and MEMORY allocation)"
-
-- name: workers
-  value: 1
-  default: 1
-  editable: true
-  required: true
-  description: "Number of desired starting workers"
-
-- name: min_workers
+- name: min_nvidia_gpus
   value: 0
   default: 0
   editable: true
   required: true
-  description: "Minimum workers to always have running (can be 0)"
+  description: "Minimum NVIDIA GPUS to always have running (can be 0)"
 
-- name: max_workers
+- name: max_nvidia_gpus
   value: 1
   default: 1
   editable: true
   required: true
-  description: "Maximum target workers for autoscaling"
+  description: "Maximum target NVIDIA GPUs for autoscaling"
+
+- name: min_amd_gpus # DISABLED
+  value: 0
+  default: 0
+  editable: false
+  required: false
+  description: "Minimum AMD GPUs to always have running (can be 0)"
+
+- name: max_amd_gpus # DISABLED
+  value: 0
+  default: 0
+  editable: false
+  required: false
+  description: "Maximum target AMD GPUs for autoscaling"
 
 - name: cpus
   value: 2
@@ -49,13 +49,6 @@
   editable: true
   required: true
   description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
-
-- name: gpus
-  value: 1
-  default: 1
-  editable: true
-  required: true
-  description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
 
 - name: memory
   value: 8
@@ -109,13 +102,6 @@
 - name: enable_auth
   value: "false"
   default: "false"
-  editable: true
+  editable: false
   required: false
   description: "Configure Ray cluster with authentication and access control: https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html"
-
-- name: max_retries
-  value: 1000
-  default: 1000
-  editable: true
-  required: false
-  description: "If the job fails, how many times to retry redeployment"

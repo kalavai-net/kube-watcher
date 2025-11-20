@@ -46,8 +46,8 @@ spec:
               cpu: 2
               memory: 2Gi
             requests:
-              cpu: 2
-              memory: 2Gi
+              cpu: 1
+              memory: 1Gi
           lifecycle:
             preStop:
               exec:
@@ -78,13 +78,13 @@ spec:
             name: {{deployment_id}}-rbac
       {% endif %}
   workerGroupSpecs:
-  # worker group of up to 4 GPU workers
-  - groupName: gpu-group
-    replicas: {{workers}}
-    minReplicas: {{min_workers}}
-    maxReplicas: {{max_workers}}
+  # NVIDIA group of GPUs
+  - groupName: nvidia-group
+    replicas: 0
+    minReplicas: {{min_nvidia_gpus}}
+    maxReplicas: {{max_nvidia_gpus}}
     rayStartParams: 
-    #  num-gpus: "{{gpus}}"
+    #  num-gpus: "1"
     template:
       metadata:
         labels:
@@ -124,12 +124,68 @@ spec:
           imagePullPolicy: IfNotPresent
           resources:
             limits:
-              nvidia.com/gpu: {{gpus}}
+              nvidia.com/gpu: 1
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
               cpu: {{cpus}}
               memory: {{memory}}Gi
             requests:
-              nvidia.com/gpu: {{gpus}}
+              nvidia.com/gpu: 1
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","ray stop"]
+  # AMD group of GPUs
+  - groupName: amd-group
+    replicas: 0
+    minReplicas: {{min_amd_gpus}}
+    maxReplicas: {{max_amd_gpus}}
+    rayStartParams: 
+    #  num-gpus: "1"
+    template:
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+      {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
+        containers:
+        - name: ml-work-group
+          image: docker.io/rayproject/ray:{{ray_version}}-py{{python_version}}-{{cuda_version}}
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              amd.com/gpu: 1
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+            requests:
+              amd.com/gpu: 1
               cpu: {{cpus}}
               memory: {{memory}}Gi
           lifecycle:

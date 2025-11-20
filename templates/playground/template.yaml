@@ -11,10 +11,11 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetry: {{max_retries}}
+  maxRetry: -1
   tasks:
   - replicas: {{replicas}}   # One ps pod specified
     name: server
+    maxRetry: -1
     policies:
     - event: PodEvicted
       action: RestartJob

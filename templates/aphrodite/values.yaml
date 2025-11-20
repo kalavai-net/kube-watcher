@@ -15,6 +15,13 @@
   required: false
   description: "Model name to use (defaults to model_id) during inference"
 
+- name: gpu_backend
+  value: "cuda"
+  default: "cuda"
+  editable: true
+  required: false
+  description: "Use 'cuda' (nvidia cards) or 'rocm' (AMD cards) backend"
+
 - name: working_memory
   value: 10
   default: 10
@@ -98,13 +105,6 @@
   editable: true
   required: false
   description: "Extra parameters to pass to the vLLM server. See https://aphrodite.pygmalion.chat/usage/openai/#command-line-arguments-for-the-server"
-
-- name: max_retries
-  value: 1000
-  default: 1000
-  editable: true
-  required: false
-  description: "If the job fails, how many times to retry redeployment"
 
 - name: nodeport
   value: ""

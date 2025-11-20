@@ -11,7 +11,7 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetry: {{max_retries}}
+  maxRetry: -1
   tasks:
   - replicas: 1
     name: server

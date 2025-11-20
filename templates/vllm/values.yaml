@@ -155,13 +155,6 @@
   required: false
   description: "Extra parameters to pass to the vLLM server. See https://docs.vllm.ai/en/stable/configuration/engine_args.html"
 
-- name: max_retries
-  value: 1000
-  default: 1000
-  editable: true
-  required: false
-  description: "If the job fails, how many times to retry redeployment"
-
 - name: nodeport
   value: ""
   default: ""

@@ -12,10 +12,11 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetry: {{max_retries}}
+  maxRetry: -1
   tasks:
   - replicas: 1   # One ps pod specified
     name: server
+    maxRetry: -1
     policies:
     - event: "*"
       action: RestartJob
@@ -57,7 +58,7 @@ spec:
           kalavai/role: server
         containers:
         - name: gpustack-leader
-          image: docker.io/gpustack/gpustack:v0.7.1-cpu
+          image: docker.io/gpustack/gpustack:v0.7.1
           command:
           - sh
           - -c
@@ -100,6 +101,7 @@ spec:
         restartPolicy: OnFailure
   - replicas: {{nvidia_gpus}}
     name: cuda-worker
+    maxRetry: -1
     policies:
     - event: "*"
       action: RestartPod
@@ -176,6 +178,7 @@ spec:
         restartPolicy: OnFailure
   - replicas: {{amd_gpus}}
     name: rocm-worker
+    maxRetry: -1
     policies:
     - event: "*"
       action: RestartPod

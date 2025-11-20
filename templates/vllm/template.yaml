@@ -11,7 +11,7 @@ spec:
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
-  maxRetry: {{max_retries}}
+  maxRetry: -1
   tasks:
 {% if litellm_key != "" %}
   - replicas: 1   # One ps pod specified
@@ -151,7 +151,7 @@ spec:
               - matchExpressions:
               {% for selector in NODE_SELECTORS %}
                 {% for vals in selector.value %}
-                - key: {{selector.name}}ENTRYPOINT ["/usr/bin/tini", "--"]
+                - key: {{selector.name}}
 
                 {% endfor %}
               {% endfor %}

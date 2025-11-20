@@ -132,13 +132,6 @@
   required: false
   description: "Password for Clickhouse"
 
-- name: max_retries
-  value: 1000
-  default: 1000
-  editable: true
-  required: false
-  description: "If the job fails, how many times to retry redeployment"
-
 - name: nodeport
   value: ""
   default: ""
