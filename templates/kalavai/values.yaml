@@ -1,0 +1,25 @@
+############################
+## MUST HAVE THESE FIELDS ##
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  editable: false
+  required: false
+  description: "Field that contains the ID of the job"
+############################
+
+- name: deployment_name
+  value: litellm
+  default: litellm
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+# KUBE WATCHER
+- name: watcher_version
+  value: "v2025.11.70"
+  default: "v2025.11.70"
+  editable: true
+  required: false
+  description: "Kube watcher image version"
+

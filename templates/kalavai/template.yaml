@@ -1,0 +1,233 @@
+apiVersion: v1
+stringData:
+  kw_admin_key: {{kw_admin_key}}
+  kw_read_only_key: {{kw_read_only_key}}
+  kw_write_key: {{kw_write_key}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  queue: default
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  maxRetry: 100000
+  tasks:
+  - replicas: 1   # One ps pod specified
+    name: kube-watcher
+    maxRetry: 100000
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          role: leader
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        nodeSelector:
+          kalavai/role: server
+        terminationGracePeriodSeconds: 60
+        containers:
+        - name: watcher
+          image: docker.io/kalavai/kube-watcher:{{watcher_version}}:latest
+          env:
+          - name: KW_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: kw_admin_key
+          - name: KW_READ_ONLY_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: kw_read_only_key
+          - name: KW_WRITE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: kw_write_key
+          - name: IN_CLUSTER
+            value: "True"
+          - name: KW_USE_AUTH
+            value: "True"
+          - name: ALLOW_UNREGISTERED_USER
+            value: "{{watcher_allow_unregistered_user}}"
+          - name: deployment.nodeSelector.{{kalavai_role_label}}
+            value: "server"
+
+
+
+          ports:
+          - containerPort: 8080
+            name: model-port
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              ephemeral-storage: {{working_memory}}Gi
+{% if backend == "cuda" %}
+              nvidia.com/gpu: 1
+{% elif backend == "rocm" %}
+              amd.com/gpu: 1
+{% endif %}
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+              ephemeral-storage: {{working_memory}}Gi
+{% if backend == "cuda" %}
+              nvidia.com/gpu: 1
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+{% elif backend == "rocm" %}
+              amd.com/gpu: 1
+{% endif %}
+          volumeMounts:
+            - name: cache
+              mountPath: /cache
+        volumes:
+        - name: cache
+          emptyDir: {}
+        restartPolicy: OnFailure
+  - replicas: {{workers - 1}}
+    name: worker
+    maxRetry: 100000
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of worker pods
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        terminationGracePeriodSeconds: 60
+{% if backend == "cuda" %}
+        runtimeClassName: nvidia
+{% endif %}
+        {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
+        containers:
+        - name: llamacpp-worker
+{% if backend == "cuda" %}
+          image: docker.io/kalavai/llamacpp-cuda:latest
+{% elif backend == "rocm" %}
+          image: docker.io/kalavai/llamacpp-rocm:latest
+{% else %}
+          image: docker.io/kalavai/llamacpp-cpu:latest
+{% endif %}
+          command:
+          - sh
+          - -c
+          - |
+{% if backend == "cuda" %}
+            /workspace/build.sh nvidia;
+{% elif backend == "rocm" %}
+            /workspace/build.sh amd; 
+{% else %}
+            /workspace/build.sh cpu;
+{% endif %}
+            /workspace/run_rpc_worker.sh --rpc_port={{rpc_port}}
+          env:
+          - name: HF_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+{% if backend == "cuda" %}
+              nvidia.com/gpu: 1
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+{% elif backend == "rocm" %}
+              amd.com/gpu: 1
+{% endif %}
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+{% if backend == "cuda" %}
+              nvidia.com/gpu: 1
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+{% elif backend == "rocm" %}
+              amd.com/gpu: 1
+{% endif %}
+        restartPolicy: OnFailure
+---
+# deploy NodePort to expose model (if not using LiteLLM registration)
+{% if litellm_key == "" %}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - name: main
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    {% if nodeport != "" %}
+      nodePort: {{nodeport}}
+    {% endif %}
+{% endif %}
