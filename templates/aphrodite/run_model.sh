@@ -34,7 +34,8 @@ done
 
 source /home/ray/workspace/env/bin/activate
 
-python -m aphrodite.endpoints.openai.api_server  \
+#python -m aphrodite.endpoints.openai.api_server  \
+aphrodite run \
     --model $model_path \
     --served-model-name $model_id \
     --port 8080 --host 0.0.0.0 \

@@ -1,3 +1,14 @@
+apiVersion: v1
+stringData:
+  litellm_key: {{litellm_key}}
+  hf_token: {{hf_token}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -27,11 +38,11 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -87,7 +98,10 @@ spec:
           - name: LITELLM_BASE_URL
             value: {{litellm_base_url}}
           - name: LITELLM_KEY
-            value: {{litellm_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: litellm_key
           - name: MODEL_ID
             value: {{model_id}}
           - name: DEPLOYMENT_ID
@@ -124,12 +138,12 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
       {% if gpu_backend == "cuda" %}
         runtimeClassName: nvidia
       {% endif %}
@@ -186,7 +200,10 @@ spec:
             exit 1
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           ports:
           - containerPort: 8080
             name: model-port
@@ -299,7 +316,10 @@ spec:
             RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh worker --ray_address=$PS_HOST --ray_port=6379 --ray_object_store_memory={{memory * 500000000}} --ray_block=1
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           resources:
             requests:
               cpu: {{cpus}}
