@@ -3,6 +3,7 @@ stringData:
   kw_admin_key: {{kw_admin_key}}
   kw_read_only_key: {{kw_read_only_key}}
   kw_write_key: {{kw_write_key}}
+  gui_access_key: {{gui_access_key}}
 kind: Secret
 metadata:
   name: {{deployment_id}}-secret
@@ -26,7 +27,7 @@ spec:
   maxRetry: 100000
   tasks:
   - replicas: 1   # One ps pod specified
-    name: kube-watcher
+    name: watcher
     maxRetry: 100000
     policies:
     - event: PodEvicted
@@ -73,47 +74,24 @@ spec:
             value: "{{watcher_allow_unregistered_user}}"
           - name: deployment.nodeSelector.{{kalavai_role_label}}
             value: "server"
-
-
-
           ports:
-          - containerPort: 8080
+          - containerPort: 8000
             name: model-port
           readinessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
             requests:
-              cpu: {{cpus}}
-              memory: {{memory}}Gi
-              ephemeral-storage: {{working_memory}}Gi
-{% if backend == "cuda" %}
-              nvidia.com/gpu: 1
-{% elif backend == "rocm" %}
-              amd.com/gpu: 1
-{% endif %}
+              cpu: 1
+              memory: 1Gi
             limits:
-              cpu: {{cpus}}
-              memory: {{memory}}Gi
-              ephemeral-storage: {{working_memory}}Gi
-{% if backend == "cuda" %}
-              nvidia.com/gpu: 1
-              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
-{% elif backend == "rocm" %}
-              amd.com/gpu: 1
-{% endif %}
-          volumeMounts:
-            - name: cache
-              mountPath: /cache
-        volumes:
-        - name: cache
-          emptyDir: {}
-        restartPolicy: OnFailure
-  - replicas: {{workers - 1}}
-    name: worker
+              cpu: 1
+              memory: 1Gi
+  - replicas: 1
+    name: gui
     maxRetry: 100000
     policies:
     - event: PodEvicted
@@ -130,86 +108,90 @@ spec:
           kalavai.job.name: {{deployment_id}}
       spec:
         terminationGracePeriodSeconds: 60
-{% if backend == "cuda" %}
-        runtimeClassName: nvidia
-{% endif %}
-        {% if NODE_SELECTORS %}
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-            {% if NODE_SELECTORS_OPS == "OR" %}
-              {% for selector in NODE_SELECTORS %}
-              - matchExpressions:
-                - key: {{selector.name}}
-                  operator: In
-                  values:
-                  {% for vals in selector.value %}
-                  - "{{vals}}"
-                  {% endfor %}
-              {% endfor %}
-            {% else %}
-              - matchExpressions:
-              {% for selector in NODE_SELECTORS %}
-                {% for vals in selector.value %}
-                - key: {{selector.name}}
-                  operator: In
-                  values:
-                  - "{{vals}}"
-                {% endfor %}
-              {% endfor %}
-            {% endif %}
-        {% endif %}
         containers:
-        - name: llamacpp-worker
-{% if backend == "cuda" %}
-          image: docker.io/kalavai/llamacpp-cuda:latest
-{% elif backend == "rocm" %}
-          image: docker.io/kalavai/llamacpp-rocm:latest
-{% else %}
-          image: docker.io/kalavai/llamacpp-cpu:latest
-{% endif %}
+        - name: gui
+          image: docker.io/kalavai/kalavai-gui:latest
           command:
           - sh
           - -c
           - |
-{% if backend == "cuda" %}
-            /workspace/build.sh nvidia;
-{% elif backend == "rocm" %}
-            /workspace/build.sh amd; 
-{% else %}
-            /workspace/build.sh cpu;
-{% endif %}
-            /workspace/run_rpc_worker.sh --rpc_port={{rpc_port}}
+            KALAVAI_BRIDGE_URL=`cat /etc/volcano/backend.host`;
+            KALAVAI_BRIDGE_PORT=49152;
+            reflex run
           env:
-          - name: HF_TOKEN
+          - name: ACCESS_KEY
             valueFrom:
               secretKeyRef:
                 name: {{deployment_id}}-secret
-                key: hf_token
+                key: gui_access_key
           resources:
             requests:
-              cpu: {{cpus}}
-              memory: {{memory}}Gi
-{% if backend == "cuda" %}
-              nvidia.com/gpu: 1
-              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
-{% elif backend == "rocm" %}
-              amd.com/gpu: 1
-{% endif %}
+              cpu: 1
+              memory: 1Gi
             limits:
-              cpu: {{cpus}}
-              memory: {{memory}}Gi
-{% if backend == "cuda" %}
-              nvidia.com/gpu: 1
-              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
-{% elif backend == "rocm" %}
-              amd.com/gpu: 1
-{% endif %}
+              cpu: 1
+              memory: 1Gi
+        restartPolicy: OnFailure
+  - replicas: 1
+    name: backend
+    maxRetry: 100000
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of worker pods
+      metadata:
+        labels:
+          kalavai.job.name: {{deployment_id}}
+          role: gui
+      spec:
+        terminationGracePeriodSeconds: 60
+        containers:
+        - name: kalavai-backend
+          image: docker.io/python:3.12-slim
+          command:
+          - sh
+          - -c
+          - |
+            pip install kalavai-client
+            # set credentials
+            WATCHER_ADDRESS=`cat /etc/volcano/watcher.host`;
+            echo "{\"server_ip\": \"$WATCHER_ADDRESS\", \"watcher_admin_key\": \"$KW_ADMIN_KEY\", \"watcher_readonly_key\": \"\", \"watcher_write_key\": \"\", \"watcher_service\": \"$WATCHER_ADDRESS:8000\", \"node_name\": \"\", \"cluster_name\": \"\", \"public_location\": null, \"user_api_key\": null}" > ~/.cache/kalavai/.server 
+            kalavai gui start --log-level debug --backend-only
+          env:
+          - name: KW_ADMIN_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: kw_admin_key
+          - name: KW_READ_ONLY_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: kw_read_only_key
+          - name: KW_WRITE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: kw_write_key
+          ports:
+          - containerPort: 49153
+            name: gui-port
+          resources:
+            requests:
+              cpu: 1
+              memory: 1Gi
+            limits:
+              cpu: 1
+              memory: 1Gi
         restartPolicy: OnFailure
 ---
 # deploy NodePort to expose model (if not using LiteLLM registration)
-{% if litellm_key == "" %}
 apiVersion: v1
 kind: Service
 metadata:
@@ -220,14 +202,11 @@ metadata:
 spec:
   type: NodePort
   selector:
-    role: leader
+    role: gui
     kalavai.job.name: {{deployment_id}}
   ports:
     - name: main
-      port: 8080
-      targetPort: 8080
+      port: 49153
+      targetPort: 49153
       protocol: TCP
-    {% if nodeport != "" %}
-      nodePort: {{nodeport}}
-    {% endif %}
-{% endif %}
+      nodePort: {{guiport}}
