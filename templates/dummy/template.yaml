@@ -27,8 +27,8 @@ spec:
     name: ps
     maxRetry: 100000
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:

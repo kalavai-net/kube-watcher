@@ -1,3 +1,18 @@
+apiVersion: v1
+stringData:
+  postgres_password: {{postgres_password}}
+  master_key: {{master_key}}
+  salt_key: {{salt_key}}
+  ui_password: {{ui_password}}
+  langfuse_public_key: {{langfuse_public_key}}
+  langfuse_secret_key: {{langfuse_secret_key}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -31,11 +46,11 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -75,7 +90,10 @@ spec:
           - name: POSTGRES_USER
             value: {{postgres_user}}
           - name: POSTGRES_PASSWORD
-            value: {{postgres_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: postgres_password
           - name: PGDATA
             value: "/var/lib/postgresql/data/pgdata"
           resources:
@@ -99,12 +117,12 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -154,9 +172,15 @@ spec:
           - name: LITELLM_LOG
             value: ERROR
           - name: LITELLM_MASTER_KEY
-            value: {{master_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: master_key
           - name: LITELLM_SALT_KEY
-            value: {{salt_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: salt_key
           - name: STORE_MODEL_IN_DB
             value: "True"
           - name: PORT
@@ -166,11 +190,20 @@ spec:
           - name: UI_USERNAME
             value: "{{ui_username}}"
           - name: UI_PASSWORD
-            value: "{{ui_password}}"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: ui_password
           - name: LANGFUSE_PUBLIC_KEY
-            value: "{{langfuse_public_key}}"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: langfuse_public_key
           - name: LANGFUSE_SECRET_KEY
-            value: "{{langfuse_secret_key}}"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: langfuse_secret_key
           - name: LANGFUSE_HOST
             value: "{{langfuse_host}}"
           resources:

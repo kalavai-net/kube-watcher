@@ -1,3 +1,14 @@
+apiVersion: v1
+stringData:
+  n8n_encryption_key: {{n8n_encryption_key}}
+  postgres_password: {{postgres_password}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -31,11 +42,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -75,7 +86,10 @@ spec:
           - name: POSTGRES_USER
             value: {{postgres_user}}
           - name: POSTGRES_PASSWORD
-            value: {{postgres_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: postgres_password
           - name: PGDATA
             value: "/var/lib/postgresql/data/pgdata"
           resources:
@@ -159,11 +173,18 @@ spec:
           - name: DB_POSTGRESDB_USER
             value: {{postgres_user}}
           - name: DB_POSTGRESDB_PASSWORD
-            value: {{postgres_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: postgres_password
           - name: DB_POSTGRESDB_SCHEMA
             value: {{postgres_schema}}
           - name: N8N_ENCRYPTION_KEY
-            value: {{n8n_encryption_key}}
+            ###value: {{n8n_encryption_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: n8n_encryption_key
           - name: N8N_DISABLE_UI
             value: "{{n8n_disable_ui}}"
           - name: N8N_DIAGNOSTICS_ENABLED
@@ -172,7 +193,6 @@ spec:
             value: "false"
           - name: N8N_SECURE_COOKIE
             value: "{{n8n_secure_cookie}}"
-            
           resources:
             requests:
               cpu: 0.5

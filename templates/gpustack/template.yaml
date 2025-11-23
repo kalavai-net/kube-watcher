@@ -1,3 +1,13 @@
+apiVersion: v1
+stringData:
+  hf_token: {{hf_token}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -18,42 +28,21 @@ spec:
     name: server
     maxRetry: 100000
     policies:
-    - event: "*"
+    - event: "PodFailed"
+      action: RestartJob
+    - event: "PodEvicted"
+      action: RestartJob
+    - event: "TaskCompleted"
+      action: RestartJob
+    - event: "TaskFailed"
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
-        {% if NODE_SELECTORS %}
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-            {% if NODE_SELECTORS_OPS == "OR" %}
-              {% for selector in NODE_SELECTORS %}
-              - matchExpressions:
-                - key: {{selector.name}}
-                  operator: In
-                  values:
-                  {% for vals in selector.value %}
-                  - "{{vals}}"
-                  {% endfor %}
-              {% endfor %}
-            {% else %}
-              - matchExpressions:
-              {% for selector in NODE_SELECTORS %}
-                {% for vals in selector.value %}
-                - key: {{selector.name}}
-                  operator: In
-                  values:
-                  - "{{vals}}"
-                {% endfor %}
-              {% endfor %}
-            {% endif %}
-        {% endif %}
+        terminationGracePeriodSeconds: 60
         nodeSelector:
           kalavai/role: server
         containers:
@@ -66,14 +55,17 @@ spec:
             gpustack start \
               --host 0.0.0.0 \
               --port 8080 \
-              --cache-dir /cache \
+              --cache-dir /kalavai/cache \
               --token {{token}} \
               --enable-ray \
-              --bootstrap-password {{admin_password}}
-              #--database_url <>
+              --bootstrap-password {{admin_password}};
+            exit 1
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           - name: GPUSTACK_DB_POOL_SIZE
             value: "20"
           - name: GPUSTACK_DB_MAX_OVERFLOW
@@ -87,30 +79,36 @@ spec:
             requests:
               cpu: 1
               memory: 1Gi
-              #ephemeral-storage: {{working_memory}}Gi
+              ephemeral-storage: {{working_memory}}Gi
             limits:
               cpu: 2
               memory: 2Gi
-              #ephemeral-storage: {{working_memory}}Gi
-          volumeMounts:
-            - name: cache
-              mountPath: /cache
-        volumes:
-        - name: cache
-          emptyDir: {}
+              ephemeral-storage: {{working_memory}}Gi
+        #   volumeMounts:
+        #     - name: cache
+        #       mountPath: /kalavai/cache
+        # volumes:
+        # - name: cache
+        #   emptyDir: {}
         restartPolicy: OnFailure
   - replicas: {{nvidia_gpus}}
     name: cuda-worker
     maxRetry: 100000
     policies:
-    - event: "*"
-      action: RestartPod
+    - event: "PodFailed"
+      action: RestartTask
+    - event: "PodEvicted"
+      action: RestartTask
+    - event: "TaskCompleted"
+      action: RestartTask
+    - event: "TaskFailed"
+      action: RestartTask
     template: # Definition of worker pods
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
         affinity:
@@ -150,14 +148,17 @@ spec:
             echo $PS_HOST;
             gpustack start \
               --server-url http://$PS_HOST:8080 \
-              --cache-dir /cache \
+              --cache-dir /kalavai/cache \
               --enable-ray \
               --token {{token}}
             # fail if the connection was terminated
             exit 1
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           resources:
             requests:
               cpu: {{cpus}}
@@ -169,25 +170,31 @@ spec:
               nvidia.com/gpu: 1
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
               ephemeral-storage: {{working_memory}}Gi
-          volumeMounts:
-            - name: cache
-              mountPath: /cache
-        volumes:
-        - name: cache
-          emptyDir: {}
+        #   volumeMounts:
+        #     - name: cache
+        #       mountPath: /kalavai/cache
+        # volumes:
+        # - name: cache
+        #   emptyDir: {}
         restartPolicy: OnFailure
   - replicas: {{amd_gpus}}
     name: rocm-worker
     maxRetry: 100000
     policies:
-    - event: "*"
-      action: RestartPod
+    - event: "PodFailed"
+      action: RestartTask
+    - event: "PodEvicted"
+      action: RestartTask
+    - event: "TaskCompleted"
+      action: RestartTask
+    - event: "TaskFailed"
+      action: RestartTask
     template: # Definition of worker pods
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -226,14 +233,17 @@ spec:
             echo $PS_HOST;
             /root/.local/bin/gpustack start \
               --server-url http://$PS_HOST:8080 \
-              --cache-dir /cache \
+              --cache-dir /kalavai/cache \
               --enable-ray \
               --token {{token}}
             # fail if the connection was terminated
             exit 1
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           resources:
             requests:
               cpu: {{cpus}}
@@ -244,12 +254,12 @@ spec:
               memory: {{memory}}Gi
               amd.com/gpu: 1
               ephemeral-storage: {{working_memory}}Gi
-          volumeMounts:
-            - name: cache
-              mountPath: /cache
-        volumes:
-        - name: cache
-          emptyDir: {}
+        #   volumeMounts:
+        #     - name: cache
+        #       mountPath: /kalavai/cache
+        # volumes:
+        # - name: cache
+        #   emptyDir: {}
         restartPolicy: OnFailure      
 ---
 # deploy NodePort to expose model

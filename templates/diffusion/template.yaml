@@ -1,3 +1,15 @@
+apiVersion: v1
+stringData:
+  hf_token: {{hf_token}}
+  civitai_api_key: {{civitai_api_key}}
+  litellm_key: {{litellm_key}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -26,11 +38,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -86,7 +98,10 @@ spec:
           - name: LITELLM_BASE_URL
             value: {{litellm_base_url}}
           - name: LITELLM_KEY
-            value: {{litellm_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: litellm_key
           - name: MODEL_ID
             value: {{model_id}}
           - name: DEPLOYMENT_ID
@@ -123,12 +138,12 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
           role: leader
       spec:
+        terminationGracePeriodSeconds: 60
         runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
         affinity:
@@ -174,9 +189,15 @@ spec:
             bash webui.sh -f;
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           - name: CIVITAI_API_KEY
-            value: {{civitai_api_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: civitai_api_key
           ports:
           - containerPort: 7860
             name: container-port

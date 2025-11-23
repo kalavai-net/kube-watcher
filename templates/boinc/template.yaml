@@ -26,12 +26,12 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -112,7 +112,6 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         annotations:
           # must have these annotations
@@ -121,6 +120,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
         affinity:
@@ -199,12 +199,12 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         annotations:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:

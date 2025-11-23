@@ -25,12 +25,12 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
           role: leader
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:

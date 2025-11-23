@@ -1,3 +1,13 @@
+apiVersion: v1
+stringData:
+  hf_token: {{hf_token}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -28,12 +38,12 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -111,7 +121,10 @@ spec:
           - name: HF_HOME
             value: /cache
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           resources:
             requests:
               cpu: 1
@@ -149,11 +162,11 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
         affinity:
@@ -202,7 +215,10 @@ spec:
               {{extra}}
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           - name: HF_HOME
             value: /cache
           resources:

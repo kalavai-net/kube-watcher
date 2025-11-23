@@ -1,3 +1,20 @@
+apiVersion: v1
+stringData:
+  postgres_password: {{postgres_password}}
+  worker_encryption_key: {{worker_encryption_key}}
+  clickhouse_password: {{clickhouse_password}}
+  minio_secret: {{minio_secret}}
+  redis_auth: {{redis_auth}}
+  nextauth_secret: {{nextauth_secret}}
+  langfuse_init_project_secret_key: {{langfuse_init_project_secret_key}}
+  langfuse_init_user_password: {{langfuse_init_user_password}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -30,12 +47,12 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -66,7 +83,7 @@ spec:
             done
 
           {% if external_postgreSQL_url == "" %}
-            export DATABASE_URL=postgresql://postgres:{{postgres_password}}@$DB_HOST:5432/postgres
+            export DATABASE_URL=postgresql://postgres:$POSTGRESS_PASSWORD@$DB_HOST:5432/postgres
           {% else %}
             export DATABASE_URL={{external_postgreSQL_url}}
           {% endif %}
@@ -92,11 +109,18 @@ spec:
           #   value: "postgresql://postgres:postgres@langfuse-postgres-0.langfuse:5432/postgres"
           # - name: CLICKHOUSE_URL
           #   value: "clickhouse://langfuse-clickhouse-0.langfuse:8123"
-
+          - name: POSTGRESS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: postgres_password
           - name: SALT
             value: {{worker_salt}}
           - name: ENCRYPTION_KEY
-            value: "{{worker_encryption_key}}"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: worker_encryption_key
           - name: TELEMETRY_ENABLED
             value: "true"
           - name: LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES
@@ -104,7 +128,10 @@ spec:
           - name: CLICKHOUSE_USER
             value: clickhouse
           - name: CLICKHOUSE_PASSWORD
-            value: {{clickhouse_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: clickhouse_password
           - name: CLICKHOUSE_CLUSTER_ENABLED
             value: "false"
           - name: LANGFUSE_USE_AZURE_BLOB
@@ -116,7 +143,10 @@ spec:
           - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
             value: "minio"
           - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
-            value: {{minio_secret}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: minio_secret
           - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
             value: "true"
           - name: LANGFUSE_S3_EVENT_UPLOAD_PREFIX
@@ -128,7 +158,10 @@ spec:
           - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
             value: minio
           - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
-            value: {{minio_secret}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: minio_secret
           - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
             value: "true"
           - name: LANGFUSE_S3_MEDIA_UPLOAD_PREFIX
@@ -146,13 +179,19 @@ spec:
           - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
             value: "minio"
           - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
-            value: {{minio_secret}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: minio_secret
           - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
             value: "true"
           - name: REDIS_PORT
             value: "6379"
           - name: REDIS_AUTH
-            value: {{redis_auth}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: redis_auth
           - name: REDIS_TLS_ENABLED
             value: "false"
           # - name: REDIS_TLS_CA
@@ -164,7 +203,10 @@ spec:
           - name: NEXTAUTH_URL
             value: http://localhost:3000
           - name: NEXTAUTH_SECRET
-            value: {{nextauth_secret}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: nextauth_secret
           - name: LANGFUSE_INIT_ORG_ID
             value: "default_org_id"
           - name: LANGFUSE_INIT_ORG_NAME
@@ -176,13 +218,19 @@ spec:
           - name: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
             value: {{langfuse_init_project_public_key}}
           - name: LANGFUSE_INIT_PROJECT_SECRET_KEY
-            value: {{langfuse_init_project_secret_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: langfuse_init_project_secret_key
           - name: LANGFUSE_INIT_USER_EMAIL
             value: {{langfuse_init_user_email}}
           - name: LANGFUSE_INIT_USER_NAME
             value: {{langfuse_init_user_name}}
           - name: LANGFUSE_INIT_USER_PASSWORD
-            value: {{langfuse_init_user_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: langfuse_init_user_password
           resources:
             requests:
               cpu: 1
@@ -203,11 +251,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -262,7 +310,10 @@ spec:
           - name: SALT
             value: {{worker_salt}}
           - name: ENCRYPTION_KEY
-            value: "{{worker_encryption_key}}"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: worker_encryption_key
           - name: TELEMETRY_ENABLED
             value: "true"
           - name: LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES
@@ -270,7 +321,10 @@ spec:
           - name: CLICKHOUSE_USER
             value: clickhouse
           - name: CLICKHOUSE_PASSWORD
-            value: {{clickhouse_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: clickhouse_password
           - name: CLICKHOUSE_CLUSTER_ENABLED
             value: "false"
           - name: LANGFUSE_USE_AZURE_BLOB
@@ -282,7 +336,10 @@ spec:
           - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
             value: "minio"
           - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
-            value: {{minio_secret}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: minio_secret
           - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
             value: "true"
           - name: LANGFUSE_S3_EVENT_UPLOAD_PREFIX
@@ -294,7 +351,10 @@ spec:
           - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
             value: minio
           - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
-            value: {{minio_secret}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: minio_secret
           - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
             value: "true"
           - name: LANGFUSE_S3_MEDIA_UPLOAD_PREFIX
@@ -312,13 +372,19 @@ spec:
           - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
             value: "minio"
           - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
-            value: {{minio_secret}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: minio_secret
           - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
             value: "true"
           - name: REDIS_PORT
             value: "6379"
           - name: REDIS_AUTH
-            value: {{redis_auth}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: redis_auth
           - name: REDIS_TLS_ENABLED
             value: "false"
           # - name: REDIS_TLS_CA
@@ -348,11 +414,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -371,7 +437,10 @@ spec:
           - name: POSTGRES_USER
             value: {{postgres_user}}
           - name: POSTGRES_PASSWORD
-            value: {{postgres_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: postgres_password
           - name: PGDATA
             value: "/var/lib/postgresql/data/pgdata"
           resources:
@@ -395,11 +464,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -437,11 +506,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -487,7 +556,10 @@ spec:
           - name: MINIO_ROOT_USER
             value: minio
           - name: MINIO_ROOT_PASSWORD
-            value: {{minio_secret}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: minio_secret
           resources:
             requests:
               cpu: 1
@@ -508,11 +580,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -554,7 +626,10 @@ spec:
           - name: CLICKHOUSE_USER
             value: clickhouse
           - name: CLICKHOUSE_PASSWORD
-            value: {{clickhouse_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: clickhouse_password
           resources:
             requests:
               cpu: 1

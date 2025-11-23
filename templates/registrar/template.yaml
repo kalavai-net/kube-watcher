@@ -1,3 +1,13 @@
+apiVersion: v1
+stringData:
+  litellm_key: {{litellm_key}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -26,11 +36,11 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -73,23 +83,6 @@ spec:
               --litellm_kalavai_extras='{{litellm_kalavai_extras}}' \
               --litellm_access_group={{litellm_access_group}} \
               --rpm_limit={{rpm_limit}}
-          # # Register model with LiteLLM
-          # {% if model_name_override != "" %}
-          # LITELLM_MODEL_NAME="{{model_name_override}}";
-          # {% else %}
-          # LITELLM_MODEL_NAME="{{model_id}}";
-          # {% endif %}
-          # echo "Creating new entry on LiteLLM: (host: {{model_api_base}}) - (model id: $LITELLM_MODEL_NAME)";
-          # /workspace/register_model.sh \
-          #   --litellm_base_url={{litellm_base_url}} \
-          #   --litellm_key={{litellm_key}} \
-          #   --litellm_model_name="$LITELLM_MODEL_NAME" \
-          #   --model_id={{model_id}} \
-          #   --provider=hosted_vllm \
-          #   --api_base={{model_api_base}} \
-          # {% if litellm_access_group != "" %}--model_info='{"access_groups": ["{{litellm_access_group}}"]}' \{% endif %}
-          # {% if litellm_kalavai_extras != "" %}--litellm_kalavai_extras='{{litellm_kalavai_extras}}' \{% endif %}
-          #   --job_id={{deployment_id}}
           env:
           - name: VC_NAMESPACE
             valueFrom:
@@ -104,7 +97,10 @@ spec:
           - name: LITELLM_BASE_URL
             value: {{litellm_base_url}}
           - name: LITELLM_KEY
-            value: {{litellm_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: litellm_key
           - name: MODEL_ID
             value: {{model_id}}
           - name: DEPLOYMENT_ID
@@ -121,21 +117,6 @@ spec:
                 - -c
                 - |
                   /workspace/cleanup.sh
-                # {% if model_name_override != "" %}
-                #   LITELLM_MODEL_NAME="{{model_name_override}}";
-                # {% else %}
-                #   LITELLM_MODEL_NAME="{{model_id}}";
-                # {% endif %}
-                #   MODEL_ID=$(python3 /workspace/get_litellm_id.py \
-                #     --litellm_url={{litellm_base_url}} \
-                #     --api_key={{litellm_key}} \
-                #     --job_id={{deployment_id}} \
-                #     --model_name="$LITELLM_MODEL_NAME");
-                #   curl -X POST "{{litellm_base_url}}/model/delete" \
-                #       -H 'Authorization: Bearer {{litellm_key}}' \
-                #       -H "accept: application/json" \
-                #       -H "Content-Type: application/json" \
-                #       -d '{ "id": "'$MODEL_ID'"}';
           resources:
             requests:
               cpu: 0.05

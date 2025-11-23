@@ -1,3 +1,14 @@
+apiVersion: v1
+stringData:
+  hf_token: {{hf_token}}
+  litellm_key: {{litellm_key}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -27,11 +38,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 30 #give enough time to the preStop hook
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -87,7 +98,10 @@ spec:
           - name: LITELLM_BASE_URL
             value: {{litellm_base_url}}
           - name: LITELLM_KEY
-            value: {{litellm_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: litellm_key
           - name: MODEL_ID
             value: {{model_filename}}
           - name: DEPLOYMENT_ID
@@ -124,19 +138,13 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
-{% if gpus > 0 %}
-        annotations:
-          # must have these annotations
-          {{nouse_gputype}}
-          {{use_gputype}}
-{% endif %}
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
-{% if gpus > 0 %}
+        terminationGracePeriodSeconds: 60
+{% if backend == "cuda" %}
         runtimeClassName: nvidia
 {% endif %}
         {% if NODE_SELECTORS %}
@@ -168,8 +176,10 @@ spec:
         {% endif %}
         containers:
         - name: llamacpp-leader
-{% if gpus > 0 %}
-          image: docker.io/kalavai/llamacpp-gpu:latest
+{% if backend == "cuda" %}
+          image: docker.io/kalavai/llamacpp-cuda:latest
+{% elif backend == "rocm" %}
+          image: docker.io/kalavai/llamacpp-rocm:latest
 {% else %}
           image: docker.io/kalavai/llamacpp-cpu:latest
 {% endif %}
@@ -177,8 +187,10 @@ spec:
           - sh
           - -c
           - |
-{% if gpus > 0 %}
-            /workspace/build.sh server_gpu;
+{% if backend == "cuda" %}
+            /workspace/build.sh server_nvidia;
+{% elif backend == "rocm" %}
+            /workspace/build.sh server_amd; 
 {% else %}
             /workspace/build.sh server_cpu;
 {% endif %}
@@ -194,7 +206,10 @@ spec:
               --extra='{{server_extra}}'
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           ports:
           - containerPort: 8080
             name: model-port
@@ -209,16 +224,20 @@ spec:
               cpu: {{cpus}}
               memory: {{memory}}Gi
               ephemeral-storage: {{working_memory}}Gi
-{% if gpus > 0 %}
-              nvidia.com/gpu: {{gpus}}
+{% if backend == "cuda" %}
+              nvidia.com/gpu: 1
+{% elif backend == "rocm" %}
+              amd.com/gpu: 1
 {% endif %}
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
               ephemeral-storage: {{working_memory}}Gi
-{% if gpus > 0 %}
-              nvidia.com/gpu: {{gpus}}
+{% if backend == "cuda" %}
+              nvidia.com/gpu: 1
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+{% elif backend == "rocm" %}
+              amd.com/gpu: 1
 {% endif %}
           volumeMounts:
             - name: cache
@@ -240,12 +259,12 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of worker pods
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-{% if gpus > 0 %}
+        terminationGracePeriodSeconds: 60
+{% if backend == "cuda" %}
         runtimeClassName: nvidia
 {% endif %}
         {% if NODE_SELECTORS %}
@@ -277,8 +296,10 @@ spec:
         {% endif %}
         containers:
         - name: llamacpp-worker
-{% if gpus > 0 %}
-          image: docker.io/kalavai/llamacpp-gpu:latest
+{% if backend == "cuda" %}
+          image: docker.io/kalavai/llamacpp-cuda:latest
+{% elif backend == "rocm" %}
+          image: docker.io/kalavai/llamacpp-rocm:latest
 {% else %}
           image: docker.io/kalavai/llamacpp-cpu:latest
 {% endif %}
@@ -286,28 +307,38 @@ spec:
           - sh
           - -c
           - |
-{% if gpus > 0 %}
-            /workspace/build.sh gpu;
+{% if backend == "cuda" %}
+            /workspace/build.sh nvidia;
+{% elif backend == "rocm" %}
+            /workspace/build.sh amd; 
 {% else %}
             /workspace/build.sh cpu;
 {% endif %}
             /workspace/run_rpc_worker.sh --rpc_port={{rpc_port}}
           env:
           - name: HF_TOKEN
-            value: {{hf_token}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: hf_token
           resources:
             requests:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-{% if gpus > 0 %}
-              nvidia.com/gpu: {{gpus}}
+{% if backend == "cuda" %}
+              nvidia.com/gpu: 1
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+{% elif backend == "rocm" %}
+              amd.com/gpu: 1
 {% endif %}
             limits:
               cpu: {{cpus}}
               memory: {{memory}}Gi
-{% if gpus > 0 %}
-              nvidia.com/gpu: {{gpus}}
+{% if backend == "cuda" %}
+              nvidia.com/gpu: 1
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+{% elif backend == "rocm" %}
+              amd.com/gpu: 1
 {% endif %}
         restartPolicy: OnFailure
 ---

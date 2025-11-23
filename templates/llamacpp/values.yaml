@@ -36,6 +36,13 @@
   required: true
   description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
 
+- name: backend
+  value: "cpu"
+  default: "cpu"
+  editable: true
+  required: true
+  description: "Backend to run workers. One of the following: cpu, cuda, rocm"
+
 - name: repo_id
   value: null
   default: null
@@ -63,13 +70,6 @@
   editable: true
   required: false
   description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
-
-- name: gpus
-  value: 0
-  default: 0
-  editable: true
-  required: false
-  description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
 
 - name: parallel
   value: 1

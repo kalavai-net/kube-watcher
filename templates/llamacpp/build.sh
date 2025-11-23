@@ -17,7 +17,7 @@ case "$subcommand" in
     # # issue with streaming: https://github.com/abetlen/llama-cpp-python/issues/1861
     # CMAKE_ARGS="-DGGML_RPC=on" pip3 install "llama-cpp-python[server]==0.3.7" --force-reinstall --no-cache-dir --ignore-installed
     ;;
-  server_gpu)
+  server_nvidia)
     cd /workspace/llama.cpp
     mkdir build
     cd build
@@ -25,6 +25,13 @@ case "$subcommand" in
     cmake --build . --config Release -j $(nproc)
     #source /workspace/env/bin/activate
     #CMAKE_ARGS="-DGGML_RPC=on -DGGML_CUDA=on" pip3 install "llama-cpp-python[server]==0.3.7" --force-reinstall --no-cache-dir --ignore-installed
+    ;;
+  server_amd)
+    cd /workspace/llama.cpp
+    mkdir build
+    HIPCXX="$(hipconfig -l)/clang" HIP_PATH="$(hipconfig -R)" \
+      cmake -S . -B build -DLLAMA_CURL=OFF -DGGML_HIP=ON -DGPU_TARGETS=gfx1100 -DCMAKE_BUILD_TYPE=Release \
+      && cmake --build build --config Release -- -j $(nproc)
     ;;
   cpu)
     cd /workspace/llama.cpp
@@ -36,7 +43,7 @@ case "$subcommand" in
     cmake .. -DGGML_RPC=ON -DLLAMA_CURL=OFF
     cmake --build . --config Release -j $(nproc)
     ;;
-  gpu)
+  nvidia)
     cd /workspace/llama.cpp
     mkdir build
     cd build
@@ -46,6 +53,13 @@ case "$subcommand" in
     # use -DGGML_CUDA=ON for GPU support
     cmake .. -DGGML_RPC=ON -DGGML_CUDA=ON -DGGML_CUDA_ENABLE_UNIFIED_MEMORY=1 -DLLAMA_CURL=OFF
     cmake --build . --config Release -j $(nproc)
+    ;;
+  amd)
+    cd /workspace/llama.cpp
+    mkdir build
+    HIPCXX="$(hipconfig -l)/clang" HIP_PATH="$(hipconfig -R)" \
+      cmake -S . -B build -DLLAMA_CURL=OFF -DGGML_HIP=ON -DGPU_TARGETS=gfx1100 -DCMAKE_BUILD_TYPE=Release \
+      && cmake --build build --config Release -- -j $(nproc)
     ;;
   *)
     echo "unknown subcommand: $subcommand"

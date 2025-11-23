@@ -1,3 +1,15 @@
+apiVersion: v1
+stringData:
+  postgres_password: {{postgres_password}}
+  jwt_auth_token_secret: {{jwt_auth_token_secret}}
+  jwt_refresh_token_secret: {{jwt_refresh_token_secret}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -30,12 +42,12 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -94,7 +106,10 @@ spec:
           - name: DATABASE_USER
             value: {{postgres_user}}
           - name: DATABASE_PASSWORD
-            value: {{postgres_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: postgres_password
           - name: DATABASE_PATH
             value: "/root/.flowise"
           - name: ENABLE_METRICS
@@ -102,9 +117,15 @@ spec:
           - name: MODE
             value: "{{flowise_mode}}" # queue
           - name: JWT_AUTH_TOKEN_SECRET
-            value: "{{jwt_auth_token_secret}}"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: jwt_auth_token_secret
           - name: JWT_REFRESH_TOKEN_SECRET
-            value: "{{jwt_refresh_token_secret}}"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: jwt_refresh_token_secret
           - name: JWT_ISSUER
             value: "ISSUER"
           - name: JWT_AUDIENCE
@@ -133,11 +154,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -198,7 +219,10 @@ spec:
           - name: DATABASE_USER
             value: {{postgres_user}}
           - name: DATABASE_PASSWORD
-            value: {{postgres_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: postgres_password
           - name: DATABASE_PATH
             value: "/root/.flowise"
           - name: ENABLE_METRICS
@@ -206,9 +230,15 @@ spec:
           - name: MODE
             value: "{{flowise_mode}}" # queue
           - name: JWT_AUTH_TOKEN_SECRET
-            value: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: jwt_auth_token_secret
           - name: JWT_REFRESH_TOKEN_SECRET
-            value: "AABBCCDDAABBCCDDAABBCCDDAABBCCDDAABBCCDD"
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: jwt_refresh_token_secret
           - name: JWT_ISSUER
             value: "ISSUER"
           - name: JWT_AUDIENCE
@@ -238,11 +268,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
       {% if NODE_SELECTORS %}
         nodeSelector:
         {% for selector in NODE_SELECTORS %}
@@ -261,7 +291,10 @@ spec:
           - name: POSTGRES_USER
             value: {{postgres_user}}
           - name: POSTGRES_PASSWORD
-            value: {{postgres_password}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: postgres_password
           - name: PGDATA
             value: "/var/lib/postgresql/data/pgdata"
           resources:
@@ -285,11 +318,11 @@ spec:
     - event: Unknown
       action: RestartTask
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:

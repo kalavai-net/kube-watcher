@@ -1,3 +1,13 @@
+apiVersion: v1
+stringData:
+  litellm_key: {{litellm_key}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -26,12 +36,12 @@ spec:
     - event: Unknown
       action: RestartJob
     template: # Definition of the ps pod
-      terminationGracePeriodSeconds: 60
       metadata:
         labels:
           role: leader
           kalavai.job.name: {{deployment_id}}
       spec:
+        terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
           nodeAffinity:
@@ -71,7 +81,10 @@ spec:
           - name: OPENAI_API_BASE_URL
             value: {{litellm_base_url}}/v1
           - name: OPENAI_API_KEY
-            value: {{litellm_key}}
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: litellm_key
           - name: ENABLE_OLLAMA_API
             value: "False"
           - name: WEBUI_AUTH
