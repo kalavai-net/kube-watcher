@@ -1,19 +1,23 @@
 
 
 - name: litellm_key
-  value: "sk-1234"
+  value: ""
   default: "sk-1234"
   description: "Master key of the LiteLLM service (central registry)"
 
-- name: cpu_workers
+- name: workers
   value: 1
   default: 1
-  description: "Number of remote workers"
+  editable: true
+  required: true
+  description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
 
-- name: gpu_workers
-  value: 0
-  default: 1
-  description: "Number of remote workers"
+- name: backend
+  value: "cpu"
+  default: "cpu"
+  editable: true
+  required: true
+  description: "Backend to run workers. One of the following: cpu, cuda, rocm"
 
 - name: repo_id
   value: Qwen/Qwen2.5-1.5B-Instruct-GGUF

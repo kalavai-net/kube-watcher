@@ -17,6 +17,12 @@
   required: true
   description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
 
+- name: backend
+  value: "cuda"
+  default: "cpu"
+  editable: true
+  required: true
+  description: "Backend to run workers. One of the following: cpu, cuda, rocm"
 
 - name: repo_id
   value: bartowski/Mistral-Nemo-Instruct-2407-GGUF
@@ -38,16 +44,10 @@
   default: 2
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
-- name: gpus
-  value: 1
-  default: 0
-  description: "CPUs per single worker (final one = cpus * num_workers)"
-
 - name: memory
   value: 14
   default: 4
   description: "RAM memory per single worker (final one = memory * num_workers)"
-
 
 - name: server_extra
   value: "-ngl 80"
