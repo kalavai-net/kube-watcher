@@ -6,8 +6,8 @@
   description: "deployment name"
 
 - name: admin_password
-  value: "password"
-  default: "password"
+  value: "Password123$"
+  default: "Password123$"
   editable: true
   required: false
   description: "Default password name for admin user"

@@ -47,19 +47,15 @@ spec:
           kalavai/role: server
         containers:
         - name: gpustack-leader
-          image: docker.io/gpustack/gpustack:v0.7.1
-          command:
-          - sh
-          - -c
-          - |
-            gpustack start \
-              --host 0.0.0.0 \
-              --port 8080 \
-              --cache-dir /kalavai/cache \
-              --token {{token}} \
-              --enable-ray \
-              --bootstrap-password {{admin_password}};
-            exit 1
+          image: docker.io/gpustack/gpustack:{{version}}
+          args: 
+          - --advertise-address=0.0.0.0
+          - --huggingface-token=$HF_TOKEN 
+          - --port=8080 
+          - --cache-dir=/kalavai/cache 
+          - --token={{token}} 
+          - --bootstrap-password={{admin_password}}
+          - --disable-worker
           env:
           - name: HF_TOKEN
             valueFrom:
@@ -139,17 +135,19 @@ spec:
         {% endif %}
         containers:
         - name: gpustack-worker
-          image: docker.io/gpustack/gpustack:v0.7.1-cuda12.8
+          image: docker.io/gpustack/gpustack:{{version}}
           command:
           - sh
           - -c
           - |
+            ulimit -n 65535
             PS_HOST=`cat /etc/volcano/server.host`;
             echo $PS_HOST;
-            gpustack start \
+
+            exec /usr/bin/entrypoint.sh \
               --server-url http://$PS_HOST:8080 \
               --cache-dir /kalavai/cache \
-              --enable-ray \
+              --huggingface-token $HF_TOKEN \
               --token {{token}}
             # fail if the connection was terminated
             exit 1
@@ -224,17 +222,19 @@ spec:
         {% endif %}
         containers:
         - name: gpustack-worker
-          image: docker.io/gpustack/gpustack:v0.7.1-rocm
+          image: docker.io/gpustack/gpustack:{{version}}
           command:
           - sh
           - -c
           - |
+            ulimit -n 65535
             PS_HOST=`cat /etc/volcano/server.host`;
             echo $PS_HOST;
-            /root/.local/bin/gpustack start \
+
+            exec /usr/bin/entrypoint.sh \
               --server-url http://$PS_HOST:8080 \
               --cache-dir /kalavai/cache \
-              --enable-ray \
+              --huggingface-token $HF_TOKEN \
               --token {{token}}
             # fail if the connection was terminated
             exit 1
