@@ -17,6 +17,7 @@ ENDPOINT_PORTS_KEY = "endpoint_ports"
 NODE_SELECTOR = "NODE_SELECTORS"
 NODE_SELECTOR_OPS = "NODE_SELECTORS_OPS"
 USER_ID_KEY = "USER_ID"
+JOB_PRIORITY_KEY = "JOB_PRIORITY"
 
 
 def get_template_path(template: JobTemplate):
@@ -91,7 +92,8 @@ class Job:
         target_labels_ops="AND",
         replica=None,
         random_suffix=True,
-        user_id=None
+        user_id=None,
+        priority=None
     ):
         if default_values is None:
             default_values = self.get_defaults()
@@ -134,6 +136,8 @@ class Job:
             local_values[NODE_SELECTOR_OPS] = target_labels_ops
         if user_id is not None:
             local_values[USER_ID_KEY] = user_id
+        if priority is not None:
+            local_values[JOB_PRIORITY_KEY] = priority
 
         return Template(self.template_str, lstrip_blocks=True, trim_blocks=True).render(local_values)
 

@@ -53,7 +53,6 @@ logging.basicConfig(
 )
 
 IN_CLUSTER = not os.getenv("IN_CLUSTER", "True").lower() in ("false", "0", "f", "no")
-KALAVAI_API_ENDPOINT = os.getenv("KALAVAI_API_ENDPOINT", "https://platform.kalavai.net/_/api")
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://localhost:9090")#"prometheus-server.prometheus-system.svc.cluster.local:80")
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://localhost:32115")
 IS_SHARED_POOL = not os.getenv("IS_SHARED_POOL", "True").lower() in ("false", "0", "f", "no")
@@ -704,7 +703,8 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
             target_labels_ops=request.target_labels_ops,
             replica=replica if request.replicas > 1 else None,
             random_suffix=request.random_suffix,
-            user_id=namespace)
+            user_id=namespace,
+            priority=request.priority)
         
         print(f"-> [{replica}] Deployment parsed: ", deployment)
         
@@ -752,7 +752,8 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
             target_labels_ops=request.target_labels_ops,
             replica=replica if request.replicas > 1 else None,
             random_suffix=request.random_suffix,
-            user_id=namespace)
+            user_id=namespace,
+            priority=request.priority)
         print("--->", deployment)
         
         # deploy job

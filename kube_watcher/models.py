@@ -6,7 +6,7 @@ from enum import Enum
 class JobTemplate(Enum):
     custom = 0
     vllm = 1
-    aphrodite = 2
+    #aphrodite = 2
     llamacpp = 3
     #petals = 4
     litellm = 5
@@ -166,6 +166,7 @@ class JobTemplateRequest(BaseModel):
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
     random_suffix: bool = True
+    priority: Literal["kalavai-system-priority", "user-high-priority", "user-spot-priority", "test-low-priority", "test-high-priority"] = "user-spot-priority"
 
 class CustomJobTemplateRequest(BaseModel):
     force_namespace: str = None
@@ -176,6 +177,8 @@ class CustomJobTemplateRequest(BaseModel):
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
     random_suffix: bool = True
+    priority: Literal["kalavai-system-priority", "user-high-priority", "user-spot-priority", "test-low-priority", "test-high-priority"] = "user-spot-priority"
+
 
 class RayClusterRequest(BaseModel):
     force_namespace: str = None
