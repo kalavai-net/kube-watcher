@@ -45,24 +45,21 @@ spec:
           kalavai.job.name: {{deployment_id}}
       spec:
         priorityClassName: "kalavai-system-priority"
+        serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         nodeSelector:
           kalavai/role: server
         containers:
         - name: gpustack-leader
-          image: docker.io/gpustack/gpustack:v0.7.1
-          command:
-          - sh
-          - -c
-          - |
-            gpustack start \
-              --host 0.0.0.0 \
-              --port 8080 \
-              --cache-dir /kalavai/cache \
-              --token {{token}} \
-              --enable-ray \
-              --bootstrap-password {{admin_password}};
-            exit 1
+          image: docker.io/gpustack/gpustack:{{version}}
+          args: 
+          - --advertise-address=0.0.0.0
+          - --huggingface-token=$HF_TOKEN 
+          - --port=8080 
+          - --cache-dir=/kalavai/cache 
+          - --token={{token}} 
+          - --bootstrap-password={{admin_password}}
+          - --disable-worker
           env:
           - name: HF_TOKEN
             valueFrom:
@@ -111,6 +108,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
@@ -142,18 +140,23 @@ spec:
         {% endif %}
         containers:
         - name: gpustack-worker
-          image: docker.io/gpustack/gpustack:v0.7.1-cuda12.8
+          image: docker.io/gpustack/gpustack:{{version}}
           command:
           - sh
           - -c
           - |
+            ulimit -n 65535
             PS_HOST=`cat /etc/volcano/server.host`;
             echo $PS_HOST;
-            gpustack start \
+            NODE_PREFIX="cuda-worker-";
+            NODE_NAME=$NODE_PREFIX$(($VC_TASK_INDEX+1));
+
+            exec /usr/bin/entrypoint.sh \
               --server-url http://$PS_HOST:8080 \
               --cache-dir /kalavai/cache \
-              --enable-ray \
-              --token {{token}}
+              --huggingface-token $HF_TOKEN \
+              --token {{token}} \
+              --worker-name $NODE_NAME
             # fail if the connection was terminated
             exit 1
           env:
@@ -197,6 +200,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
@@ -227,18 +231,23 @@ spec:
         {% endif %}
         containers:
         - name: gpustack-worker
-          image: docker.io/gpustack/gpustack:v0.7.1-rocm
+          image: docker.io/gpustack/gpustack:{{version}}
           command:
           - sh
           - -c
           - |
+            ulimit -n 65535
             PS_HOST=`cat /etc/volcano/server.host`;
             echo $PS_HOST;
-            /root/.local/bin/gpustack start \
+            NODE_PREFIX="rocm-worker-";
+            NODE_NAME=$NODE_PREFIX$(($VC_TASK_INDEX+1));
+
+            exec /usr/bin/entrypoint.sh \
               --server-url http://$PS_HOST:8080 \
               --cache-dir /kalavai/cache \
-              --enable-ray \
-              --token {{token}}
+              --huggingface-token $HF_TOKEN \
+              --token {{token}} \
+              --worker-name $NODE_NAME
             # fail if the connection was terminated
             exit 1
           env:
@@ -286,31 +295,3 @@ spec:
     {% if nodeport != "" %}
       nodePort: {{nodeport}}
     {% endif %}
-# ---
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   labels:
-#     # must have this!
-#     kalavai.job.name: {{deployment_id}}
-#   annotations:
-#     cert-manager.io/cluster-issuer: letsencrypt-stage # use "letsencrypt-stage" for testing
-#     kubernetes.io/tls-acme: "true"
-#   name: {{deployment_id}}-ingress
-# spec:
-#   ingressClassName: traefik
-#   rules:
-#   - host: {{USER_ID}}-{{deployment_id}}.platform.kalavai.net
-#     http:
-#       paths:
-#       - backend:
-#           service:
-#             name: {{deployment_id}}-service
-#             port:
-#               number: 8080
-#         path: /
-#         pathType: Prefix
-#   tls:
-#   - hosts:
-#     - {{USER_ID}}-{{deployment_id}}.platform.kalavai.net
-#     secretName: {{deployment_id}}.platform.kalavai.net-tls 

@@ -1,2 +1,0 @@
-{"instruction": "Classify this text", "input": "I love this!", "output": "positive"}
-{"instruction": "Classify this text", "input": "Not good at all", "output": "negative"}

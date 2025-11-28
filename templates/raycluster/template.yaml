@@ -22,7 +22,7 @@ spec:
     idleTimeoutSeconds: {{idle_timeout_seconds}}
   enableInTreeAutoscaling: true
   headGroupSpec:
-    serviceType: ClusterIP #NodePort
+    serviceType: NodePort
     rayStartParams:
       dashboard-host: "0.0.0.0"
       num-cpus: "0" # avoid workload on head
@@ -34,6 +34,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec: # Pod spec
+        priorityClassName: "kalavai-system-priority"
         nodeSelector:
           kalavai/role: server
         restartPolicy: Always
@@ -84,12 +85,13 @@ spec:
     minReplicas: {{min_nvidia_gpus}}
     maxReplicas: {{max_nvidia_gpus}}
     rayStartParams: 
-    #  num-gpus: "1"
+      num-gpus: "1"
     template:
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        priorityClassName: {{JOB_TEMPLATE|default("user-spot-priority", true)}}
         runtimeClassName: nvidia
       {% if NODE_SELECTORS %}
         affinity:
@@ -142,7 +144,7 @@ spec:
     minReplicas: {{min_amd_gpus}}
     maxReplicas: {{max_amd_gpus}}
     rayStartParams: 
-    #  num-gpus: "1"
+      num-gpus: "1"
     template:
       metadata:
         labels:
@@ -192,39 +194,6 @@ spec:
             preStop:
               exec:
                 command: ["/bin/sh","-c","ray stop"]
----
-# deploy NodePorts to expose cluster
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{deployment_id}}-service
-  labels:
-    # must have this!
-    kalavai.job.name: {{deployment_id}}
-spec:
-  type: NodePort
-  selector:
-    # points at the svc created by the cluster
-    ray.io/node-type: head
-    ray.io/cluster: {{deployment_id}}
-    ray.io/identifier: {{deployment_id}}-head
-  ports:
-    - name: gcs
-      port: 6379
-      targetPort: 6379
-      protocol: TCP
-    - name: dashboard
-      port: 8265
-      targetPort: 8265
-      protocol: TCP
-    - name: client
-      port: 10001
-      targetPort: 10001
-      protocol: TCP
-    - name: serve
-      port: 8000
-      targetPort: 8000
-      protocol: TCP
 ---
 # Authentication
 # https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html

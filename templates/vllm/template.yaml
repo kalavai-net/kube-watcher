@@ -5,7 +5,8 @@ stringData:
 kind: Secret
 metadata:
   name: {{deployment_id}}-secret
-  kalavai.job.name: {{deployment_id}}
+  labels:
+    kalavai.job.name: {{deployment_id}}
 type: Opaque
 immutable: true
 ---
@@ -18,6 +19,7 @@ metadata:
     kalavai.job.name: {{deployment_id}}
 spec:
   queue: default
+  priorityClassName: {{JOB_TEMPLATE|default("user-spot-priority", true)}}
   schedulerName: volcano
   plugins:
     env: []
@@ -166,7 +168,9 @@ spec:
               {% for selector in NODE_SELECTORS %}
                 {% for vals in selector.value %}
                 - key: {{selector.name}}
-
+                  operator: In
+                  values:
+                  - "{{vals}}"
                 {% endfor %}
               {% endfor %}
             {% endif %}

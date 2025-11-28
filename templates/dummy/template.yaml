@@ -8,6 +8,7 @@ metadata:
 spec:
   queue: default
   #minAvailable: 2
+  priorityClassName: {{JOB_TEMPLATE|default("user-spot-priority", true)}}
   schedulerName: volcano
   plugins:
     env: []

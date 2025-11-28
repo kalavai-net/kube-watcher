@@ -90,22 +90,15 @@ ray start --address=69.57.212.209:6379 --node-ip-address=69.57.212.221
 
 --> From pre-built
 
-docker run -it --rm \
+sudo docker run -it --rm \
     --network=host \
-    --group-add=video \
-    --ipc=host \
-    --cap-add=SYS_PTRACE \
-    --security-opt seccomp=unconfined \
     --privileged \
     --device /dev/kfd \
     --device /dev/dri \
-    -v ./models:/app/models \
-    --env "HIP_VISIBLE_DEVICES=0" \
-    --env NCCL_SOCKET_IFNAME=enp13s0 \
-    --env GLOO_SOCKET_IFNAME=enp13s0 \
-    kalavai/ray-vllm-rocm:latest
+    --shm-size=9gb \
+    rocm/vllm:rocm6.4.1_vllm_0.10.1_20250909
 
-vllm serve Qwen/Qwen3-4B-Instruct-2507 \
+vllm serve Qwen/Qwen2.5-0.5B \
   --host 0.0.0.0 --port 8080 --distributed-executor-backend="ray" --max-model-len 5000 --cpu-offload-gb 64 --pipeline-parallel-size=3 
 
 
@@ -114,7 +107,7 @@ vllm serve Qwen/Qwen3-4B-Instruct-2507 \
 ---> From instructions https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html?device=rocm#build-an-image-with-vllm
 
 vllm serve Qwen/Qwen2.5-0.5B \
-  --host 0.0.0.0 --port 8080 --tensor-parallel-size 2 --distributed-executor-backend ray --enforce-eager
+  --host 0.0.0.0 --port 8080 --tensor-parallel-size 1 --distributed-executor-backend ray --enforce-eager
   
 
 curl http://localhost:8080/v1/completions \
@@ -153,3 +146,61 @@ curl "http://51.159.144.100:30768/v1/completions" \
         "temperature": 0.7
     }'
 
+
+
+
+
+
+## MS AMD nodes
+
+Install docker
+
+```bash
+# Install required packages
+sudo apt-get update
+sudo apt-get install ca-certificates curl gnupg
+
+# Add Docker's official GPG key
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the Docker repository with the correct Ubuntu code name
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  jammy stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Update the package index
+sudo apt-get update
+
+# Install Docker
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+Install ROCm & AMD drivers:
+
+
+```bash
+wget https://repo.radeon.com/amdgpu-install/6.4.4/ubuntu/noble/amdgpu-install_6.4.60404-1_all.deb
+sudo apt install ./amdgpu-install_6.4.60404-1_all.deb
+sudo apt update
+sudo apt install python3-setuptools python3-wheel
+sudo usermod -a -G render,video $LOGNAME # Add the current user to the render and video groups
+sudo apt install rocm
+sudo apt install "linux-headers-$(uname -r)"
+sudo apt install amdgpu-dkms
+```
+
+Test:
+
+docker run -it --rm \
+    --network=host \
+    --privileged \
+    --device /dev/kfd \
+    --device /dev/dri \
+    --shm-size=11gb \
+    -v ./models:/app/models \
+    rocm/vllm:rocm6.4.1_vllm_0.10.1_20250909
+
+vllm serve Qwen/Qwen2.5-0.5B --distributed-executor-backend="ray"

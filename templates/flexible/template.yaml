@@ -7,6 +7,7 @@ metadata:
     kalavai.job.name: {{deployment_id}}
 spec:
   schedulerName: volcano
+  priorityClassName: {{JOB_TEMPLATE|default("user-spot-priority", true)}}
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]

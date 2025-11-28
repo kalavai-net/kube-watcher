@@ -6,7 +6,8 @@ stringData:
 kind: Secret
 metadata:
   name: {{deployment_id}}-secret
-  kalavai.job.name: {{deployment_id}}
+  labels:
+    kalavai.job.name: {{deployment_id}}
 type: Opaque
 immutable: true
 ---
