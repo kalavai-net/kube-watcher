@@ -91,7 +91,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-        priorityClassName: {{JOB_TEMPLATE|default("user-spot-priority", true)}}
+        priorityClassName: {{JOB_PRIORITY|default("user-spot-priority", true)}}
         runtimeClassName: nvidia
       {% if NODE_SELECTORS %}
         affinity:

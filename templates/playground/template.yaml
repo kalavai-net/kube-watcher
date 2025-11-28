@@ -18,7 +18,7 @@ metadata:
     kalavai.job.name: {{deployment_id}}
 spec:
   queue: default
-  priorityClassName: {{JOB_TEMPLATE|default("user-spot-priority", true)}}
+  priorityClassName: {{JOB_PRIORITY|default("user-spot-priority", true)}}
   schedulerName: volcano
   plugins:
     env: []
