@@ -20,7 +20,7 @@ spec:
   minAvailable: 1
   queue: default
   schedulerName: volcano
-  priorityClassName: {{JOB_TEMPLATE|default("user-spot-priority", true)}}
+  priorityClassName: {{JOB_PRIORITY|default("user-spot-priority", true)}}
   plugins:
     env: []
     svc: ["--disable-network-policy=true"]
@@ -47,8 +47,8 @@ spec:
         priorityClassName: "kalavai-system-priority"
         serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
-        nodeSelector:
-          kalavai/role: server
+        # nodeSelector:
+        #   kalavai/role: server
         containers:
         - name: gpustack-leader
           image: docker.io/gpustack/gpustack:{{version}}

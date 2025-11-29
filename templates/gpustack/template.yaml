@@ -46,8 +46,8 @@ spec:
       spec:
         priorityClassName: "kalavai-system-priority"
         terminationGracePeriodSeconds: 60
-        nodeSelector:
-          kalavai/role: server
+        # nodeSelector:
+        #   kalavai/role: server
         containers:
         - name: gpustack-leader
           image: docker.io/gpustack/gpustack:v0.7.1
