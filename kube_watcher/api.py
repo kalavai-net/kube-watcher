@@ -248,8 +248,8 @@ async def pods_with_status(request: PodsWithStatusRequest, api_key: str = Depend
 async def get_nodes(api_key: str = Depends(verify_read_key)):
     return kube_api.get_nodes_states()
 
-@app.post("/v1/get_node_stats", 
-    operation_id="get_node_stats",
+@app.post("/v1/get_nodes_stats", 
+    operation_id="get_nodes_stats",
     summary="Get node runtime stats for a set of nodes in the Kalavai compute pool",
     tags=["pool_info"],
     description="Gets node runtime stats for a set of nodes in the kalavai pool",
@@ -267,12 +267,13 @@ async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_r
         if request.node_names is None or len(request.node_names) == 0:
             return {}
     
-    result = client.get_node_stats(
+    result = client.get_nodes_stats(
         node_ids=request.node_names,
         start_time=request.start_time,
         end_time=request.end_time,
         step=request.step,
-        aggregate_results=request.aggregate_results
+        aggregate_node_results=request.aggregate_results,
+        resources=request.resources
     )
     return result
 
@@ -530,7 +531,7 @@ async def compute_usage(request: ComputeUsageRequest, api_key: str = Depends(ver
             resources=request.resources,
             start_time=request.start_time,
             end_time=request.end_time,
-            nodes=request.node_names,
+            node_ids=request.node_names,
             namespaces=request.namespaces,
             normalize=request.normalize,
             step_seconds=request.step_seconds)

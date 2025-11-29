@@ -31,39 +31,120 @@ class PrometheusAPI():
 
     def query(self, query):
         return self.prom.custom_query(query=query)
-    
-    def get_node_stats(self, node_ids, start_time, end_time, step="1h", aggregate_results=False):
-        try:
-            start_time = parse_datetime(start_time)
-            end_time = parse_datetime(end_time)
 
-            # query = f"""
-            # avg_over_time(
-            #     kube_node_status_condition{{condition="Ready", status="true", node="{node_id}"}}
-            #     [{step}]
-            # )
-            # """
+    def get_nodes_stats(self, node_ids, start_time, end_time, resources=["amd_com_gpu", "nvidia_com_gpu"], step="1h", phase="Running", aggregate_node_results=False):
+        """
+        Retrieves both node status (Ready condition) and aggregated resource requests 
+        for a list of nodes and custom resources over a time range.
+
+        :param node_ids: List of node names to query status for.
+        :param resources: List of custom resource names (e.g., 'amd_com_gpu') to query requests for.
+        :param start_time: Start of the query time range (e.g., '2025-11-01T00:00:00Z').
+        :param end_time: End of the query time range.
+        :param step: Step size for the range query (e.g., '1h', '5m').
+        :param aggregate_node_results: If True, aggregates the node status result into a single sum.
+        :return: Dictionary containing the merged time series data, or an error dict.
+        """
+        try:
+            # 1. Prepare time and query arguments
+            start_time_dt = parse_datetime(start_time)
+            end_time_dt = parse_datetime(end_time)
+
+            # --- 2. Node Status Query ---
             node_str = "|".join(node_ids)
-            query = f"""
+            node_status_query = f"""
             avg_over_time(
                 kube_node_status_condition{{condition="Ready", status="true", node=~"{node_str}"}}
                 [{step}]
             )
             """
-            if aggregate_results:
-                query = f"sum({query})"
-            metric = self.prom.custom_query_range(
-                query=query,
-                start_time=start_time,
-                end_time=end_time,
+            if aggregate_node_results:
+                node_status_query = f"sum({node_status_query})"
+                
+            # Execute Node Status Query
+            node_metric = self.prom.custom_query_range(
+                query=node_status_query,
+                start_time=start_time_dt,
+                end_time=end_time_dt,
                 step=step
             )
+            
+            # Convert to DataFrame
+            node_df = MetricRangeDataFrame(node_metric).reset_index()
 
-            metric_df = MetricRangeDataFrame(metric).reset_index()
-            return metric_df.to_dict(orient="list")
+            # --- 3. Resource Utilization Query ---
+            resources_str = "|".join(resources)
+            # Note: I've added phase="Running" to the kube_pod_status_phase selector 
+            # as it's common to only look at resources requested by running pods. 
+            # You may adjust this phase if needed (e.g., to "").
+            resource_query = f"""
+            sum(
+                max by (namespace, pod) (
+                    kube_pod_container_resource_requests{{resource=~"{resources_str}", node=~"{node_str}"}}
+                )
+                * on(namespace, pod) group_left()
+                (kube_pod_status_phase{{phase="{phase}"}} == 1)
+            )
+            """
+
+            # Execute Resource Utilization Query
+            resource_metric = self.prom.custom_query_range(
+                query=resource_query,
+                start_time=start_time_dt,
+                end_time=end_time_dt,
+                step=step
+            )
+            
+            # Convert to DataFrame
+            # The result of this query is a single time series (since it's a sum over all series)
+            resource_df = MetricRangeDataFrame(resource_metric).reset_index()
+
+            # --- 4. Merge DataFrames ---
+            # Both DataFrames share the 'index' (which is the timestamp).
+            # We merge them to align the time series data.
+            # This assumes your 'step' and 'time range' are identical for both queries, which they are.
+            
+            # Step 1: Clean up column names for the merge
+            # Node Status DF columns: ['__name__', 'node', 'instance', 'job', 'timestamp', 'value']
+            # Resource DF columns: ['__name__', 'instance', 'job', 'timestamp', 'value']
+            
+            # Rename the 'value' column to be descriptive before merging
+            node_df = node_df.rename(columns={'value': 'node_status_ready'})
+            resource_df = resource_df.rename(columns={'value': 'total_resource_requests'})
+
+            # The 'node_df' has multiple rows per timestamp (one per node/metric label),
+            # while 'resource_df' has only one row per timestamp (the total sum).
+            # We perform a left merge on the 'node_df' to include the single-row resource data.
+            
+            # Select key columns before the merge for simplicity
+            # We use a melt-like approach for the final output, so a time-based merge is key.
+            
+            # Get common timestamp column
+            timestamp_col = 'timestamp' 
+            
+            # Get only the relevant columns for merging
+            # Note: If 'aggregate_node_results' is True, 'node' column won't exist in node_df.
+            if aggregate_node_results:
+                node_value_cols = [timestamp_col, 'node_status_ready']
+            else:
+                # We keep 'node' to differentiate the status of each node
+                node_value_cols = [timestamp_col, 'node', 'node_status_ready'] 
+
+            # Merge on the shared 'timestamp' column
+            merged_df = node_df[node_value_cols].merge(
+                resource_df[[timestamp_col, 'total_resource_requests']],
+                on=timestamp_col,
+                how='left'
+            )
+            merged_df = merged_df.fillna(value=0)
+
+            # Convert the final merged DataFrame to a dictionary
+            return merged_df.to_dict(orient="list")
+
         except Exception as e:
-            return {"error": f"Error when inspecting node {node_ids}. Does it exist? {str(e)}"}
-
+            # A more descriptive error message
+            return {"error": f"Error when querying Prometheus for metrics. Details: {str(e)}"}
+    
     def get_compute_stats(self, start_time, end_time, resources=["amd_com_gpu", "nvidia_com_gpu"], phase="Running", step="1h", aggregate_results=False):
         try:
             start_time = parse_datetime(start_time)
@@ -89,6 +170,7 @@ class PrometheusAPI():
             )
 
             metric_df = MetricRangeDataFrame(metric).reset_index()
+            metric_df = metric_df.fillna(value=0)
             return metric_df.to_dict(orient="list")
         except Exception as e:
             return {"error": f"Error when extracting compute for resources {resources_str}. Does it exist? {str(e)}"}
@@ -102,7 +184,7 @@ class PrometheusAPI():
         step_seconds=300,
         normalize=False,
         namespaces=None,
-        nodes=None,
+        node_ids=None,
     ):
         """
         Collapse a Prometheus range query into resource-hours for selected pods.
@@ -114,7 +196,7 @@ class PrometheusAPI():
             step_seconds: Prometheus query step
             normalize: if True, average over window length (hours)
             namespaces: list[str] of namespaces to include
-            nodes: list[str] of node names to include
+            node_ids: list[str] of node names to include
         Returns:
             dict[resource] -> hours (total) or average (per hour)
         """
@@ -138,8 +220,8 @@ class PrometheusAPI():
 
             # Node filtering (requires join with kube_pod_info)
             # kube_pod_info exposes pod->node mapping
-            if nodes:
-                nodes_str = "|".join(nodes)
+            if node_ids:
+                nodes_str = "|".join(node_ids)
                 node_filter = f'node=~"{nodes_str}"'
                 pod_info = f'kube_pod_info{{{node_filter}}}'
                 # Join the resource requests with pod_info to limit to selected nodes
@@ -201,21 +283,19 @@ if __name__ == "__main__":
     
     logger.info("connected")
 
-    result = client.get_cumulative_compute_usage(
-        start_time="12h",
+    result = client.get_nodes_stats(
+        node_ids=['kalavai-camtl01-adapting-turtle-66819513', 'kalavai-camtl01-apt-pegasus-d2da114d', 'kalavai-camtl01-cheerful-hen-392e5fa9', 'kalavai-camtl01-deep-grizzly-73000f2a', 'kalavai-camtl01-driving-kite-237e3687', 'kalavai-camtl01-helpful-hyena-9e796fed', 'kalavai-camtl01-humane-sawfly-53f85009', 'kalavai-camtl01-humble-raccoon-4becdf51', 'kalavai-camtl01-key-hookworm-f19fab97', 'kalavai-camtl01-nearby-shark-81c63f4c', 'kalavai-camtl01-obliging-ox-c05dcc10', 'kalavai-camtl01-one-alien-d6af1aa2', 'kalavai-camtl01-prompt-elk-f85f8c41', 'kalavai-camtl01-pure-cicada-5fc780b1', 'kalavai-camtl01-rational-boa-dd85afa4', 'kalavai-camtl01-safe-sturgeon-09ab7948', 'kalavai-camtl01-sharp-loon-2589b5d7', 'kalavai-camtl01-smashing-burro-70cf2327', 'kalavai-camtl01-together-slug-82b98a65', 'kalavai-camtl01-tolerant-calf-8600f60e', 'kalavai-frsbg01-aware-bluegill-ef84f035', 'kalavai-frsbg01-blessed-gar-aef2a0de', 'kalavai-frsbg01-dashing-collie-fc6ce470', 'kalavai-frsbg01-destined-kit-54409b83', 'kalavai-frsbg01-diverse-lacewing-21cbef1c', 'kalavai-frsbg01-dominant-pangolin-8c90e3b6', 'kalavai-frsbg01-endless-aphid-5c1086ca', 'kalavai-frsbg01-endless-mustang-41662349', 'kalavai-frsbg01-growing-oriole-5ad22132', 'kalavai-frsbg01-improved-kingfish-6a10bbdc', 'kalavai-frsbg01-loving-magpie-0d5d84cc', 'kalavai-frsbg01-polite-tetra-40d83508', 'kalavai-frsbg01-positive-man-5d52ee6e', 'kalavai-frsbg01-possible-stallion-07a3fde5', 'kalavai-frsbg01-refined-badger-2204e91b', 'kalavai-frsbg01-right-weasel-2a18486b', 'kalavai-frsbg01-saved-sloth-5e06d5dc', 'kalavai-frsbg01-stable-oriole-f0c26cfb', 'kalavai-frsbg01-teaching-tetra-f1e6799f', 'kalavai-frsbg01-united-feline-f82d99ab'],
+        start_time="336h",
         end_time="now",
-        step_seconds=300,
-        resources=["cpu"],
-        normalize=True
+        step="1h",
+        aggregate_node_results=True
     )
+    # result = client.get_cumulative_compute_usage(
+    #     node_ids=["cogenai-worker-scw-l40s-2-a7638c30"],
+    #     resources=["amd_com_gpu", "nvidia_com_gpu"],
+    #     start_time="1h",
+    #     end_time="now",
+    #     step_seconds=60
+    # )
     print(result)
-    aggregate_map = {"amd_com_gpu": "gpu", "nvidia_com_gpu": "gpu", "memory": "ram"}
-    aggregate = defaultdict(float)
-    for resource, value in result.items():
-        if resource in aggregate_map:
-            key = aggregate_map[resource]
-            aggregate[key] += value
-        else:
-            aggregate[resource] = value
-    print(aggregate)
     

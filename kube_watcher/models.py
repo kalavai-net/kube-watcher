@@ -31,6 +31,7 @@ class NodeStatusRequest(BaseModel):
     start_time: str = "1h"
     end_time: str = "now"
     step: str = "1m"
+    resources: List[str] = ["amd_com_gpu", "nvidia_com_gpu"]
     aggregate_results: bool = False
 
 class StorageClaimRequest(BaseModel):
