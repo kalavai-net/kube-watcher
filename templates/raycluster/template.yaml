@@ -22,7 +22,7 @@ spec:
     idleTimeoutSeconds: {{idle_timeout_seconds}}
   enableInTreeAutoscaling: true
   headGroupSpec:
-    serviceType: NodePort
+    serviceType: ClusterIP
     rayStartParams:
       dashboard-host: "0.0.0.0"
       num-cpus: "0" # avoid workload on head
@@ -33,6 +33,7 @@ spec:
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
+          role: leader
       spec: # Pod spec
         priorityClassName: "kalavai-system-priority"
       {% if NODE_SELECTORS %}
@@ -107,8 +108,8 @@ spec:
   # NVIDIA group of GPUs
   - groupName: nvidia-group
     replicas: 0
-    minReplicas: {{min_nvidia_gpus}}
-    maxReplicas: {{max_nvidia_gpus}}
+    minReplicas: {{min_nvidia_workers}}
+    maxReplicas: {{max_nvidia_workers}}
     rayStartParams: 
       num-gpus: "1"
     template:
@@ -166,8 +167,8 @@ spec:
   # AMD group of GPUs
   - groupName: amd-group
     replicas: 0
-    minReplicas: {{min_amd_gpus}}
-    maxReplicas: {{max_amd_gpus}}
+    minReplicas: {{min_amd_workers}}
+    maxReplicas: {{max_amd_workers}}
     rayStartParams: 
       num-gpus: "1"
     template:
@@ -219,6 +220,36 @@ spec:
             preStop:
               exec:
                 command: ["/bin/sh","-c","ray stop"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - name: gcs
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+    - name: dashboard
+      port: 8265
+      targetPort: 8265
+      protocol: TCP
+    - name: client
+      port: 10001
+      targetPort: 10001
+      protocol: TCP
+    - name: serve
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
 ---
 # Authentication
 # https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html
