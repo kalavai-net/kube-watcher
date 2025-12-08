@@ -56,7 +56,7 @@ IN_CLUSTER = not os.getenv("IN_CLUSTER", "True").lower() in ("false", "0", "f", 
 PROMETHEUS_ENDPOINT = os.getenv("PROMETHEUS_ENDPOINT", "http://localhost:9090")#"prometheus-server.prometheus-system.svc.cluster.local:80")
 OPENCOST_ENDPOINT = os.getenv("OPENCOST_ENDPOINT", "http://localhost:32115")
 IS_SHARED_POOL = not os.getenv("IS_SHARED_POOL", "True").lower() in ("false", "0", "f", "no")
-ALLOW_UNREGISTERED_USER = not os.getenv("ALLOW_UNREGISTERED_USER", "True").lower() in ("false", "0", "f", "no")
+STATIC_WORKSPACE = os.getenv("STATIC_WORKSPACE", None)
 
 USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
 ADMIN_KEY = os.getenv("KW_ADMIN_KEY") # all permissions
@@ -113,13 +113,16 @@ async def verify_read_namespaces(request: Request):
     """If shared pool, all users see each other's work"""
     if IS_SHARED_POOL:
         return kube_api.list_namespaces()
-    if ALLOW_UNREGISTERED_USER:
-        return ["default"]
+    if STATIC_WORKSPACE is not None and len(STATIC_WORKSPACE.strip()) > 0:
+        return [STATIC_WORKSPACE]
+    
+    # TODO: Implement user key validation
+    return ["default"]
+    
     api_key = request.headers.get("USER-KEY")
     user = request.headers.get("USER", None)
     
     try:
-        # TODO: Implement user key validation
         validated = True
 
         if not validated:
@@ -131,14 +134,18 @@ async def verify_read_namespaces(request: Request):
         raise HTTPException(status_code=401, detail="User Key is not authorised")
 
 async def verify_write_namespace(request: Request):
-    """Users only have write access to their namespace (all default if ALLOW_UNREGISTERED_USER)"""
-    api_key = request.headers.get("USER-KEY")
-    user = request.headers.get("USER", None)
-    if ALLOW_UNREGISTERED_USER:
-        return "default"
+    """Users only have write access to their namespace"""
     
+    if STATIC_WORKSPACE is not None and len(STATIC_WORKSPACE.strip()) > 0:
+        return STATIC_WORKSPACE
+    
+    # TODO: Implement user key validation
+    return "default"
+    
+    api_key = request.headers.get("USER-KEY")
+    user = request.headers.get("USER", "default")
     try:
-        # TODO: Implement user key validation
+        
         validated = True
 
         if not validated:
@@ -148,7 +155,9 @@ async def verify_write_namespace(request: Request):
         raise HTTPException(status_code=401, detail="User Key is not authorised")
 
 async def verify_force_namespace(request: Request):
-    """Only admin keys can force namespace"""
+    """Only admin keys in non static workspaces can force namespace"""
+    if STATIC_WORKSPACE is not None and len(STATIC_WORKSPACE.strip()) > 0:
+        return False
     if not USE_AUTH:
         return True
     api_key = extract_auth_token(headers=request.headers)
@@ -613,6 +622,25 @@ async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: 
         return {"error": str(e)}
     return {"status": "success"}
 
+@app.post("/v1/delete_user_space", 
+    operation_id="delete_user_space",
+    summary="Delete a user workspace in the Kalavai compute pool",
+    tags=["pool_management"],
+    description="Delete a user workspace in the kalavai pool",
+    response_description="None")
+async def delete_user_space(request: UserWorkspaceRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    # delete namespace for user
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+
+    try:
+        kube_api.delete_namespace(
+            name=namespace)
+
+    except Exception as e:
+        return {"error": str(e)}
+    return {"status": "success"}
+
 @app.post("/v1/set_space_quota", 
     operation_id="set_space_quota",
     summary="Set the resource quota for a given namespace",
@@ -695,6 +723,7 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
     if can_force_namespace and request.force_namespace is not None:
         namespace = request.force_namespace
     responses = []
+    print(">>>> Deploy to NAMESPACE: ", namespace)
     
     for replica in range(request.replicas):
         job = Job(template=request.template)
@@ -717,19 +746,6 @@ async def deploy_job(request: JobTemplateRequest, can_force_namespace: bool = De
                 force_namespace=namespace
             )
         })
-        # deploy service
-        # DEPRECATED: this is now handled by the job template if required
-        # if job.ports is not None and len(job.ports) > 0:
-        #     service = ServiceRequest(
-        #         name=f"{job.job_name}-service",
-        #         labels=job.job_label,
-        #         selector_labels={ **job.job_label, **{"role": "leader"} },
-        #         service_type="NodePort",
-        #         ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
-        #     responses.append(kube_api.deploy_service(
-        #         namespace=namespace,
-        #         **service.model_dump()
-        #     ))
     return responses
 
 @app.post("/v1/deploy_custom_job", 
@@ -742,6 +758,7 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
     # populate template with values
     if can_force_namespace and request.force_namespace is not None:
         namespace = request.force_namespace
+    print("> Deploy to NAMESPACE: ", namespace)
     yaml_defaults = yaml.safe_load(request.default_values)
     responses = []
     for replica in range(request.replicas):
@@ -765,21 +782,6 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
                 force_namespace=namespace
             )
         })
-        # deploy service
-        # DEPRECATED: this is now handled by the job template if required
-        # if job.ports is not None and len(job.ports) > 0:
-        #     service = ServiceRequest(
-        #         name=f"{job.job_name}-service",
-        #         labels=job.job_label,
-        #         selector_labels={ **job.job_label, **{"role": "leader"} },
-        #         service_type="NodePort",
-        #         ports=[{"name": f"http-{port}", "port": int(port), "protocol": "TCP", "target_port": int(port)} for port in job.ports])
-        #     responses.append(
-        #         kube_api.deploy_service(
-        #             namespace=namespace,
-        #             **service.model_dump()
-        #         )
-        #     )
     return responses
 
 @app.post("/v1/deploy_ray", 

@@ -478,7 +478,6 @@ class KubeAPI():
                             namespace = yaml_obj["metadata"]["namespace"]
                         else:
                             namespace = "default"
-                    print(namespace)
                     plural = yaml_obj["kind"].lower() + "s"
                     res = custom_api.create_namespaced_custom_object(
                         group,
@@ -489,6 +488,7 @@ class KubeAPI():
                     deployment_results["successful"].append(str(res))
                 except Exception as e:
                     print(f"Failed automated deployment, trying default deployment. [{str(e)}")
+                    print("-------->", yaml_str)
                     try:
                         namespace = force_namespace if force_namespace is not None else "default"
                         res = utils.create_from_yaml(
@@ -702,6 +702,25 @@ class KubeAPI():
             name=name,
             namespace=namespace
         )
+
+    def list_namespaced_helmrelease(self, namespace, label_selector):
+        resources = self.kube_get_custom_objects(
+            group="helm.toolkit.fluxcd.io",
+            api_version="v2",
+            plural="helmreleases",
+            namespace=namespace,
+            label_selector=label_selector
+        )
+        return resources
+
+    def delete_namespaced_helmrelease(self, name, namespace):
+        return self.kube_delete_custom_object(
+            group="helm.toolkit.fluxcd.io",
+            api_version="v2",
+            plural="helmreleases",
+            name=name,
+            namespace=namespace
+        )
     
     def get_pods_status_for_label(self, label_key, label_value=None, namespace=None):
         res = self.find_pods_with_label(
@@ -819,6 +838,12 @@ class KubeAPI():
         result = self.core_api.create_namespace(
             body=client.V1Namespace(
                 metadata=client.V1ObjectMeta(name=name, labels=labels))
+        )
+        return force_serialisation(result)
+    
+    def delete_namespace(self, name):
+        result = self.core_api.delete_namespace(
+            name=name
         )
         return force_serialisation(result)
     
@@ -987,9 +1012,10 @@ class KubeAPI():
             'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim),
             'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws),
             'raycluster': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster),
+            'helmrelease': (self.list_namespaced_helmrelease, self.delete_namespaced_helmrelease),
             'job': (self.list_namespaced_vcjob, self.delete_namespaced_vcjob),
             'secret': (core_api.list_namespaced_secret, core_api.delete_namespaced_secret),
-            "ingress": (networking_api.list_namespaced_ingress, networking_api.delete_namespaced_ingress)
+            "ingress": (networking_api.list_namespaced_ingress, networking_api.delete_namespaced_ingress),
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():
@@ -1151,17 +1177,12 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    
-    res = api.get_job_info_for_labels(
-        label_key="kalavai.job.name",
-        label_value="litellm-441fb2",
-        namespace="default"
+    with open("dummy.yaml", "r") as f:
+        yaml_strs = f.readlines()
+
+    res = api.kube_deploy_plus(
+        yaml_strs="\n".join(yaml_strs)
     )
-    for label, data in res.items():
-        print("Label", label)
-        for pod_name, info in data.items():
-            print("Pod name", pod_name)
-            print(info["describe"].keys())
 
     #print(json.dumps(res, indent=2))
     
