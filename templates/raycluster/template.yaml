@@ -66,7 +66,7 @@ spec:
         restartPolicy: Always
         containers:
         - name: ray-head
-          image: docker.io/rayproject/ray:{{ray_version}}-py{{python_version}}-{{cuda_version}}
+          image: docker.io/rayproject/ray:{{ray_version}}-py{{python_version}}-cu{{cuda_version}}
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -148,7 +148,7 @@ spec:
         {% endif %}
         containers:
         - name: ml-work-group
-          image: docker.io/rayproject/ray:{{ray_version}}-py{{python_version}}-{{cuda_version}}
+          image: docker.io/rayproject/ray:{{ray_version}}-py{{python_version}}-cu{{cuda_version}}
           imagePullPolicy: IfNotPresent
           resources:
             limits:

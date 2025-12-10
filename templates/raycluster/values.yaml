@@ -15,47 +15,47 @@
   required: true
   description: "Name of the job"
 
-- name: min_nvidia_gpus
+- name: min_nvidia_workers
   value: 0
   default: 0
   editable: true
   required: true
-  description: "Minimum NVIDIA GPUS to always have running (can be 0)"
+  description: "Minimum NVIDIA GPU workers to always have running (can be 0). 1 worker == 1 GPU"
 
-- name: max_nvidia_gpus
+- name: max_nvidia_workers
   value: 1
   default: 1
   editable: true
   required: true
-  description: "Maximum target NVIDIA GPUs for autoscaling"
+  description: "Maximum target NVIDIA GPU workers for autoscaling. 1 worker == 1 GPU"
 
-- name: min_amd_gpus # DISABLED
+- name: min_amd_workers # DISABLED
   value: 0
   default: 0
   editable: false
   required: false
-  description: "Minimum AMD GPUs to always have running (can be 0)"
+  description: "Minimum AMD GPU workers to always have running (can be 0). 1 worker == 1 GPU"
 
-- name: max_amd_gpus # DISABLED
+- name: max_amd_workers # DISABLED
   value: 0
   default: 0
   editable: false
   required: false
-  description: "Maximum target AMD GPUs for autoscaling"
+  description: "Maximum target AMD GPU workers for autoscaling. 1 worker == 1 GPU"
 
 - name: cpus
   value: 2
   default: 2
   editable: true
   required: true
-  description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
+  description: "CPUs to be allocated per WORKER (final one = cpus * workers)."
 
 - name: memory
   value: 8
   default: 8
   editable: true
   required: true
-  description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
+  description: "RAM memory to be allocated per WORKER (final one = memory * workers)."
 
 - name: cuda_gpu_mem_percentage
   value: 100
@@ -79,11 +79,11 @@
   description: "Python version to use in the cluster (39, 310, 311, 312)"
 
 - name: cuda_version
-  value: "cu124"
-  default: "cu124"
+  value: "124"
+  default: "124"
   editable: true
   required: false
-  description: "CUDA version to use in the cluster (cu117 to cu128)"
+  description: "CUDA version to use in the cluster (117 to 128)"
 
 - name: upscaling_mode
   value: "Default"

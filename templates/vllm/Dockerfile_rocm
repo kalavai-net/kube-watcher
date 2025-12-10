@@ -13,8 +13,8 @@ RUN sudo apt update && sudo apt install bc wget ffmpeg curl tini -y && \
 
 # install dependencies
 COPY common_requirements.txt .
-RUN pip install -r common_requirements.txt --no-cache-dir && \
-    pip install git+https://github.com/foundation-model-stack/fastsafetensors.git --no-cache-dir
+# RUN pip install -r common_requirements.txt --no-cache-dir && \
+#    pip install git+https://github.com/foundation-model-stack/fastsafetensors.git --no-cache-dir
 # RUN pip install ray[default,serve-grpc]==2.44.1 --no-cache-dir
 
 # install cupy (required for pipeline parallelism)
@@ -30,7 +30,7 @@ RUN sudo chmod +x /home/ray/workspace/run_model.sh
 ENV RAY_EXPERIMENTAL_NOSET_ROCR_VISIBLE_DEVICES=1
 ENV RAY_EXPERIMENTAL_NOSET_HIP_VISIBLE_DEVICES=1
 # Performance variables
-ENV SAFETENSORS_FAST_GPU=1
+#ENV SAFETENSORS_FAST_GPU=1
 ENV HIP_FORCE_DEV_KERNARG=1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
