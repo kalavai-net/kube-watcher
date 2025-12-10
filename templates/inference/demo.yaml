@@ -1,0 +1,87 @@
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: qwen
+spec:
+  serveConfigV2: |
+    applications:
+    - args:
+        llm_configs:
+          - model_loading_config:
+              model_id: "qwen"
+              model_source: "Qwen/Qwen3-1.7B"
+            deployment_config:
+              autoscaling_config:
+                min_replicas: 1
+                max_replicas: 2
+                target_ongoing_requests: 10
+            runtime_env:
+              env_vars:
+                VLLM_USE_V1: "1"
+                HF_TOKEN: ""
+            engine_kwargs:
+              pipeline_parallel_size: 2
+              gpu_memory_utilization: 0.92
+              dtype: "auto"
+              max_num_seqs: 40
+              max_model_len: 16384
+              enable_chunked_prefill: true
+              enable_prefix_caching: true
+      import_path: ray.serve.llm:build_openai_app
+      name: llm_app
+      route_prefix: "/"
+  rayClusterConfig:
+    autoscalerOptions:
+      upscalingMode: Default
+      idleTimeoutSeconds: 60
+    enableInTreeAutoscaling: true
+    headGroupSpec:
+      serviceType: NodePort
+      rayStartParams:
+        num-gpus: "0"
+        num-cpus: "0"
+      template:
+        spec:
+          containers:
+          - name: ray-head
+            image: rayproject/ray-llm:2.52.0-py311-cu128
+            resources:
+              limits:
+                cpu: "2"
+                memory: "8Gi"
+              requests:
+                cpu: "2"
+                memory: "8Gi"
+            ports:
+            - containerPort: 6379
+              name: gcs-server
+            - containerPort: 8265
+              name: dashboard
+            - containerPort: 10001
+              name: client
+            - containerPort: 8000
+              name: serve
+    workerGroupSpecs:
+    - replicas: 2
+      minReplicas: 2
+      maxReplicas: 10
+      groupName: gpu-group
+      rayStartParams: {}
+      template:
+        spec:
+          containers:
+          - name: ray-worker
+            image: rayproject/ray-llm:2.52.0-py311-cu128
+            resources:
+              limits:
+                cpu: 2
+                memory: "14Gi"
+                nvidia.com/gpu: 1
+              requests:
+                cpu: 2
+                memory: "14Gi"
+                nvidia.com/gpu: 1
+          tolerations:
+          - key: "nvidia.com/gpu"
+            operator: "Exists"
+            effect: "NoSchedule"

@@ -1,0 +1,48 @@
+- name: deployment_name
+  value: "qwen-service" 
+  default: "ray-service"
+  editable: true
+  required: true
+  description: "Name of the job"
+
+- name: hf_token
+  value: 
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface access token, only required to load gated model weights"
+
+- name: model_id
+  value: Qwen/Qwen3-1.7B
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface model id to deploy"
+
+- name: gpus
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Minimum GPUS needed for a single model replica"
+
+- name: min_model_replicas
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Minimum model replicas to deploy at any given point (can be 0)"
+
+- name: max_model_replicas
+  value: 2
+  default: 1
+  editable: true
+  required: true
+  description: "Maximum model replicas to deploy at any given point"
+
+- name: target_ongoing_requests
+  value: 25
+  default: 25
+  editable: true
+  required: true
+  description: "autoscaling_metric value to target (upscale if above, downscale if below)"

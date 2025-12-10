@@ -702,6 +702,25 @@ class KubeAPI():
             name=name,
             namespace=namespace
         )
+    
+    def list_namespaced_rayservice(self, namespace, label_selector):
+        resources = self.kube_get_custom_objects(
+            group="ray.io",
+            api_version="v1",
+            plural="rayservices",
+            namespace=namespace,
+            label_selector=label_selector
+        )
+        return resources
+
+    def delete_namespaced_rayservice(self, name, namespace):
+        return self.kube_delete_custom_object(
+            group="ray.io",
+            api_version="v1",
+            plural="rayservices",
+            name=name,
+            namespace=namespace
+        )
 
     def list_namespaced_helmrelease(self, namespace, label_selector):
         resources = self.kube_get_custom_objects(
@@ -1012,6 +1031,7 @@ class KubeAPI():
             'persistentvolumeclaim': (core_api.list_namespaced_persistent_volume_claim, core_api.delete_namespaced_persistent_volume_claim),
             'leaderworkerset': (self.list_namespaced_lws, self.delete_namespaced_lws),
             'raycluster': (self.list_namespaced_raycluster, self.delete_namespaced_raycluster),
+            'rayservice': (self.list_namespaced_rayservice, self.delete_namespaced_rayservice),
             'helmrelease': (self.list_namespaced_helmrelease, self.delete_namespaced_helmrelease),
             'job': (self.list_namespaced_vcjob, self.delete_namespaced_vcjob),
             'secret': (core_api.list_namespaced_secret, core_api.delete_namespaced_secret),

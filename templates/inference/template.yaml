@@ -1,0 +1,204 @@
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  serveConfigV2: | # autoscaling https://docs.ray.io/en/latest/serve/advanced-guides/advanced-autoscaling.html#serve-advanced-autoscaling
+    applications:
+    - args:
+        llm_configs:
+          - model_loading_config:
+            {% if model_name_override != "" %}
+              model_id: "{{model_name_override}}"
+            {% else %}
+              model_id: "{{model_id}}"
+            {% endif %}
+              model_source: "{{model_id}}"
+            deployment_config:
+              autoscaling_config:
+                initial_replicas: {{model_min_replicas}}
+                min_replicas: {{model_min_replicas}}
+                max_replicas: {{model_max_replicas}}
+                target_ongoing_requests: {{model_target_ongoing_requests}}
+                upscale_delay_s: {{model_upscale_delay_s}}
+                downscale_delay_s: {{model_downscale_delay_s}}
+                downscale_to_zero_delay_s: {{model_downscale_to_zero_delay_s}}
+                upscaling_factor: {{model_upscaling_factor}}
+                downscaling_factor: {{model_downscaling_factor}}
+                metrics_interval_s: {{model_metrics_interval_s}}
+                look_back_period_s: {{model_look_back_period_s}}
+                aggregation_function: "{{model_aggregation_function}}"
+            runtime_env:
+              env_vars:
+                VLLM_USE_V1: "1"
+                HF_TOKEN: "{{hf_token}}"
+            engine_kwargs:
+              {{engine_kwargs}}
+              pipeline_parallel_size: {{gpus}}
+      import_path: ray.serve.llm:build_openai_app
+      name: llm_app
+      route_prefix: "/"
+  rayClusterConfig:
+    rayVersion: "{{ray_version}}"
+    autoscalerOptions: #https://ray-project.github.io/kuberay/reference/api/#autoscaleroptions
+      upscalingMode: {{resource_upscaling_mode}}
+      idleTimeoutSeconds: {{resource_idle_timeout_seconds}}
+    enableInTreeAutoscaling: true
+    headGroupSpec:
+      serviceType: ClusterIP
+      rayStartParams:
+        dashboard-host: "0.0.0.0"
+        num-cpus: "0" # avoid workload on head
+        num-gpus: "0"
+      template: # Pod template
+        metadata:
+          labels:
+            role: leader
+            kalavai.job.name: {{deployment_id}}
+        spec: # Pod spec
+          priorityClassName: "kalavai-system-priority"
+        {% if NODE_SELECTORS %}
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+              {% if NODE_SELECTORS_OPS == "OR" %}
+                {% for selector in NODE_SELECTORS %}
+                - matchExpressions:
+                  - key: {{selector.name}}
+                    operator: In
+                    values:
+                    {% for vals in selector.value %}
+                    - "{{vals}}"
+                    {% endfor %}
+                {% endfor %}
+              {% else %}
+                - matchExpressions:
+                {% for selector in NODE_SELECTORS %}
+                  {% for vals in selector.value %}
+                  - key: {{selector.name}}
+                    operator: In
+                    values:
+                    - "{{vals}}"
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+          {% endif %} 
+          restartPolicy: Always
+          containers:
+          - name: ray-head
+            image: rayproject/ray-llm:{{ray_version}}-py{{python_version}}-cu{{cuda_version}}
+            imagePullPolicy: IfNotPresent
+            resources:
+              limits:
+                cpu: 2
+                memory: 4Gi
+              requests:
+                cpu: 1
+                memory: 2Gi
+            lifecycle:
+              preStop:
+                exec:
+                  command: ["/bin/sh","-c","ray stop"]
+            ports:
+            - containerPort: 6379
+              name: gcs
+            - containerPort: 8265
+              name: dashboard
+            - containerPort: 10001
+              name: client
+            - containerPort: 8000
+              name: serve
+    workerGroupSpecs:
+    # NVIDIA group of GPUs
+    - groupName: gpu-group
+      replicas: {{gpus}}
+      minReplicas: {{gpus}}
+      maxReplicas: {{gpus * max_model_replicas}}
+      rayStartParams: 
+        num-gpus: "1"
+      template:
+        metadata:
+          labels:
+            kalavai.job.name: {{deployment_id}}
+        spec:
+          priorityClassName: {{JOB_PRIORITY|default("user-spot-priority", true)}}
+          runtimeClassName: nvidia
+        {% if NODE_SELECTORS %}
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+              {% if NODE_SELECTORS_OPS == "OR" %}
+                {% for selector in NODE_SELECTORS %}
+                - matchExpressions:
+                  - key: {{selector.name}}
+                    operator: In
+                    values:
+                    {% for vals in selector.value %}
+                    - "{{vals}}"
+                    {% endfor %}
+                {% endfor %}
+              {% else %}
+                - matchExpressions:
+                {% for selector in NODE_SELECTORS %}
+                  {% for vals in selector.value %}
+                  - key: {{selector.name}}
+                    operator: In
+                    values:
+                    - "{{vals}}"
+                  {% endfor %}
+                {% endfor %}
+              {% endif %}
+          {% endif %}
+          containers:
+          - name: ml-work-group
+            image: rayproject/ray-llm:{{ray_version}}-py{{python_version}}-cu{{cuda_version}}
+            imagePullPolicy: IfNotPresent
+            resources:
+              limits:
+                nvidia.com/gpu: 1
+                nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+                cpu: {{cpus}}
+                memory: {{memory}}Gi
+              requests:
+                nvidia.com/gpu: 1
+                cpu: {{cpus}}
+                memory: {{memory}}Gi
+            lifecycle:
+              preStop:
+                exec:
+                  command: ["/bin/sh","-c","ray stop"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - name: gcs
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+    - name: dashboard
+      port: 8265
+      targetPort: 8265
+      protocol: TCP
+    - name: client
+      port: 10001
+      targetPort: 10001
+      protocol: TCP
+    - name: serve
+      port: 8000
+      targetPort: 8000
+      protocol: TCP

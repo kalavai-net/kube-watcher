@@ -1,0 +1,194 @@
+############################
+### MUST HAVE THESE FIELDS ##
+- name: id_field
+  value: deployment_name
+  default: deployment_name
+  editable: false
+  required: false
+  description: "Field that contains the ID of the job"
+############################
+
+- name: deployment_name
+  value: "ray-service" 
+  default: "ray-service"
+  editable: true
+  required: true
+  description: "Name of the job"
+
+- name: hf_token
+  value: <yout token>
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface access token, only required to load gated model weights"
+
+- name: model_name_override
+  value: ""
+  default: ""
+  editable: true
+  required: false
+  description: "Model name to use (defaults to model_id) during inference"
+
+- name: model_id
+  value: null
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface model id to deploy"
+
+- name: engine_kwargs
+  value: ""
+  default: ""
+  editable: true
+  required: true
+  description: "Dictionary shape. Extra vLLM engine parameters to pass to the model. See https://docs.vllm.ai/en/stable/configuration/engine_args.html"
+
+- name: gpus
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Minimum NVIDIA GPUS to always have running (can be 0)"
+
+- name: model_min_replicas
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Minimum model replicas to deploy at any given point (can be 0)"
+
+- name: model_max_replicas
+  value: 1
+  default: 1
+  editable: true
+  required: true
+  description: "Maximum model replicas to deploy at any given point"
+
+- name: model_target_ongoing_requests
+  value: 2
+  default: 2
+  editable: true
+  required: false
+  description: "Scale the number of replicas for a deployment up or down based on the average number of ongoing requests per replica."
+
+- name: model_max_ongoing_requests
+  value: 5
+  default: 5
+  editable: true
+  required: false
+  description: "There is also a maximum queue limit that proxies respect when assigning requests to replicas. Setting it too low can throttle throughput. Instead of being forwarded to replicas for concurrent execution, requests will tend to queue up at the proxy, waiting for replicas to finish processing existing requests."
+
+- name: model_upscale_delay_s
+  value: 30
+  default: 30
+  editable: true
+  required: false
+  description: "This defines how long Serve waits before scaling up the number of replicas in your deployment."
+
+- name: model_downscale_delay_s
+  value: 600
+  default: 600
+  editable: true
+  required: false
+  description: "This defines how long Serve waits before scaling down the number of replicas in your deployment."
+
+- name: model_downscale_to_zero_delay_s
+  value: 600
+  default: 600
+  editable: true
+  required: false
+  description: "This defines how long Serve waits before scaling from one replica down to zero (only applies when min_replicas = 0)."
+
+- name: model_upscaling_factor
+  value: 1.0
+  default: 1.0
+  editable: true
+  required: false
+  description: "The multiplicative factor to amplify or moderate each upscaling decision. For example, when the application has high traffic volume in a short period of time, you can increase upscaling_factor to scale up the resource quickly."
+
+- name: model_downscaling_factor
+  value: 1.0
+  default: 1.0
+  editable: true
+  required: false
+  description: "The multiplicative factor to amplify or moderate each downscaling decision. For example, if you want your application to be less sensitive to drops in traffic and scale down more conservatively, you can decrease downscaling_factor to slow down the pace of downscaling."
+
+- name: model_metrics_interval_s
+  value: 10
+  default: 10
+  editable: true
+  required: false
+  description: "This controls how often each replica and handle sends reports on current ongoing requests to the autoscaler."
+
+- name: model_look_back_period_s
+  value: 30
+  default: 30
+  editable: true
+  required: false
+  description: "This is the window over which the average number of ongoing requests per replica is calculated."
+
+- name: model_aggregation_function
+  value: "mean"
+  default: "mean"
+  editable: true
+  required: false
+  description: "This controls how metrics are aggregated over the look_back_period_s time window. The aggregation function determines how Ray Serve combines multiple metric measurements into a single value for autoscaling decisions. Supported values:
+'mean' (default): Uses time-weighted average of metrics. This provides smooth scaling behavior that responds to sustained traffic patterns.
+'max': Uses the maximum metric value observed. This makes autoscaling more sensitive to spikes, scaling up quickly when any replica experiences high load.
+'min': Uses the minimum metric value observed. This results in more conservative scaling behavior."
+
+- name: resource_upscaling_mode
+  value: "Default"
+  default: "Default"
+  editable: true
+  required: false
+  description: "Defines resources autoscale mode. One of: Conservative, Default or Aggressive. https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/configuring-autoscaling.html#scale-up-and-scale-down-speed"
+
+- name: resource_idle_timeout_seconds
+  value: 60
+  default: 60
+  editable: true
+  required: false
+  description: "Defines the waiting time in seconds before scaling down an idle worker resource. https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/configuring-autoscaling.html#scale-up-and-scale-down-speed"
+
+- name: cpus
+  value: 2
+  default: 2
+  editable: true
+  required: false
+  description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
+
+- name: memory
+  value: 14
+  default: 14
+  editable: true
+  required: false
+  description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
+
+- name: cuda_gpu_mem_percentage
+  value: 100
+  default: 100
+  editable: true
+  required: false
+  description: "Maximum memory fraction allowed to be used from the GPU vRAM."
+
+- name: ray_version
+  value: "2.52.0"
+  default: "2.52.0"
+  editable: true
+  required: false
+  description: "Ray version to use in the cluster"
+
+- name: python_version
+  value: "311"
+  default: "311"
+  editable: true
+  required: false
+  description: "Python version to use in the cluster (39, 310, 311, 312)"
+
+- name: cuda_version
+  value: "124"
+  default: "124"
+  editable: true
+  required: false
+  description: "CUDA version to use in the cluster (117 to 128)"

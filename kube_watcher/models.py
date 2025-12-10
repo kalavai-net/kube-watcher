@@ -23,6 +23,7 @@ class JobTemplate(Enum):
     #axolotl = 16
     registrar = 17
     raycluster = 18
+    inference = 19
     #flexible = 99
 
 class NodeStatusRequest(BaseModel):
