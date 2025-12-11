@@ -9,6 +9,29 @@ metadata:
 type: Opaque
 immutable: true
 ---
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: gpustack-config
+# data:
+#   server.yaml: |
+#     # Common Options
+#     debug: true
+#     #data_dir: /path/to/dir
+#     token: {{token}}
+
+#     # Server Options
+#     host: 0.0.0.0
+#     port: 80
+#     disable_worker: true
+#     force_auth_localhost: false
+#     bootstrap_password: {{admin_password}}
+#     system_reserved:
+#       ram: 2
+#       vram: 2
+    
+#     huggingface_token: {{hf_token}}
+---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -45,7 +68,7 @@ spec:
           kalavai.job.name: {{deployment_id}}
       spec:
         priorityClassName: "kalavai-system-priority"
-        serviceAccountName: gpustack-sa
+        #serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         # nodeSelector:
         #   kalavai/role: server
@@ -53,13 +76,13 @@ spec:
         - name: gpustack-leader
           image: docker.io/gpustack/gpustack:{{version}}
           args: 
+          #- --config-file=/etc/config/server.yaml
           - --advertise-address=0.0.0.0
           - --huggingface-token=$HF_TOKEN 
-          - --port=8080 
-          - --cache-dir=/kalavai/cache 
+          - --port=80
           - --token={{token}} 
           - --bootstrap-password={{admin_password}}
-          - --disable-worker
+          - --cache-dir=/kalavai/cache 
           env:
           - name: HF_TOKEN
             valueFrom:
@@ -73,7 +96,7 @@ spec:
           - name: GPUSTACK_DB_POOL_TIMEOUT
             value: "120"
           ports:
-          - containerPort: 8080
+          - containerPort: 80
             name: model-port
           resources:
             requests:
@@ -84,12 +107,20 @@ spec:
               cpu: 2
               memory: 2Gi
               ephemeral-storage: {{working_memory}}Gi
-        #   volumeMounts:
-        #     - name: cache
-        #       mountPath: /kalavai/cache
-        # volumes:
-        # - name: cache
-        #   emptyDir: {}
+          volumeMounts:
+          # - name: config-volume
+          #   mountPath: /etc/config
+          - name: cache
+            mountPath: /kalavai/cache
+        volumes:
+        - name: cache
+          emptyDir: {}
+        # - name: config-volume
+        #   configMap:
+        #     # Reference the name of the ConfigMap defined above
+        #     name: gpustack-config
+        #     # Optional: You can set default file permissions (e.g., 0644)
+        #     defaultMode: 0644
         restartPolicy: OnFailure
   - replicas: {{nvidia_gpus}}
     name: cuda-worker
@@ -108,7 +139,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-        serviceAccountName: gpustack-sa
+        #serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
@@ -151,12 +182,15 @@ spec:
             NODE_PREFIX="cuda-worker-";
             NODE_NAME=$NODE_PREFIX$(($VC_TASK_INDEX+1));
 
+            # --server-url http://gpustack-test-4f1e29-service.default.svc.cluster.local:80 \
+            # --server-url http://$PS_HOST:80
             exec /usr/bin/entrypoint.sh \
-              --server-url http://$PS_HOST:8080 \
-              --cache-dir /kalavai/cache \
+              --server-url http://$PS_HOST:80 \
               --huggingface-token $HF_TOKEN \
               --token {{token}} \
               --worker-name $NODE_NAME
+              --cache-dir /kalavai/cache \
+              
             # fail if the connection was terminated
             exit 1
           env:
@@ -176,12 +210,12 @@ spec:
               nvidia.com/gpu: 1
               nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
               ephemeral-storage: {{working_memory}}Gi
-        #   volumeMounts:
-        #     - name: cache
-        #       mountPath: /kalavai/cache
-        # volumes:
-        # - name: cache
-        #   emptyDir: {}
+          volumeMounts:
+            - name: cache
+              mountPath: /kalavai/cache
+        volumes:
+        - name: cache
+          emptyDir: {}
         restartPolicy: OnFailure
   - replicas: {{amd_gpus}}
     name: rocm-worker
@@ -200,7 +234,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-        serviceAccountName: gpustack-sa
+        #serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
@@ -289,8 +323,8 @@ spec:
     kalavai.job.name: {{deployment_id}}
   ports:
     - name: ui
-      port: 8080
-      targetPort: 8080
+      port: 80
+      targetPort: 80
       protocol: TCP
     {% if nodeport != "" %}
       nodePort: {{nodeport}}

@@ -1,13 +1,20 @@
 - name: deployment_name
-  value: "gpustack-amd"
+  value: "gpustack-test"
   default: "gpustack"
   editable: true
   required: true
   description: "deployment name"
 
+- name: version
+  value: "v2.0.1"
+  default: "v2.0.1"
+  editable: true
+  required: false
+  description: "GPUStack version to deploy. See releases: https://github.com/gpustack/gpustack/releases"
+
 - name: admin_password
-  value: "Password123$"
-  default: "Password123$"
+  value: "password"
+  default: "password"
   editable: true
   required: false
   description: "Default password name for admin user"
@@ -20,21 +27,21 @@
   description: "Temporary storage to use to cache model weights (in GB)"
 
 - name: nvidia_gpus
-  value: 6
+  value: 2
   default: 1
   editable: true
   required: true
   description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
 
 - name: amd_gpus
-  value: 8
+  value: 0
   default: 1
   editable: true
   required: true
   description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
 
 - name: token
-  value: "sometoken"
+  value: "gpustack_0a15d3b2c38a4d68_1e2e42931930face5e38167f05c1dbad"
   default: "sometoken"
   editable: true
   required: false
