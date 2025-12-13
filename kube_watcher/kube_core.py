@@ -478,7 +478,7 @@ class KubeAPI():
                             namespace = yaml_obj["metadata"]["namespace"]
                         else:
                             namespace = "default"
-                    plural = yaml_obj["kind"].lower() + "s"
+                    plural = yaml_obj["kind"].lower() + "s" if not yaml_obj["kind"].endswith("y") else yaml_obj["kind"].lower()[:-1] + "ies"
                     res = custom_api.create_namespaced_custom_object(
                         group,
                         api_version,
