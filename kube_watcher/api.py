@@ -8,7 +8,7 @@ from collections import defaultdict
 
 import uvicorn
 from starlette.requests import Request
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi_mcp import FastApiMCP
 
 from kube_watcher.cost_core import OpenCostAPI
@@ -41,7 +41,11 @@ from kube_watcher.kube_core import (
 )
 from kube_watcher.utils import extract_auth_token
 from kube_watcher.prometheus_core import PrometheusAPI
-from kube_watcher.jobs import Job, JobTemplate
+from kube_watcher.jobs import (
+    Job,
+    JobTemplate,
+    get_template_types
+)
 from kube_watcher.ray_cluster import RayCluster
 
 
@@ -703,6 +707,15 @@ async def get_job_templates(type: str=None, api_key: str = Depends(verify_read_k
             if job["metadata"]["type"] == type:
                 model_templates.append(e.name)
     return model_templates
+
+@app.get("/v1/get_template_types", 
+    operation_id="get_template_types",
+    summary="Get templates by type",
+    tags=["workload_info"],
+    description="Gets templates by type with the option to filter them by a specific type",
+    response_description="Job templates and types")
+async def template_types_get(filter: list[str] | None = Query(default=None), api_key: str = Depends(verify_read_key)):
+    return get_template_types(filter=filter)
 
 @app.get("/v1/job_defaults", 
     operation_id="get_job_defaults",

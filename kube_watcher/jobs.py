@@ -4,6 +4,7 @@ import re
 import copy
 from os.path import commonprefix
 import uuid
+from collections import defaultdict
 
 from kube_watcher.models import JobTemplate
 
@@ -28,6 +29,18 @@ def get_defaults_path(template: JobTemplate):
 
 def get_metadata_path(template: JobTemplate):
     return f"templates/{template.name}/metadata.json"
+
+def get_template_types(filter=None):
+    types = defaultdict(list)
+    for job in JobTemplate:
+        try:
+            with open(get_metadata_path(job)) as f:
+                meta = json.load(f)
+                if filter is None or meta["type"] in filter:
+                    types[meta["type"]].append(job.name)
+        except:
+            pass
+    return types
 
 def escape_field(text):
     return re.sub('[^0-9a-z]+', '-', text.lower())
@@ -143,6 +156,7 @@ class Job:
 
         
 if __name__ == "__main__":
-    job = Job(template="playground")
-    print(job.get_defaults())
     
+    print(
+        get_template_types(filter=["model"])
+    )

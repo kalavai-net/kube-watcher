@@ -1,6 +1,6 @@
 {
     "name": "Ray Cluster",
-    "type": "platform",
+    "type": "cluster",
     "description": "An open source framework to build and scale your ML and Python applications easily",
     "docs": "https://docs.ray.io/en/latest",
     "icon": "https://github.com/ray-project/ray/raw/master/doc/source/images/ray_header_logo.png",
