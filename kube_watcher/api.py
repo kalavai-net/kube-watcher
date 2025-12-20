@@ -199,6 +199,15 @@ async def available_resources(request: NodesRequest, api_key: str = Depends(veri
     else:
         return kube_api.get_available_resources(node_names=request.node_names)
 
+@app.get("/v1/get_available_user_spaces", 
+    operation_id="get_available_user_spaces",
+    summary="Get user namespaces available in the Kalavai compute pool",
+    tags=["pool_info"],
+    description="Gets user namespaces available in the kalavai pool",
+    response_description="User namespaces for the kalavai pool")
+async def get_user_spaces(api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    return namespaces
+
 @app.get("/v1/get_cluster_labels", 
     operation_id="get_cluster_labels",
     summary="Get labels for the Kalavai compute pool",

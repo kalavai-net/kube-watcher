@@ -590,7 +590,6 @@ class KubeAPI():
             'pod': self.core_api.list_pod_for_all_namespaces if namespace is None else self.core_api.list_namespaced_pod
         }
         label_selector = label_key if label_value is None else f"{label_key}={label_value}"
-
         for resource_type, list_func in resource_types.items():
             try:
                 resources = list_func(label_selector=label_selector) if namespace is None else list_func(namespace, label_selector=label_selector)
@@ -639,7 +638,6 @@ class KubeAPI():
         for label_match, pods in match.items():
             for pod_name, pod in pods.items():
                 logs[label_match][pod_name] = self.describe_pod(pod=pod_name, namespace=namespace)
-        
         return logs
     
     def list_namespaces(self):
@@ -1135,7 +1133,7 @@ class KubeAPI():
                 for pod_name, logs in info.items():
                     job_info[label_match][pod_name]["logs"] = logs
         except Exception as e:
-            print(f"Error in get_job_info_for_labels: {str(e)}")
+            print(f"Error in get log for labels: {str(e)}")
             pass
         try:
             match = self.describe_pods_for_labels(
@@ -1145,9 +1143,11 @@ class KubeAPI():
             )
             for label_match, descriptions in match.items():
                 for pod_name, description in descriptions.items():
+                    if pod_name not in job_info[label_match]:
+                        job_info[label_match] = {pod_name: {}}
                     job_info[label_match][pod_name]["describe"] = description
         except Exception as e:
-            print(f"Error in get_job_info_for_labels: {str(e)}")
+            print(f"Error in describe pods for labels: {str(e)}")
             pass
 
         return job_info
@@ -1197,12 +1197,14 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
 
-    with open("dummy.yaml", "r") as f:
-        yaml_strs = f.readlines()
-
-    res = api.kube_deploy_plus(
-        yaml_strs="\n".join(yaml_strs)
+    res = api.get_job_info_for_labels(
+        label_key="kalavai.job.name",
+        label_value="qwen-qwen3-0-6b-dc1649",
+        namespace="default",
+        tail_lines=100
     )
-
-    #print(json.dumps(res, indent=2))
+    for job, values in res.items():
+        for pod, status in values.items():
+            print(status["describe"].keys())
+            print(status["describe"]["status"])
     

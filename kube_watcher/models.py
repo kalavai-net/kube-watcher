@@ -24,6 +24,7 @@ class JobTemplate(Enum):
     registrar = 17
     raycluster = 18
     inference = 19
+    pool = 20
     #flexible = 99
 
 class NodeStatusRequest(BaseModel):
