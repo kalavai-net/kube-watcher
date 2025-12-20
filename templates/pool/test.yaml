@@ -1,0 +1,98 @@
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: carlos
+#   labels:
+#     name: carlos
+#     kalavai.job.name: pool
+# ---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: kalavai
+  namespace: kalavai
+spec:
+  interval: 1h
+  url: https://kalavai-net.github.io/helm-charts/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: watcher-api
+  namespace: carlos
+  labels:
+    kalavai.job.name: pool
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: kalavai-watcher
+      version: "0.4.14"
+      sourceRef:
+        kind: HelmRepository
+        name: kalavai
+        namespace: kalavai
+  values:
+    image_tag: v2025.12.3
+    deployment:
+      replicas: 1
+      static_workspace: carlos
+      is_shared_pool: False
+      in_cluster: True
+      admin_key: admin_key
+      write_key: write_key
+      readonly_key: readonly_key
+      kalavai_username_key: user_key
+      use_auth_key: True
+    service:
+      type: ClusterIP
+    labels:
+      kalavai.job.name: pool
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kalavai-api
+  namespace: carlos
+  labels:
+    kalavai.job.name: pool
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: kalavai-api
+      version: "0.1.10"
+      sourceRef:
+        kind: HelmRepository
+        name: kalavai
+        namespace: kalavai
+  values:
+    bridge:
+      replicas: 1
+      image_tag: 0.7.23
+      labels:
+        kalavai.job.name: pool
+      enabled: true
+      watcher_api_url: watcher-api-service.carlos.svc.cluster.local:8000
+      watcher_api_key: admin_key
+      service:
+        type: ClusterIP
+---
+# expose kalavai api service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pool-service
+  namespace: carlos
+  labels:
+    # must have this!
+    kalavai.job.name: pool
+spec:
+  type: NodePort
+  selector:
+    app: kalavai-api-app
+  ports:
+    - name: api
+      port: 8000
+      targetPort: 8000
+      protocol: TCP

@@ -1,0 +1,55 @@
+- name: deployment_name
+  value: kalavai-pool
+  default: kalavai-pool
+  editable: true
+  required: true
+  description: "Name of the deployment job"
+
+- name: watcher_version
+  value: "0.4.18"
+  default: "0.4.18"
+  editable: true
+  required: false
+  description: "Kube watcher version to install in the pool"
+
+- name: watcher_image_tag
+  value: "v2025.12.11"
+  default: "v2025.12.11"
+  editable: true
+  required: false
+  description: "Kube watcher image tag to install in the pool"
+
+- name: watcher_admin_key
+  value: "admin_key"
+  default: "admin_key"
+  editable: true
+  required: false
+  description: "Kube watcher admin key (full privileges)"
+
+- name: watcher_write_key
+  value: "write_key"
+  default: "write_key"
+  editable: true
+  required: false
+  description: "Kube watcher write key (full namespace privileges)"
+
+- name: watcher_readonly_key
+  value: "readonly_key"
+  default: "readonly_key"
+  editable: true
+  required: false
+  description: "Kube watcher readonly key (read only privileges)"
+
+- name: kalavai_api_version
+  value: "0.1.10"
+  default: "0.1.10"
+  editable: true
+  required: false
+  description: "Kalavai API service version to install in the pool"
+
+- name: kalavai_api_image_tag
+  value: "0.8.0"
+  default: "0.8.0"
+  editable: true
+  required: false
+  description: "Kalavai API service image tag to install in the pool"

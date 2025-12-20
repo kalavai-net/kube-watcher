@@ -1,0 +1,10 @@
+{
+    "name": "Kalavai pool",
+    "type": "platform",
+    "description": "A functional Kalavai pool to manage AI workloads at scale",
+    "docs": "https://kalavai-net.github.io/kalavai-client/",
+    "icon": "https://kalavai-net.github.io/kalavai-client/assets/icons/logo_no_background.png",
+    "info": "Create a pool of computing resources to manage AI workloads at scale",
+    "template_rules": "",
+    "values_rules": ""
+}
