@@ -1,3 +1,67 @@
+# {% if external_redis_url == "" %}
+# apiVersion: v1
+# stringData:
+#   redis_password: {{redis_password}}
+# kind: Secret
+# metadata:
+#   name: {{deployment_id}}-secret
+#   labels:
+#     kalavai.job.name: {{deployment_id}}
+# type: Opaque
+# immutable: true
+# ---
+# # Redis for fault tolerance
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: {{deployment_id}}-redis-service
+#   labels:
+#     app: {{deployment_id}}-redis
+#     kalavai.job.name: {{deployment_id}}
+# spec:
+#   type: ClusterIP
+#   ports:
+#   - name: redis
+#     port: 6379
+#   selector:
+#     app: {{deployment_id}}-redis
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: {{deployment_id}}-redis
+#   labels:
+#     app: {{deployment_id}}-redis
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: {{deployment_id}}-redis
+#   template:
+#     metadata:
+#       labels:
+#         app: {{deployment_id}}-redis
+#         kalavai.job.name: {{deployment_id}}
+#     spec:
+#       priorityClassName: "kalavai-system-priority"
+#       containers:
+#       - name: redis
+#         image: redis:7.4.0
+#         command:
+#         - "sh"
+#         - "-c"
+#         - |
+#           redis-server --requirepass $REDIS_PASSWORD
+#         ports:
+#         - containerPort: 6379
+#         env:
+#         - name: REDIS_PASSWORD
+#             valueFrom:
+#               secretKeyRef:
+#                 name: {{deployment_id}}-secret
+#                 key: redis_password
+# {% endif %}
+---
 # example: https://raw.githubusercontent.com/ray-project/ray/master/doc/source/cluster/kubernetes/configs/ray-cluster.gpu.yaml
 apiVersion: ray.io/v1
 kind: RayCluster
@@ -6,19 +70,23 @@ metadata:
   labels:
     # must have this label
     kalavai.job.name: {{deployment_id}}
-  annotations:
-    # fault tolerance https://ray-project.github.io/kuberay/guidance/gcs-ft/
-    #ray.io/ft-enabled: "true" # <- add this annotation enable GCS FT
-    #ray.io/external-storage-namespace: "raycluster-storage" # <- optional, to specify the external storage namespace
 spec:
+  # gcsFaultToleranceOptions:
+  #   # fault tolerance https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-gcs-ft.html
+  #   # example: https://github.com/ray-project/kuberay/blob/master/ray-operator/config/samples/ray-cluster.external-redis.yaml
+  #   {% if external_redis_url != "" %}
+  #   redisAddress: "{{external_redis_url}}"
+  #   {% else %}
+  #   redisAddress: "{{deployment_id}}-redis-service:6379"
+  #   {% endif %}
+  #   redisPassword: # <- Add redis password from a Kubernetes secret.
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: {{deployment_id}}-secret
+  #         key: redis_password
   rayVersion: "{{ray_version}}"
   autoscalerOptions:
-    # upscalingMode is "Default" or "Aggressive."
-    # Conservative: Upscaling is rate-limited; the number of pending worker pods is at most the size of the Ray cluster.
-    # Default: Upscaling is not rate-limited.
-    # Aggressive: An alias for Default; upscaling is not rate-limited.
     upscalingMode: {{upscaling_mode}}
-    # idleTimeoutSeconds is the number of seconds to wait before scaling down a worker pod which is not using Ray resources.
     idleTimeoutSeconds: {{idle_timeout_seconds}}
   enableInTreeAutoscaling: true
   headGroupSpec:
@@ -26,15 +94,14 @@ spec:
     rayStartParams:
       dashboard-host: "0.0.0.0"
       num-cpus: "0" # avoid workload on head
+      num-gpus: "0"
     template: # Pod template
-    {% if enable_auth == "true" %}
-      serviceAccountName: {{deployment_id}}-account
-    {% endif %}
       metadata:
         labels:
           kalavai.job.name: {{deployment_id}}
           role: leader
       spec: # Pod spec
+        terminationGracePeriodSeconds: 60
         priorityClassName: "kalavai-system-priority"
       {% if NODE_SELECTORS %}
         affinity:
@@ -69,12 +136,13 @@ spec:
           image: docker.io/rayproject/ray:{{ray_version}}-py{{python_version}}-cu{{cuda_version}}
           imagePullPolicy: IfNotPresent
           resources:
+            # proportional to the size of the cluster (recommended 8CPU / 32GB RAM)
             limits:
-              cpu: 2
-              memory: 2Gi
+              cpu: 4
+              memory: 8Gi
             requests:
-              cpu: 1
-              memory: 1Gi
+              cpu: 2
+              memory: 4Gi
           lifecycle:
             preStop:
               exec:
@@ -88,26 +156,10 @@ spec:
             name: client
           - containerPort: 8000
             name: serve
-      {% if enable_auth == "true" %}
-        - name: {{deployment_id}}-rbac
-          image: quay.io/brancz/kube-rbac-proxy:v0.18.1
-          args:
-          - "--insecure-listen-address=0.0.0.0:8265"
-          - "--upstream=http://127.0.0.1:8443/"
-          - "--config-file=/etc/kube-rbac-proxy/config-file.yaml"
-          - "--logtostderr=true"
-          volumeMounts:
-          - name: config
-            mountPath: /etc/kube-rbac-proxy
-        volumes:
-        - name: config
-          configMap:
-            name: {{deployment_id}}-rbac
-      {% endif %}
   workerGroupSpecs:
   # NVIDIA group of GPUs
   - groupName: nvidia-group
-    replicas: 0
+    replicas: {{min_nvidia_workers}}
     minReplicas: {{min_nvidia_workers}}
     maxReplicas: {{max_nvidia_workers}}
     rayStartParams: 
@@ -117,6 +169,8 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
+        #restartPolicy: Never # for testing
+        terminationGracePeriodSeconds: 60
         priorityClassName: {{JOB_PRIORITY|default("user-spot-priority", true)}}
         runtimeClassName: nvidia
       {% if NODE_SELECTORS %}
@@ -166,7 +220,7 @@ spec:
                 command: ["/bin/sh","-c","ray stop"]
   # AMD group of GPUs
   - groupName: amd-group
-    replicas: 0
+    replicas: {{min_amd_workers}}
     minReplicas: {{min_amd_workers}}
     maxReplicas: {{max_amd_workers}}
     rayStartParams: 
@@ -253,98 +307,3 @@ spec:
 ---
 # Authentication
 # https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html
-{% if enable_auth == "true" %}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{deployment_id}}-rbac
-data:
-  config-file.yaml: |
-    authorization:
-      resourceAttributes:
-        namespace: default
-        apiVersion: v1
-        apiGroup: ray.io
-        resource: rayclusters
-        name: {{deployment_id}}
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{deployment_id}}-rbac
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{deployment_id}}-rbac
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: {{deployment_id}}-rbac
-subjects:
-- kind: ServiceAccount
-  name: {{deployment_id}}-rbac
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: {{deployment_id}}-rbac
-rules:
-- apiGroups: ["authentication.k8s.io"]
-  resources:
-  - tokenreviews
-  verbs: ["create"]
-- apiGroups: ["authorization.k8s.io"]
-  resources:
-  - subjectaccessreviews
-  verbs: ["create"]
-{% endif %}
-# ---
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   labels:
-#     # must have this!
-#     kalavai.job.name: {{deployment_id}}
-#   annotations:
-#     cert-manager.io/cluster-issuer: letsencrypt-stage # use "letsencrypt-stage" for testing
-#     kubernetes.io/tls-acme: "true"
-#   name: {{deployment_id}}-ingress
-# spec:
-#   ingressClassName: traefik
-#   rules:
-#   - host: {{USER_ID}}-{{deployment_id}}.platform.kalavai.net
-#     http:
-#       paths:
-#       - backend:
-#           service:
-#             name: {{deployment_id}}-service
-#             port:
-#               number: 8265
-#         path: /dashboard
-#         pathType: Prefix
-#       - backend:
-#           service:
-#             name: {{deployment_id}}-service
-#             port:
-#               number: 6379
-#         path: /gcs
-#         pathType: Prefix
-#       - backend:
-#           service:
-#             name: {{deployment_id}}-service
-#             port:
-#               number: 10001
-#         path: /client
-#         pathType: Prefix
-#       - backend:
-#           service:
-#             name: {{deployment_id}}-service
-#             port:
-#               number: 8000
-#         path: /serve
-#         pathType: Prefix
-#   tls:
-#   - hosts:
-#     - {{USER_ID}}-{{deployment_id}}.platform.kalavai.net
-#     secretName: {{deployment_id}}.platform.kalavai.net-tls 

@@ -1,40 +1,40 @@
 - name: deployment_name
-  value: "ray-cluster" 
+  value: "kalavai-test-cluster" 
   default: "ray-cluster"
   editable: true
   required: true
   description: "Name of the job"
 
-- name: head_is_worker
-  value: "no"
-  default: "no"
+- name: min_nvidia_workers
+  value: 40
+  default: 0
   editable: true
+  required: true
+  description: "Minimum NVIDIA GPUS to always have running (can be 0)"
+
+- name: max_nvidia_workers
+  value: 40
+  default: 1
+  editable: true
+  required: true
+  description: "Maximum target NVIDIA GPUs for autoscaling"
+
+- name: min_amd_workers # DISABLED
+  value: 0
+  default: 0
+  editable: false
   required: false
-  description: "If the head acts as a worker (with GPU, CPU and MEMORY allocation)"
+  description: "Minimum AMD GPUs to always have running (can be 0)"
 
-- name: workers
-  value: 1
-  default: 1
-  editable: true
-  required: true
-  description: "Number of desired starting workers"
-
-- name: min_workers
-  value: 1
-  default: 1
-  editable: true
-  required: true
-  description: "Minimum desired workers for autoscaling"
-
-- name: max_workers
-  value: 1
-  default: 1
-  editable: true
-  required: true
-  description: "Maximum workers for autoscaling"
+- name: max_amd_workers # DISABLED
+  value: 0
+  default: 0
+  editable: false
+  required: false
+  description: "Maximum target AMD GPUs for autoscaling"
 
 - name: cpus
-  value: 4
+  value: 2
   default: 2
   editable: true
   required: false
@@ -62,8 +62,8 @@
   description: "Python version to use in the cluster (39, 310, 311, 312)"
 
 - name: cuda_version
-  value: "cu124"
-  default: "cu124"
+  value: "128"
+  default: "128"
   editable: true
   required: false
   description: "CUDA version to use in the cluster (cu117 to cu128)"

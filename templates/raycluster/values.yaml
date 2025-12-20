@@ -19,7 +19,7 @@
   value: 0
   default: 0
   editable: true
-  required: true
+  required: false
   description: "Minimum NVIDIA GPU workers to always have running (can be 0). 1 worker == 1 GPU"
 
 - name: max_nvidia_workers
@@ -47,7 +47,7 @@
   value: 2
   default: 2
   editable: true
-  required: true
+  required: false
   description: "CPUs to be allocated per WORKER (final one = cpus * workers)."
 
 - name: memory
@@ -79,8 +79,8 @@
   description: "Python version to use in the cluster (39, 310, 311, 312)"
 
 - name: cuda_version
-  value: "124"
-  default: "124"
+  value: "128"
+  default: "128"
   editable: true
   required: false
   description: "CUDA version to use in the cluster (117 to 128)"
@@ -99,9 +99,17 @@
   required: false
   description: "Defines the waiting time in seconds before scaling down an idle worker pod. Aggressive. https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/configuring-autoscaling.html#scale-up-and-scale-down-speed"
 
-- name: enable_auth
-  value: "false"
-  default: "false"
-  editable: false
+## Fault tolerance
+- name: external_redis_url
+  value: ""
+  default: ""
+  editable: true
   required: false
-  description: "Configure Ray cluster with authentication and access control: https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-auth.html"
+  description: "External Redis DB for Ray fault tolerance. If blank, a local Redis instance will be deployed. https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/kuberay-gcs-ft.html"
+
+- name: redis_password
+  value: "changeme"
+  default: "changeme"
+  editable: true
+  required: false
+  description: "Admin password for the (external or internal) Redis DB"
