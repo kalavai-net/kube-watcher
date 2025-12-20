@@ -1,5 +1,5 @@
 - name: workers
-  value: 3
+  value: 1
   default: 1
   description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
 
@@ -18,26 +18,19 @@
   description: "Huggingface access token, only required to load gated model weights"
 
 - name: model_id
-  value: Qwen/Qwen3-Coder-30B-A3B-Instruct
+  value: Qwen/Qwen3-4B
   default: null
   description: "Huggingface model id to load"
 
 - name: working_memory
-  value: 120
+  value: 40
   default: 5
   description: "Pool storage to use to cache model weights"
 
 - name: memory
-  value: 64
+  value: 14
   default: 8
   description: "RAM memory per single worker (final one = memory * num_workers)"
-
-- name: download_worker_weights
-  value: "True"
-  default: "True"
-  editable: true
-  required: false
-  description: "Whether to pre-download model weights on all workers. If not True, the model is only downloaded in the server node and weights are shared internally."
 
 - name: tool_call_parser
   value: "hermes"

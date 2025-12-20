@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: model-1
+  labels:
+    id: model-1
+    workload: test
+spec:
+  containers:
+  - name: container
+    image: kalavai/ray-vllm-rocm:latest #rocm6.4.1_vllm_0.10.1_20250909 #rocm/vllm:rocm7.0.0_vllm_0.11.1_20251103 #kalavai/ray-vllm-rocm:latest
+    command: 
+    - /bin/bash
+    - -c
+    - |
+      vllm serve Qwen/Qwen3-1.7B --enforce-eager --host 0.0.0.0 --port 8080 --max-model-len 32000
+      #--distributed-executor-backend="ray"
+    env:
+    - name: HF_TOKEN
+      value: token
+    ports:
+    - containerPort: 8080
+    resources:
+      # requests:
+      #   amd.com/gpu: 1
+      #   ephemeral-storage: 10Gi
+      limits:
+        amd.com/gpu: 1
+        ephemeral-storage: 10Gi
+        memory: 14Gi
+    volumeMounts:
+    - name: shm-volume
+      mountPath: /dev/shm
+  volumes:
+  - name: shm-volume
+    emptyDir:
+      medium: Memory
+      sizeLimit: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-1-service
+spec:
+  type: NodePort
+  selector:
+    workload: test
+    id: model-1
+  ports:
+    - name: main
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
