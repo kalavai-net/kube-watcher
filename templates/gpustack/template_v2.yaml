@@ -10,6 +10,40 @@ type: Opaque
 immutable: true
 ---
 # apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: {{deployment_id}}-gpustack-sa
+# ---
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRole
+# metadata:
+#   name: {{deployment_id}}-ingressclass-viewer
+# rules:
+#   - apiGroups: ["networking.k8s.io"]
+#     resources: ["ingressclasses"]
+#     verbs: ["get", "list", "watch"]
+#   - apiGroups: [""]
+#     resources: ["nodes"]
+#     verbs: ["get", "list", "watch"]
+#   - apiGroups: [""]
+#     resources: ["services", "pods"]
+#     verbs: ["get", "list", "watch", "create"]
+# ---
+# # node-reader-clusterrolebinding.yaml
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRoleBinding
+# metadata:
+#   name: {{deployment_id}}-bind-sa
+# subjects:
+# - kind: ServiceAccount
+#   name: {{deployment_id}}-gpustack-sa
+#   namespace: default
+# roleRef:
+#   kind: ClusterRole
+#   name: {{deployment_id}}-ingressclass-viewer
+#   apiGroup: rbac.authorization.k8s.io
+# ---
+# apiVersion: v1
 # kind: ConfigMap
 # metadata:
 #   name: gpustack-config
@@ -22,7 +56,7 @@ immutable: true
 
 #     # Server Options
 #     host: 0.0.0.0
-#     port: 80
+#     port: 8000
 #     disable_worker: true
 #     force_auth_localhost: false
 #     bootstrap_password: {{admin_password}}
@@ -31,7 +65,7 @@ immutable: true
 #       vram: 2
     
 #     huggingface_token: {{hf_token}}
----
+# ---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -68,7 +102,7 @@ spec:
           kalavai.job.name: {{deployment_id}}
       spec:
         priorityClassName: "kalavai-system-priority"
-        #serviceAccountName: gpustack-sa
+        serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         # nodeSelector:
         #   kalavai/role: server
@@ -79,10 +113,10 @@ spec:
           #- --config-file=/etc/config/server.yaml
           - --advertise-address=0.0.0.0
           - --huggingface-token=$HF_TOKEN 
-          - --port=80
+          - --port=8000
           - --token={{token}} 
           - --bootstrap-password={{admin_password}}
-          - --cache-dir=/kalavai/cache 
+          - --cache-dir=/kalavai/cache
           env:
           - name: HF_TOKEN
             valueFrom:
@@ -96,7 +130,7 @@ spec:
           - name: GPUSTACK_DB_POOL_TIMEOUT
             value: "120"
           ports:
-          - containerPort: 80
+          - containerPort: 8000
             name: model-port
           resources:
             requests:
@@ -139,7 +173,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-        #serviceAccountName: gpustack-sa
+        serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
@@ -182,15 +216,12 @@ spec:
             NODE_PREFIX="cuda-worker-";
             NODE_NAME=$NODE_PREFIX$(($VC_TASK_INDEX+1));
 
-            # --server-url http://gpustack-test-4f1e29-service.default.svc.cluster.local:80 \
-            # --server-url http://$PS_HOST:80
             exec /usr/bin/entrypoint.sh \
-              --server-url http://$PS_HOST:80 \
+              --server-url http://$PS_HOST:8000 \
+              --cache-dir /kalavai/cache \
               --huggingface-token $HF_TOKEN \
               --token {{token}} \
-              --worker-name $NODE_NAME
-              --cache-dir /kalavai/cache \
-              
+              --worker-name $NODE_NAME \
             # fail if the connection was terminated
             exit 1
           env:
@@ -234,7 +265,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-        #serviceAccountName: gpustack-sa
+        serviceAccountName: gpustack-sa
         terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:
@@ -277,7 +308,7 @@ spec:
             NODE_NAME=$NODE_PREFIX$(($VC_TASK_INDEX+1));
 
             exec /usr/bin/entrypoint.sh \
-              --server-url http://$PS_HOST:8080 \
+              --server-url http://$PS_HOST:8000 \
               --cache-dir /kalavai/cache \
               --huggingface-token $HF_TOKEN \
               --token {{token}} \
@@ -323,8 +354,8 @@ spec:
     kalavai.job.name: {{deployment_id}}
   ports:
     - name: ui
-      port: 80
-      targetPort: 80
+      port: 8000
+      targetPort: 8000
       protocol: TCP
     {% if nodeport != "" %}
       nodePort: {{nodeport}}

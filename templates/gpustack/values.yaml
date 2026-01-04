@@ -16,8 +16,8 @@
   description: "deployment name"
 
 - name: version
-  value: "v2.0.0"
-  default: "v2.0.0"
+  value: "v2.0.2"
+  default: "v2.0.2"
   editable: true
   required: false
   description: "GPUStack version to deploy. See releases: https://github.com/gpustack/gpustack/releases"

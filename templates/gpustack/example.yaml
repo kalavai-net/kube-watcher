@@ -6,8 +6,8 @@
   description: "deployment name"
 
 - name: version
-  value: "v2.0.1"
-  default: "v2.0.1"
+  value: "v2.0.2"
+  default: "v2.0.2"
   editable: true
   required: false
   description: "GPUStack version to deploy. See releases: https://github.com/gpustack/gpustack/releases"
@@ -41,7 +41,7 @@
   description: "Number of remote workers (for tensor and pipeline parallelism). This is in addition to the main node"
 
 - name: token
-  value: "gpustack_0a15d3b2c38a4d68_1e2e42931930face5e38167f05c1dbad"
+  value: "randomkey"
   default: "sometoken"
   editable: true
   required: false

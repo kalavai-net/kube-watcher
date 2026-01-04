@@ -16,7 +16,7 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["services", "pods"]
-    verbs: ["get", "list", "watch", "create"]
+    verbs: ["get", "list", "watch", "create", "delete"]
 ---
 # node-reader-clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
