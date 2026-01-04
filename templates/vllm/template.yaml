@@ -177,7 +177,7 @@ spec:
         {% endif %}
         containers:
         - name: vllm-leader
-          image: docker.io/kalavai/ray-vllm-{{gpu_backend}}:latest
+          image: docker.io/kalavai/ray-vllm-{{gpu_backend}}:{{vllm_version}}
           command:
           - sh
           - -c
@@ -320,7 +320,7 @@ spec:
         {% endif %}
         containers:
         - name: vllm-worker
-          image: docker.io/kalavai/ray-vllm-{{gpu_backend}}:latest #v1.1.4
+          image: docker.io/kalavai/ray-vllm-{{gpu_backend}}:{{vllm_version}}
           command:
           - sh
           - -c

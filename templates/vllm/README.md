@@ -113,7 +113,7 @@ vllm serve Qwen/Qwen2.5-0.5B \
 curl http://localhost:8080/v1/completions \
     -H "Content-Type: application/json" \
     -d '{
-        "model": "Qwen/Qwen3-8B",
+        "model": "Qwen/Qwen2.5-0.5B",
         "prompt": "San Francisco is a",
         "max_tokens": 100,
         "temperature": 0
