@@ -488,7 +488,6 @@ class KubeAPI():
                     deployment_results["successful"].append(str(res))
                 except Exception as e:
                     print(f"Failed automated deployment, trying default deployment. [{str(e)}")
-                    print("-------->", yaml_str)
                     try:
                         namespace = force_namespace if force_namespace is not None else "default"
                         res = utils.create_from_yaml(

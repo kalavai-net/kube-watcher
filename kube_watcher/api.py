@@ -30,7 +30,6 @@ from kube_watcher.models import (
     StorageClaimRequest,
     ServiceRequest,
     StorageRequest,
-    RayClusterRequest,
     UserWorkspaceRequest,
     NodeLabelsRequest,
     ComputeUsageRequest,
@@ -46,7 +45,6 @@ from kube_watcher.jobs import (
     JobTemplate,
     get_template_types
 )
-from kube_watcher.ray_cluster import RayCluster
 
 
 logger = logging.getLogger(__name__)
@@ -805,26 +803,6 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
             )
         })
     return responses
-
-@app.post("/v1/deploy_ray", 
-    operation_id="deploy_ray",
-    summary="Deploy a Ray cluster in the Kalavai compute pool",
-    tags=["workload_management"],
-    description="Deploys a Ray cluster in the kalavai pool",
-    response_description="None")
-async def deploy_ray(request: RayClusterRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
-    if can_force_namespace and request.force_namespace is not None:
-        namespace = request.force_namespace
-    
-    cluster = RayCluster(name=request.name, manifest=request.manifest)
-    response = kube_api.kube_deploy_custom_object(
-        group="ray.io",
-        api_version="v1",
-        plural="rayclusters",
-        body=cluster.body,
-        namespace=namespace
-    )
-    return response
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model", 

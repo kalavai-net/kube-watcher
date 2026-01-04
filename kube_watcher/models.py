@@ -183,11 +183,6 @@ class CustomJobTemplateRequest(BaseModel):
     priority: Literal["kalavai-system-priority", "user-high-priority", "user-spot-priority", "test-low-priority", "test-high-priority"] = "user-spot-priority"
 
 
-class RayClusterRequest(BaseModel):
-    force_namespace: str = None
-    name: str
-    manifest: str
-
 class NodeLabelsRequest(BaseModel):
     """
     Request model for adding labels to a node.
