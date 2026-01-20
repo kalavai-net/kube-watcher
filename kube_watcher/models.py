@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Literal, Union
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from enum import Enum
 
 # This are off-the-shelf supported templates
@@ -42,7 +42,7 @@ class StorageClaimRequest(BaseModel):
     access_modes: list
     storage_class_name: str
     storage_size: int
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
 
 class StorageRequest(BaseModel):
     names: list = None
@@ -53,16 +53,16 @@ class ServiceRequest(BaseModel):
     selector_labels: dict
     service_type: str
     ports: list[dict]
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
     
 
 class KubecostParameters(BaseModel):
     # https://docs.kubecost.com/apis/apis-overview/allocation
-    aggregate: str = None
+    aggregate: Optional[Union[str, None]] = Field(None, description="Whether to aggregate samples into a single result")
     accumulate: bool = True
-    window: str = None
-    step: str = None
-    resolution: str = None
+    window: Optional[Union[str, None]] = Field(None, description="What window to sample")
+    step: Optional[Union[str, None]] = Field(None, description="Time step for sampling")
+    resolution: Optional[Union[str, None]] = Field(None, description="Resolution of the sampling")
 
 class ComputeUsageRequest(BaseModel):
     resources: List[str] = ["amd_com_gpu", "nvidia_com_gpu", "cpu", "memory"]
@@ -87,10 +87,10 @@ class PodsWithStatusRequest(BaseModel):
 
 class ServiceWithLabelRequest(BaseModel):
     label: str
-    value: str = None
+    value: Optional[Union[str, None]] = Field(None, description="Optional label value to filter services")
     types: list = None
-    namespace: str = None
-    
+    namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace to filter services")
+
 
 class NamespacesCostRequest(BaseModel):
     namespace_names: List[str]
@@ -121,10 +121,10 @@ class NodesRequest(BaseModel):
 
 class GenericDeploymentRequest(BaseModel):
     config: str
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
 
 class UserWorkspaceRequest(BaseModel):
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
     user_id: str = None
     node_name: str = None
     quota: dict = None
@@ -134,49 +134,66 @@ class CustomObjectRequest(BaseModel):
     api_version: str
     plural: str
     name: str = ""
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
 
 class CustomObjectDeploymentRequest(BaseModel):
     object: CustomObjectRequest
     body: str
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
 
 
 class DeleteLabelledResourcesRequest(BaseModel):
-    label:str
-    value:Optional[str] = None
-    force_namespace: str = None
+    label: str
+    value: Optional[Union[str, None]] = Field(None, description="Optional value to match label")
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
 
 class GetJobsOverviewRequest(BaseModel):
     labels: List[str]
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
 
 class GetLabelledResourcesRequest(BaseModel):
-    label:str
-    value:Optional[str] = None
-    force_namespace: str = None
+    label: str
+    value: Optional[Union[str, None]] = Field(None, description="Optional value to match the label")
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
     tail_lines: int = 100
     
 class UserRequest(BaseModel):
     email: str
     password: str
 
+class TemplateDeploymentRequest(BaseModel):
+    name: str
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
+    template_values: dict = None
+    template_chart: str
+    template_version: Optional[Union[str, None]] = Field(None, description="Optional template chart version to deploy")
+    template_repo: Optional[str] = Field("kalavai-templates", description="Optional template repo to find the chart in")
+    target_labels: Optional[Union[dict[str, Union[str, List]], None]] = None
+    target_labels_ops: Literal["OR", "AND"] = "AND"
+    replicas: int = 1
+    priority: Literal["kalavai-system-priority", "user-high-priority", "user-spot-priority", "test-low-priority", "test-high-priority"] = "user-spot-priority"
+
+class TemplateDeleteRequest(BaseModel):
+    name: str
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
+
+
 class JobTemplateRequest(BaseModel):
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
     template_values: dict = None
     template: str
-    target_labels: dict[str, Union[str, List]] = None
+    target_labels: Optional[Union[dict[str, Union[str, List]], None]] = None
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
     random_suffix: bool = True
     priority: Literal["kalavai-system-priority", "user-high-priority", "user-spot-priority", "test-low-priority", "test-high-priority"] = "user-spot-priority"
 
 class CustomJobTemplateRequest(BaseModel):
-    force_namespace: str = None
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
     template_values: dict = None
     default_values: str
     template: str
-    target_labels: dict[str, Union[str, List]] = None
+    target_labels: Optional[Union[dict[str, Union[str, List]], None]] = None
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
     random_suffix: bool = True

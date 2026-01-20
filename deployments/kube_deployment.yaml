@@ -25,6 +25,15 @@ rules:
         - policy
         - rbac.authorization.k8s.io
         - networking.k8s.io
+        - leaderworkerset.x-k8s.io
+        - ray.io
+        - storage.k8s.io
+        - batch.volcano.sh
+        - datashim.io
+        - scheduling.k8s.io
+        - helm.toolkit.fluxcd.io
+        - source.toolkit.fluxcd.io
+        - kalavai.net
     resources:
       - pods
       - componentstatuses
@@ -33,21 +42,39 @@ rules:
       - deployments
       - events
       - endpoints
+      - helmreleases
+      - helmrepositories
       - horizontalpodautoscalers
       - ingresses
-      - jobs
+      - kalavaijobs
       - limitranges
       - namespaces
       - nodes
       - pods
       - persistentvolumes
       - persistentvolumeclaims
+      - priorityclasses
       - resourcequotas
       - replicasets
       - replicationcontrollers
       - serviceaccounts
       - services
       - secrets
+      - statefulsets
+      - statefulsets/apps
+      - storageclasses
+      - leaderworkersets
+      - leaderworkersets/status
+      - pods/log
+      - pods/eviction
+      - rayclusters
+      - rayclusters/status
+      - rayservices
+      - vcjob
+      - vcjob/status
+      - jobs
+      - jobs/status
+      - datasets
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

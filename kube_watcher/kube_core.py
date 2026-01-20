@@ -6,6 +6,7 @@ import requests
 import base64
 import yaml
 from collections import defaultdict
+import uuid
 
 from jinja2 import Template
 from kubernetes import config, client, utils
@@ -509,23 +510,75 @@ class KubeAPI():
             "failed": []
         }
         api = client.CustomObjectsApi(client.api_client.ApiClient())
-        if body.strip():
-            yaml_obj = yaml.safe_load(body)
-            try:
-                res = api.create_namespaced_custom_object(
-                    group,
-                    api_version,
-                    namespace,
-                    plural,
-                    yaml_obj
-                )
-                # Assuming res contains some identifiable information about the resource
-                deployment_results["successful"].append(str(res))
-            except Exception as e:
-                # Append the yaml that failed and the exception message for clarity
-                deployment_results["failed"].append({"yaml": body, "error": str(e)})
+        if isinstance(body, str):
+            body = yaml.safe_load(body)
+        try:
+            res = api.create_namespaced_custom_object(
+                group,
+                api_version,
+                namespace,
+                plural,
+                body
+            )
+            # Assuming res contains some identifiable information about the resource
+            deployment_results["successful"].append(str(res))
+        except Exception as e:
+            # Append the yaml that failed and the exception message for clarity
+            deployment_results["failed"].append({"yaml": body, "error": str(e)})
 
         return deployment_results
+    
+    def deploy_template(
+        self,
+        name,
+        priority,
+        replicas,
+        target_labels,
+        target_labels_ops,
+        namespace,
+        template_chart,
+        template_values,
+        template_repo,
+        template_version=None,
+        is_update=True
+    ):
+        """
+        Deploy KalavaiJob (templated jobs)
+        
+        Use the is_update flag to apply an update to an existing job
+        """
+
+        name = name + "-" + str(uuid.uuid4())[:6] if not is_update else name
+
+        body = {
+            "apiVersion": "kalavai.net/v1",
+            "kind": "KalavaiJob",
+            "metadata": {
+                "name": name,
+            },
+            "spec": {
+                "template": {
+                    "chart": template_chart,
+                    "repo": template_repo,
+                    "version": template_version,
+                    "values": template_values
+                },
+                "priorityClassName": priority,
+                "replicas": replicas,
+                "nodeSelectors": target_labels,
+                "nodeSelectorsOps": target_labels_ops
+            }
+        }
+        result = self.kube_deploy_custom_object(
+            group="kalavai.net",
+            api_version="v1",
+            namespace=namespace,
+            plural="kalavaijobs",
+            body=body
+        )
+
+        return force_serialisation(result)
+
     
     def kube_get_custom_objects(self, group, api_version, namespace, plural, label_selector=None):
 
@@ -715,6 +768,25 @@ class KubeAPI():
             group="ray.io",
             api_version="v1",
             plural="rayservices",
+            name=name,
+            namespace=namespace
+        )
+    
+    def list_namespaced_kalavaijob(self, namespace, label_selector):
+        resources = self.kube_get_custom_objects(
+            group="kalavai.net",
+            api_version="v1",
+            plural="kalavaijobs",
+            namespace=namespace,
+            label_selector=label_selector
+        )
+        return resources
+
+    def delete_namespaced_kalavaijob(self, name, namespace):
+        return self.kube_delete_custom_object(
+            group="kalavai.net",
+            api_version="v1",
+            plural="kalavaijobs",
             name=name,
             namespace=namespace
         )
@@ -1033,6 +1105,7 @@ class KubeAPI():
             'job': (self.list_namespaced_vcjob, self.delete_namespaced_vcjob),
             'secret': (core_api.list_namespaced_secret, core_api.delete_namespaced_secret),
             "ingress": (networking_api.list_namespaced_ingress, networking_api.delete_namespaced_ingress),
+            "kalavaijob": (self.list_namespaced_kalavaijob, self.delete_namespaced_kalavaijob)
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():
@@ -1195,15 +1268,15 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
-
-    res = api.get_job_info_for_labels(
-        label_key="kalavai.job.name",
-        label_value="qwen-qwen3-0-6b-dc1649",
-        namespace="default",
-        tail_lines=100
-    )
-    for job, values in res.items():
-        for pod, status in values.items():
-            print(status["describe"].keys())
-            print(status["describe"]["status"])
+    res = api.list_namespaced_kalavaijob(namespace="default", label_selector=None)
     
+    ns_logs = defaultdict(dict)
+    for job in res["items"]:
+        job_id = job.get("metadata", {}).get("labels", {}).get("jobId", None)
+        ns_logs[job_id]["pods"] = job.get("status", {}).get("podRecords")
+        ns_logs[job_id]["services"] = job.get("status", {}).get("serviceRecords")
+        ns_logs[job_id]["jobs"] = job.get("spec", {})
+    
+    print(
+        json.dumps(ns_logs, indent=2)
+    )

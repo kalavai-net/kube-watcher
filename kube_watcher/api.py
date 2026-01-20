@@ -23,6 +23,8 @@ from kube_watcher.models import (
     GetLabelledResourcesRequest,
     JobTemplateRequest,
     CustomJobTemplateRequest,
+    TemplateDeploymentRequest,
+    TemplateDeleteRequest,
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
     ServiceWithLabelRequest,
@@ -439,22 +441,18 @@ async def get_jobs_overview(request: GetJobsOverviewRequest, can_force_namespace
     if can_force_namespace and request.force_namespace is not None:
         namespaces = [request.force_namespace]
     ns_logs = defaultdict(dict)
-    for namespace in namespaces:
 
-        for label in request.labels:
-            pods_status = kube_api.get_pods_status_for_label(
-                label_key=label,
-                namespace=namespace)
-            pods_services = kube_api.get_ports_for_services(
-                label_key=label,
-                types=["NodePort"],
-                namespace=namespace
-            )
-            ns_logs[namespace] = defaultdict(dict)
-            for key, status in pods_status.items():
-                ns_logs[namespace][key]["pods"] = status
-            for key, services in pods_services.items():
-                ns_logs[namespace][key]["services"] = services
+    # KalavaiJob monitoring
+    # get pods and services info from the kalava job
+    for namespace in namespaces:
+        # get all KalavaiJobs
+        jobs = kube_api.list_namespaced_kalavaijob(namespace=namespace, label_selector=None)
+        ns_logs[namespace] = defaultdict(dict)
+        for job in jobs["items"]:
+            job_id = job.get("metadata", {}).get("labels", {}).get("jobId", None)
+            ns_logs[namespace][job_id]["status"] = job.get("status", {})
+            ns_logs[namespace][job_id]["spec"] = job.get("spec", {})
+            ns_logs[namespace][job_id]["metadata"] = job.get("metadata", {})
 
     return ns_logs
 
@@ -803,6 +801,49 @@ async def deploy_job_dev(request: CustomJobTemplateRequest, can_force_namespace:
             )
         })
     return responses
+
+@app.post("/v1/deploy_template", 
+    operation_id="deploy_template",
+    summary="Deploy a job from a template in the Kalavai compute pool",
+    tags=["workload_management"],
+    description="Deploys a job from a template in the kalavai pool",
+    response_description="Deployment result")
+async def deploy_template(request: TemplateDeploymentRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+
+    print(">>>> Deploy template to NAMESPACE: ", namespace)
+
+    result = kube_api.deploy_template(
+        name=request.name,
+        template_repo=request.template_repo,
+        template_chart=request.template_chart,
+        template_values=request.template_values,
+        template_version=request.template_version,
+        priority=request.priority,
+        replicas=request.replicas,
+        target_labels=request.target_labels,
+        target_labels_ops=request.target_labels_ops,
+        namespace=namespace,
+        is_update=request.is_update
+    )
+    
+    return result
+
+@app.delete("/v1/delete_template", 
+    operation_id="delete_template",
+    summary="Delete job template from the Kalavai compute pool",
+    tags=["workload_management"],
+    description="Deletes specified job templates from the kalavai pool",
+    response_description="Deletion result")
+async def delete_template(request: TemplateDeleteRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+
+    return kube_api.delete_namespaced_kalavaijob(
+        name=request.name,
+        namespace=namespace
+    )
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model", 
