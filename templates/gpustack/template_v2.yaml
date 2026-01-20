@@ -9,63 +9,6 @@ metadata:
 type: Opaque
 immutable: true
 ---
-# apiVersion: v1
-# kind: ServiceAccount
-# metadata:
-#   name: {{deployment_id}}-gpustack-sa
-# ---
-# apiVersion: rbac.authorization.k8s.io/v1
-# kind: ClusterRole
-# metadata:
-#   name: {{deployment_id}}-ingressclass-viewer
-# rules:
-#   - apiGroups: ["networking.k8s.io"]
-#     resources: ["ingressclasses"]
-#     verbs: ["get", "list", "watch"]
-#   - apiGroups: [""]
-#     resources: ["nodes"]
-#     verbs: ["get", "list", "watch"]
-#   - apiGroups: [""]
-#     resources: ["services", "pods"]
-#     verbs: ["get", "list", "watch", "create"]
-# ---
-# # node-reader-clusterrolebinding.yaml
-# apiVersion: rbac.authorization.k8s.io/v1
-# kind: ClusterRoleBinding
-# metadata:
-#   name: {{deployment_id}}-bind-sa
-# subjects:
-# - kind: ServiceAccount
-#   name: {{deployment_id}}-gpustack-sa
-#   namespace: default
-# roleRef:
-#   kind: ClusterRole
-#   name: {{deployment_id}}-ingressclass-viewer
-#   apiGroup: rbac.authorization.k8s.io
-# ---
-# apiVersion: v1
-# kind: ConfigMap
-# metadata:
-#   name: gpustack-config
-# data:
-#   server.yaml: |
-#     # Common Options
-#     debug: true
-#     #data_dir: /path/to/dir
-#     token: {{token}}
-
-#     # Server Options
-#     host: 0.0.0.0
-#     port: 8000
-#     disable_worker: true
-#     force_auth_localhost: false
-#     bootstrap_password: {{admin_password}}
-#     system_reserved:
-#       ram: 2
-#       vram: 2
-    
-#     huggingface_token: {{hf_token}}
-# ---
 apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
@@ -102,7 +45,7 @@ spec:
           kalavai.job.name: {{deployment_id}}
       spec:
         priorityClassName: "kalavai-system-priority"
-        serviceAccountName: gpustack-sa
+        serviceAccountName: gpustack-worker
         terminationGracePeriodSeconds: 60
         # nodeSelector:
         #   kalavai/role: server
@@ -129,6 +72,14 @@ spec:
             value: "50"
           - name: GPUSTACK_DB_POOL_TIMEOUT
             value: "120"
+          - name: GPUSTACK_RUNTIME_DEPLOY
+            value: "Kubernetes"
+          - name: GPUSTACK_RUNTIME_DEPLOY_MIRRORED_DEPLOYMENT
+            value: "false"
+          - name: GPUSTACK_RUNTIME_KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
           ports:
           - containerPort: 8000
             name: model-port
@@ -142,11 +93,13 @@ spec:
               memory: 2Gi
               ephemeral-storage: {{working_memory}}Gi
           volumeMounts:
-          # - name: config-volume
-          #   mountPath: /etc/config
+          - name: gpustack-data-dir
+            mountPath: /var/lib/gpustack
           - name: cache
             mountPath: /kalavai/cache
         volumes:
+        - name: gpustack-data-dir
+          emptyDir: {}
         - name: cache
           emptyDir: {}
         # - name: config-volume
@@ -173,7 +126,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-        serviceAccountName: gpustack-sa
+        serviceAccountName: gpustack-worker
         terminationGracePeriodSeconds: 60
         runtimeClassName: nvidia
         {% if NODE_SELECTORS %}
@@ -215,7 +168,7 @@ spec:
             echo $PS_HOST;
             NODE_PREFIX="cuda-worker-";
             NODE_NAME=$NODE_PREFIX$(($VC_TASK_INDEX+1));
-
+            export GPUSTACK_SERVER_URL=$http://$PS_HOST:8000
             exec /usr/bin/entrypoint.sh \
               --server-url http://$PS_HOST:8000 \
               --cache-dir /kalavai/cache \
@@ -230,6 +183,26 @@ spec:
               secretKeyRef:
                 name: {{deployment_id}}-secret
                 key: hf_token
+          - name: GPUSTACK_WORKER_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: GPUSTACK_RUNTIME_DEPLOY
+            value: "Kubernetes"
+          - name: GPUSTACK_RUNTIME_DEPLOY_MIRRORED_DEPLOYMENT
+            value: "true"
+          - name: GPUSTACK_RUNTIME_DEPLOY_MIRRORED_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: GPUSTACK_RUNTIME_KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: GPUSTACK_RUNTIME_KUBERNETES_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
           resources:
             requests:
               cpu: {{cpus}}
@@ -265,7 +238,7 @@ spec:
         labels:
           kalavai.job.name: {{deployment_id}}
       spec:
-        serviceAccountName: gpustack-sa
+        serviceAccountName: gpustack-worker
         terminationGracePeriodSeconds: 60
         {% if NODE_SELECTORS %}
         affinity:

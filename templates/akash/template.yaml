@@ -1,0 +1,139 @@
+apiVersion: v1
+stringData:
+  vastai_code: {{vastai_code}}
+kind: Secret
+metadata:
+  name: {{deployment_id}}-secret
+  labels:
+    kalavai.job.name: {{deployment_id}}
+type: Opaque
+immutable: true
+---
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: {{deployment_id}}
+  labels:
+    # must have this label
+    kalavai.job.name: {{deployment_id}}
+spec:
+  queue: default
+  priorityClassName: {{JOB_PRIORITY|default("user-spot-priority", true)}}
+  schedulerName: volcano
+  plugins:
+    env: []
+    svc: ["--disable-network-policy=true"]
+  maxRetry: 100000
+  tasks:
+  - replicas: 1   # One ps pod specified
+    name: server
+    policies:
+    - event: PodEvicted
+      action: RestartJob
+    - event: PodFailed
+      action: RestartJob
+    - event: TaskCompleted
+      action: RestartJob
+    - event: Unknown
+      action: RestartJob
+    template: # Definition of the ps pod
+      metadata:
+        labels:
+          role: leader
+          kalavai.job.name: {{deployment_id}}
+      spec:
+        terminationGracePeriodSeconds: 60
+      {% if gpu_backend == "cuda" %}
+        runtimeClassName: nvidia
+      {% endif %}
+      {% if NODE_SELECTORS %}
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+            {% if NODE_SELECTORS_OPS == "OR" %}
+              {% for selector in NODE_SELECTORS %}
+              - matchExpressions:
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  {% for vals in selector.value %}
+                  - "{{vals}}"
+                  {% endfor %}
+              {% endfor %}
+            {% else %}
+              - matchExpressions:
+              {% for selector in NODE_SELECTORS %}
+                {% for vals in selector.value %}
+                - key: {{selector.name}}
+                  operator: In
+                  values:
+                  - "{{vals}}"
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+        {% endif %}
+        containers:
+        - name: vastai-leader
+          image: docker.io/kalavai/vastai-{{gpu_backend}}:latest
+          command:
+          - sh
+          - -c
+          - |
+            # open ports
+            #sudo bash -c 'echo -n "16384-32768" > /var/lib/vastai_kaalia/host_port_range'
+            # set public IP
+            #sudo bash -c 'echo -n "172.13.108.14" > /var/lib/vastai_kaalia/host_ipaddr'
+            wget https://console.vast.ai/install -O install; sudo python3 install $VASTAI_CODE --interactive; history -d $((HISTCMD-1)); 
+            sleep 30;
+          env:
+          - name: VASTAI_CODE
+            valueFrom:
+              secretKeyRef:
+                name: {{deployment_id}}-secret
+                key: vastai_code
+          ports:
+          - containerPort: 8080
+            name: main-port
+          resources:
+            requests:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
+              nvidia.com/gpu: {{gpus}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
+              ephemeral-storage: {{working_memory}}Gi
+            limits:
+              cpu: {{cpus}}
+              memory: {{memory}}Gi
+            {% if gpu_backend == "cuda" %}
+              nvidia.com/gpu: {{gpus}}
+              nvidia.com/gpumem-percentage: {{cuda_gpu_mem_percentage}}
+            {% else %}
+              amd.com/gpu: {{gpus}}
+            {% endif %}
+              ephemeral-storage: {{working_memory}}Gi
+        restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{deployment_id}}-service
+  labels:
+    # must have this!
+    kalavai.job.name: {{deployment_id}}
+spec:
+  type: NodePort
+  selector:
+    role: leader
+    kalavai.job.name: {{deployment_id}}
+  ports:
+    - name: main
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    {% if nodeport != "" %}
+      nodePort: {{nodeport}}
+    {% endif %}

@@ -1,0 +1,233 @@
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gpustack-system-88f766942d03
+---
+# Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registration-token
+  namespace: gpustack-system-88f766942d03
+type: Opaque
+data:
+  GPUSTACK_TOKEN: Z3B1c3RhY2tfY2FlNzZhODEyOWRjYmNjOF9hM2U5YTdkN2UxZjM4Zjg0OTM4ZTdlYzUwMzkyMTg1NA==
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ingressclass-viewer
+rules:
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingressclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ingressclass-viewer-binding
+subjects:
+  - kind: ServiceAccount
+    name: gpustack-worker
+    namespace: gpustack-system-88f766942d03
+roleRef:
+  kind: ClusterRole
+  name: ingressclass-viewer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pod-cm-creator
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "pods"
+      - "configmaps"
+      - "secrets"
+      - "services"
+      - "pods/log"
+      - "pods/exec"
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources: 
+      - "events"
+    verbs: 
+      - "create"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: gpustack-system-88f766942d03
+  name: gpustack-worker
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: gpustack-system-88f766942d03
+  name: pod-cm-creator
+subjects:
+- kind: ServiceAccount
+  name: gpustack-worker
+  namespace: gpustack-system-88f766942d03
+roleRef:
+  kind: ClusterRole
+  name: pod-cm-creator
+  apiGroup: rbac.authorization.k8s.io
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker
+  namespace: gpustack-system-88f766942d03
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "10151"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    app: gpustack-worker
+  ports:
+    - name: api
+      port: 10150
+      targetPort: 10150
+    - name: metrics
+      port: 10151
+      targetPort: 10151
+---
+# DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: gpustack-worker
+  name: gpustack-worker
+  namespace: gpustack-system-88f766942d03
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: gpustack-worker
+  template:
+    metadata:
+      labels:
+        app: gpustack-worker
+    spec:
+      runtimeClassName: nvidia
+      containers:
+        - image: gpustack/gpustack:v2.0.2
+          imagePullPolicy: IfNotPresent
+          name: gpustack-worker
+          env:
+            - name: GPUSTACK_SERVER_URL
+              value: http://51.159.173.70:30963
+            - name: GPUSTACK_WORKER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: GPUSTACK_RUNTIME_DEPLOY
+              value: "Kubernetes"
+            - name: GPUSTACK_RUNTIME_DEPLOY_MIRRORED_DEPLOYMENT
+              value: "true"
+            - name: GPUSTACK_RUNTIME_DEPLOY_MIRRORED_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: GPUSTACK_RUNTIME_KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: GPUSTACK_RUNTIME_KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          envFrom:
+            - secretRef:
+                name: registration-token
+                optional: false
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities: {}
+            privileged: true
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - name: gpustack-data-dir
+              mountPath: /var/lib/gpustack
+            #
+            # (Optional) Mount Ascend driver and toolkit directories if using Ascend devices
+            #
+            - name: gpustack-ascend-driver
+              mountPath: /usr/local/Ascend/driver
+            - name: gpustack-ascend-toolkit
+              mountPath: /usr/local/Ascend/ascend-toolkit
+          ports:
+            - name: api
+              containerPort: 10150
+              protocol: TCP
+            - name: metrics
+              containerPort: 10151
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: api
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 5
+            successThreshold: 1
+      volumes:
+        - name: gpustack-data-dir
+          hostPath:
+            path: /var/lib/gpustack
+            type: DirectoryOrCreate
+        #
+        # (Optional) Mount Ascend driver and toolkit directories if using Ascend devices
+        #
+        - name: gpustack-ascend-driver
+          hostPath:
+            path: /usr/local/Ascend/driver
+            type: DirectoryOrCreate
+        - name: gpustack-ascend-toolkit
+          hostPath:
+            path: /usr/local/Ascend/ascend-toolkit
+            type: DirectoryOrCreate
+      hostNetwork: true
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: gpustack-worker
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate

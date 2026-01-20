@@ -1,0 +1,65 @@
+############################
+### MUST HAVE THESE FIELDS ##
+- name: id_field
+  value: model_id
+  default: model_id
+  editable: false
+  required: false
+  description: "Field that contains the ID of the job"
+############################
+
+- name: deployment_name
+  value: "vastai" 
+  default: "vastai"
+  editable: true
+  required: true
+  description: "Name of the job"
+
+- name: gpu_backend
+  value: "cuda"
+  default: "cuda"
+  editable: true
+  required: false
+  description: "Use 'cuda' (nvidia cards) or 'rocm' (AMD cards) backend"
+
+- name: vastai_code
+  value: "0aedae643086dcfc12e2da1fb7eed994b7c9031eae4edb4b7789f9af5bc3b8f3"
+  default: ""
+  editable: true
+  required: false
+  description: "Vast.ai host registration code"
+
+- name: nodeport
+  value: "31310"
+  default: "31310"
+  editable: true
+  required: false
+  description: "Specify the node port for the service that exposes the job"
+
+- name: cpus
+  value: 2
+  default: 2
+  editable: true
+  required: false
+  description: "CPUs to be used per single worker (final one = cpus * workers). Workers should have these many CPUs available."
+
+- name: gpus
+  value: 1
+  default: 1
+  editable: true
+  required: false
+  description: "GPUs to be used per single worker (final one = gpus * workers). Workers should have these many GPUs available."
+
+- name: memory
+  value: 8
+  default: 8
+  editable: true
+  required: false
+  description: "RAM memory to be used per single worker (final one = memory * workers). Workers should have these much RAM available."
+
+- name: cuda_gpu_mem_percentage
+  value: 100
+  default: 100
+  editable: true
+  required: false
+  description: "Maximum memory fraction allowed to be used from the GPU vRAM."
