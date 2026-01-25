@@ -12,6 +12,7 @@ jobs:
   build-and-push-docker:
     permissions:
       contents: write
+      package: write
     
     runs-on: ubuntu-latest
     steps:
