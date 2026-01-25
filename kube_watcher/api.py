@@ -35,7 +35,8 @@ from kube_watcher.models import (
     UserWorkspaceRequest,
     NodeLabelsRequest,
     ComputeUsageRequest,
-    GetJobsOverviewRequest
+    GetJobsOverviewRequest,
+    HelmRepo
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -446,13 +447,16 @@ async def get_jobs_overview(request: GetJobsOverviewRequest, can_force_namespace
     # get pods and services info from the kalava job
     for namespace in namespaces:
         # get all KalavaiJobs
-        jobs = kube_api.list_namespaced_kalavaijob(namespace=namespace, label_selector=None)
-        ns_logs[namespace] = defaultdict(dict)
-        for job in jobs["items"]:
-            job_id = job.get("metadata", {}).get("labels", {}).get("jobId", None)
-            ns_logs[namespace][job_id]["status"] = job.get("status", {})
-            ns_logs[namespace][job_id]["spec"] = job.get("spec", {})
-            ns_logs[namespace][job_id]["metadata"] = job.get("metadata", {})
+        try:
+            jobs = kube_api.list_namespaced_kalavaijob(namespace=namespace, label_selector=None)
+            ns_logs[namespace] = defaultdict(dict)
+            for job in jobs["items"]:
+                job_id = job.get("metadata", {}).get("labels", {}).get("jobId", None)
+                ns_logs[namespace][job_id]["status"] = job.get("status", {})
+                ns_logs[namespace][job_id]["spec"] = job.get("spec", {})
+                ns_logs[namespace][job_id]["metadata"] = job.get("metadata", {})
+        except:
+            return {}
 
     return ns_logs
 
@@ -928,6 +932,61 @@ async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key
             request.label,
             request.value)
     return ns_resources
+
+@app.post("/v1/helm_add_repo", 
+    operation_id="helm_add_repo",
+    summary="Add a repo to local helm",
+    tags=["workload_info"],
+    description="Add a repo to the local helm",
+    response_description="Result of the operation")
+async def helm_add_repo(request: HelmRepo, api_key: str = Depends(verify_read_key)):
+    return kube_api.helm_add_repo(name=request.name, url=request.url)
+
+@app.post("/v1/helm_update", 
+    operation_id="helm_update",
+    summary="Update the local helm repos",
+    tags=["workload_info"],
+    description="Update the local helm repositories",
+    response_description="Result of the operation")
+async def helm_update(api_key: str = Depends(verify_read_key)):
+    return kube_api.helm_update()
+
+@app.get("/v1/helm_repo_search", 
+    operation_id="helm_repo_search",
+    summary="Search a helm repo",
+    tags=["workload_info"],
+    description="Search a helm repo",
+    response_description="Result of the operation")
+async def helm_repo_search(term: str, api_key: str = Depends(verify_read_key)):
+    return kube_api.helm_repo_search(term=term)
+
+@app.get("/v1/helm_show_values", 
+    operation_id="helm_show_values",
+    summary="Show default values for a helm repo",
+    tags=["workload_info"],
+    description="Show default values for a helm repo",
+    response_description="Result of the operation")
+async def helm_show_values(chart_name: str, api_key: str = Depends(verify_read_key)):
+    return kube_api.helm_show_values(chart_name=chart_name)
+
+@app.get("/v1/helm_show_chart", 
+    operation_id="helm_show_chart",
+    summary="Show metadata for a helm chart",
+    tags=["workload_info"],
+    description="Show metadata for a helm chart",
+    response_description="Result of the operation")
+async def helm_show_chart(chart_name: str, api_key: str = Depends(verify_read_key)):
+    return kube_api.helm_show_chart(chart_name=chart_name)
+
+@app.get("/v1/helm_pull_schema", 
+    operation_id="helm_pull_schema",
+    summary="Show the schema for a helm chart",
+    tags=["workload_info"],
+    description="Show the schema for a helm chart",
+    response_description="Result of the operation")
+async def helm_pull_schema(chart_name: str, api_key: str = Depends(verify_read_key)):
+    return kube_api.helm_pull_schema(chart_name=chart_name)
+
 
 # Endpoint to check health
 @app.get("/v1/health", 

@@ -2,6 +2,7 @@ from string import Template
 import json 
 import datetime 
 from collections import defaultdict
+import subprocess
 
 
 DEEPSPARSE_DEFAULT_VALUES = {
@@ -12,6 +13,39 @@ DEEPSPARSE_DEFAULT_VALUES = {
 DEEPSPARSE_DEPLOYMENT_TEMPLATE = "deployments/deepsparse_deployment_template.yaml"
 FLOW_DEPLOYMENT_TEMPLATE = "deployments/flow_deployment_template.yaml"
 AGENT_BUILDER_TEMPLATE = "deployments/agent_builder_template.yaml"
+
+
+class HelmClient:
+    def repo_add(self, name, url):
+        cmd = ["helm", "repo", "add", name, url]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.stdout
+    
+    def repo_update(self):
+        cmd = ["helm", "repo", "update"]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.stdout
+    
+    def repo_search(self, keyword):
+        # Using -o json makes parsing results much easier
+        cmd = ["helm", "search", "repo", keyword, "-o", "json"]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return json.loads(result.stdout)
+
+    def show_values(self, chart_name):
+        cmd = ["helm", "show", "values", chart_name]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.stdout
+    
+    def show_chart(self, chart_name):
+        cmd = ["helm", "show", "chart", chart_name]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.stdout
+
+    def pull_chart(self, chart_name, destination="/tmp"):
+        cmd = ["helm", "pull", chart_name, "--destination", destination]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.returncode == 0
 
 
 def extract_auth_token(headers):

@@ -1,7 +1,13 @@
 # Use an official Python runtime as a parent image
 FROM python:3.10-slim
 
-RUN apt update && apt install gcc g++ -y
+LABEL org.opencontainers.image.source=https://github.com/kalavai-net/kube-watcher
+
+RUN apt update && apt install curl gcc g++ -y
+
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+RUN chmod 700 get_helm.sh
+RUN ./get_helm.sh
 
 # Set the working directory in the container
 WORKDIR /usr/src/app

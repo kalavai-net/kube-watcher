@@ -119,6 +119,10 @@ class NodesRequest(BaseModel):
     schedulable: bool = True
     detailed: bool = False
 
+class HelmRepo(BaseModel):
+    name: str
+    url: Optional[Union[str, None]] = Field(None, description="Optional repo URL")
+
 class GenericDeploymentRequest(BaseModel):
     config: str
     force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
@@ -172,6 +176,7 @@ class TemplateDeploymentRequest(BaseModel):
     target_labels_ops: Literal["OR", "AND"] = "AND"
     replicas: int = 1
     priority: Literal["kalavai-system-priority", "user-high-priority", "user-spot-priority", "test-low-priority", "test-high-priority"] = "user-spot-priority"
+    is_update: Optional[bool] = Field(False, description="If True, update existing deployment")
 
 class TemplateDeleteRequest(BaseModel):
     name: str

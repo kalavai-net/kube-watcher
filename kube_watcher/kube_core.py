@@ -8,7 +8,8 @@ import yaml
 from collections import defaultdict
 import uuid
 
-from jinja2 import Template
+import tarfile
+import glob
 from kubernetes import config, client, utils
 
 from kube_watcher.utils import (
@@ -17,7 +18,8 @@ from kube_watcher.utils import (
     cast_resource_value,
     parse_resource_value,
     force_serialisation,
-    extract_longhorn_metric_from_prometheus
+    extract_longhorn_metric_from_prometheus,
+    HelmClient
 )
 
 
@@ -1263,11 +1265,79 @@ class KubeAPI():
             return force_serialisation(resource_quotas.items)
         except:
             return []
+        
+    ## HELM RELATED ##
+    def helm_add_repo(self, name, url):
+        try:
+            return HelmClient().repo_add(name=name, url=url)
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def helm_update(self):
+        try:
+            return HelmClient().repo_update()
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def helm_show_values(self, chart_name):
+        values = HelmClient().show_values(chart_name=chart_name)
+        try:
+            return yaml.safe_load(values)
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def helm_pull_schema(self, chart_name):
+        path = "."
+        success = HelmClient().pull_chart(chart_name=chart_name, destination=path)
+        if not success:
+            return {"error": f"Error when pulling chart {chart_name}"}
+        # 2. Find the downloaded file
+        chart_file = chart_name.split('/')[-1]
+        tgz_files = glob.glob(f"{path}/{chart_file}-*.tgz")
+        
+        if not tgz_files:
+            return {"error": f"Chart file for {chart_name} not found. Does it exist?"}
+
+        latest_tgz = tgz_files[0]
+
+        # 3. Extract only the values.schema.json
+        schema_data = None
+        try:
+            with tarfile.open(latest_tgz, "r:gz") as tar:
+                for member in tar.getmembers():
+                    if member.name.endswith("values.schema.json"):
+                        f = tar.extractfile(member)
+                        schema_data = json.load(f)
+                        break
+        finally:
+            # Clean up the downloaded tgz file
+            if os.path.exists(latest_tgz):
+                os.remove(latest_tgz)
+
+        return schema_data if schema_data else {"error": f"No values.schema.json found in {chart_name} chart"}
+
+    def helm_show_chart(self, chart_name):
+        try:
+            str_data = HelmClient().show_chart(chart_name=chart_name)
+
+            return yaml.safe_load(str_data)
+        except Exception as e:
+            return {"error": f"Error when fetching metadata for {chart_name}. Does it exist?"}
+        
+    def helm_repo_search(self, term):
+        try:
+            return HelmClient().repo_search(keyword=term)
+        except Exception as e:
+            return {"error": str(e)}
 
 
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
+    print(
+        api.helm_pull_schema(chart_name="kalavai-templates/vllm")
+    )
+    exit()
     res = api.list_namespaced_kalavaijob(namespace="default", label_selector=None)
     
     ns_logs = defaultdict(dict)
