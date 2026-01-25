@@ -12,8 +12,7 @@ jobs:
   build-and-push-docker:
     permissions:
       contents: write
-      packages: write
-    needs: [build]
+    
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
