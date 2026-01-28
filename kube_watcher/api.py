@@ -845,12 +845,15 @@ async def delete_template(request: TemplateDeleteRequest, can_force_namespace: b
         namespace = request.force_namespace
     print(f"DELETE {request.name} on namespace {namespace}")
     try:
-        return kube_api.delete_namespaced_kalavaijob(
+        deleted = kube_api.delete_namespaced_kalavaijob(
             name=request.name,
             namespace=namespace
         )
+        return {
+            "deleted_resources": deleted
+        }
     except Exception as e:
-        return {"error": str(e)}
+        return {"failures": str(e)}
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model", 
