@@ -843,11 +843,14 @@ async def deploy_template(request: TemplateDeploymentRequest, can_force_namespac
 async def delete_template(request: TemplateDeleteRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
     if can_force_namespace and request.force_namespace is not None:
         namespace = request.force_namespace
-
-    return kube_api.delete_namespaced_kalavaijob(
-        name=request.name,
-        namespace=namespace
-    )
+    print(f"DELETE {request.name} on namespace {namespace}")
+    try:
+        return kube_api.delete_namespaced_kalavaijob(
+            name=request.name,
+            namespace=namespace
+        )
+    except Exception as e:
+        return {"error": str(e)}
 
 #### GENERIC_DEPLOYMENT
 @app.post("/v1/deploy_generic_model", 
