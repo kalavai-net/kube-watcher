@@ -83,26 +83,50 @@ class KubeAPI():
         fn = lambda node: node.metadata.labels
         return self._extract_resources(fn=fn)
     
-    def extract_node_conditions(self, node, conditions=None):
-        """Extract the readiness of a node from its status information (from extract_node_status)"""
-        all_conditions = {}
-        for c in node.status.conditions:
-            if conditions is not None:
-                if c.type not in conditions:
-                    continue
-            all_conditions[c.type] = c.status == "True"
-        return all_conditions
+    def extract_node_conditions(self, status, conditions=None):
+        """Helper to parse raw JSON conditions instead of V1NodeCondition objects"""
+        extracted = {}
+        node_conditions = status.get("conditions", [])
+        
+        for cond in node_conditions:
+            type_name = cond.get("type")
+            if conditions is None or type_name in conditions:
+                extracted[type_name] = cond.get("status") == "True"
+                
+        return extracted
     
     def get_nodes_states(self, conditions=None):
         """Get the status of nodes on certain conditions (default all)"""
-        nodes = self.core_api.list_node()
-        node_status = {}
-        for node in nodes.items:
-            node_status[node.metadata.name] = self.extract_node_conditions(node=node, conditions=conditions)
-            # add schedulable state
-            node_status[node.metadata.name]["unschedulable"] = False if node.spec.unschedulable is None else node.spec.unschedulable
+        # 1. Fetch only the necessary fields to reduce I/O
+        # Note: 'status' is excluded in PartialObjectMetadata, so we use a field selector 
+        # or just raw JSON if we need the full status.
+        response = self.core_api.list_node(_preload_content=False)
+        nodes_data = json.loads(response.data)
         
+        node_status = {}
+        
+        for node in nodes_data.get("items", []):
+            metadata = node.get("metadata", {})
+            name = metadata.get("name")
+            spec = node.get("spec", {})
+            status = node.get("status", {})
+            
+            # 2. Direct dictionary access is ~10x faster than pod.spec.unschedulable
+            node_status[name] = self.extract_node_conditions(status=status, conditions=conditions)
+            # 3. Handle 'unschedulable' (False is the K8s default if the field is missing)
+            node_status[name]["unschedulable"] = spec.get("unschedulable", False)
+            
         return node_status
+
+
+        # nodes = self.core_api.list_node()
+        # node_status = {}
+        # for node in nodes.items:
+        #     node_status[node.metadata.name] = self.extract_node_conditions(node=node, conditions=conditions)
+        #     # add schedulable state
+        #     node_status[node.metadata.name]["unschedulable"] = False if node.spec.unschedulable is None else node.spec.unschedulable
+        
+        # return node_status
     
     def get_nodes(self):
         node_list = self.core_api.list_node()
@@ -141,13 +165,30 @@ class KubeAPI():
     
     def get_nodes_with_pressure(self, pressures=["DiskPressure", "MemoryPressure", "PIDPressure"]):
         """Get nodes with pressure signals"""
-        nodes = self.core_api.list_node()
+        # 1. Fetch raw JSON to bypass expensive object creation
+        response = self.core_api.list_node(_preload_content=False)
+        nodes_data = json.loads(response.data)
+
         all_pressures = {}
-        for node in nodes.items:
-            pressures = { key: value for key, value in self.extract_node_conditions(node=node, conditions=pressures).items() if value }
-            if pressures:
-                all_pressures[node.metadata.name] = pressures
+    
+        for node in nodes_data.get("items", []):
+            name = node["metadata"]["name"]
+            status = node.get("status", {})
+            
+            active_pressures = { key: value for key, value in self.extract_node_conditions(status=status, conditions=pressures).items() if value }
+            
+            if active_pressures:
+                all_pressures[name] = active_pressures
+                
         return all_pressures
+
+        # nodes = self.core_api.list_node()
+        # all_pressures = {}
+        # for node in nodes.items:
+        #     pressures = { key: value for key, value in self.extract_node_conditions(status=node.status, conditions=pressures).items() if value }
+        #     if pressures:
+        #         all_pressures[node.metadata.name] = pressures
+        # return all_pressures
     
     def get_pods_with_status(self, node_name, statuses=["Failed", "Unknown"]): # Failed, Running, Succeeded, Pending, Unknown
         """Get pods with failing statuses (or any other specific status)"""
@@ -215,26 +256,46 @@ class KubeAPI():
         return available_resources
 
     def get_node_labels(self, node_names=None):
-        nodes = self.core_api.list_node()
-        node_labels = {}
-        for node in nodes.items:
-            name = node.metadata.name
-            if node_names is not None and name not in node_names:
-                pass
-            else:
-                node_labels[name] = node.metadata.labels
-        return node_labels
+        # Fetch raw JSON to avoid expensive object instantiation
+        response = self.core_api.list_node(
+            _preload_content=False
+        )
+        nodes_data = json.loads(response.data)
+        
+        return {
+            node["metadata"]["name"]: node["metadata"].get("labels", {})
+            for node in nodes_data.get("items", []) if node_names is None or node["metadata"]["name"] in node_names
+        }
+
+        # nodes = self.core_api.list_node()
+        # node_labels = {}
+        # for node in nodes.items:
+        #     name = node.metadata.name
+        #     if node_names is not None and name not in node_names:
+        #         pass
+        #     else:
+        #         node_labels[name] = node.metadata.labels
+        # return node_labels
     
     def get_node_annotations(self, node_names=None):
-        nodes = self.core_api.list_node()
-        node_labels = {}
-        for node in nodes.items:
-            name = node.metadata.name
-            if node_names is not None and name not in node_names:
-                pass
-            else:
-                node_labels[name] = node.metadata.annotations
-        return node_labels
+        # Fetch raw JSON to avoid expensive object instantiation
+        response = self.core_api.list_node(_preload_content=False)
+        nodes_data = json.loads(response.data)
+        
+        return {
+            node["metadata"]["name"]: node["metadata"].get("annotations", {})
+            for node in nodes_data.get("items", []) if node_names is None or node["metadata"]["name"] in node_names
+        }
+    
+        # nodes = self.core_api.list_node()
+        # node_labels = {}
+        # for node in nodes.items:
+        #     name = node.metadata.name
+        #     if node_names is not None and name not in node_names:
+        #         pass
+        #     else:
+        #         node_labels[name] = node.metadata.annotations
+        # return node_labels
 
     def get_node_available_resources(self, node_names=None):
         """Gets available resources (not currently used) in the cluster disaggregated per node:
@@ -242,88 +303,101 @@ class KubeAPI():
         - memory
         - gpus
         - pods
+
+        TODO: this does not scale well with larger number of nodes. Consider switching to the CustomObjectsApi
         """
         total_resources = self._extract_resources(fn=lambda node: node.status.allocatable, node_names=node_names, aggregate=False)
         available_resources = {node: value["online"] for node, value in total_resources.items()}
 
-        # remove requested (and used) resources
-        pods = self.core_api.list_pod_for_all_namespaces(watch=False).items
-        for pod in pods:
-            node_name = pod.spec.node_name
+        # get raw data (more efficient)
+        raw_pods = self.core_api.list_pod_for_all_namespaces(field_selector="status.phase=Running", _preload_content=False)
+        pods_dict = json.loads(raw_pods.data)
+
+        # parse resources used by running pods
+        for pod in pods_dict.get('items', []):
+            spec = pod.get('spec', {})
+            node_name = spec.get('nodeName')
             if node_name not in available_resources:
                 continue
-            if node_name and pod.status.phase == 'Running':
-                available_resources[node_name]["pods"] -= 1
-                for container in pod.spec.containers:
-                    reqs = container.resources.requests
-                    if reqs:
-                        for resource in available_resources[node_name].keys():
-                            if resource in reqs:
-                                available_resources[node_name][resource] -= cast_resource_value(reqs[resource])
+                
+            available_resources[node_name]["pods"] -= 1
+            for container in spec.get('containers', []):
+                reqs = container.get('resources', {}).get('requests', None)
+                if reqs:
+                    for resource in available_resources[node_name].keys():
+                        if resource in reqs:
+                            available_resources[node_name][resource] -= cast_resource_value(reqs[resource])
 
         return available_resources
     
     def get_node_gpus(self, node_names=None, gpu_key="hami.io/node-nvidia-register"):
 
-        nodes = self.core_api.list_node().items
+        nodes = [node for node in self.core_api.list_node().items if node_names is None or node.metadata.name in node_names]
 
         gpu_info = {n.metadata.name: {"gpus": []} for n in nodes}
         # pre-fetch all info at once
+        import time
+        t = time.time()
         annotations = self.get_node_annotations()
+        print("---> get_node_annotations", time.time()-t)
         labels = self.get_node_labels()
+        print("---> get_node_labels", time.time()-t)
         node_states = self.get_nodes_states()
+        print("---> get_nodes_states", time.time()-t)
         node_resources = self.get_node_available_resources()
+        print("---> get_node_available_resources", time.time()-t)
         for node in nodes:
-            if node_names is not None and node.metadata.name not in node_names:
-                continue
             # parse different GPU backends (AMD, NVIDIA)
+            name = node.metadata.name
             for backend in ["nvidia.com/gpu", "amd.com/gpu"]:
                 gpu_capacity = node.status.capacity.get(backend, "0")
                 if gpu_capacity == "0":
                     continue
-                gpu_info[node.metadata.name]["available"] = node_resources[node.metadata.name][backend]
-                gpu_info[node.metadata.name]["capacity"] = gpu_capacity
+                gpu_info[name]["available"] = node_resources[name][backend]
+                gpu_info[name]["capacity"] = gpu_capacity
 
                 if backend == "nvidia.com/gpu":
                     # extract model information
-                    for n, node_annotations in annotations.items():
-                        
-                        if n != node.metadata.name:
+                    # for n, node_annotations in annotations.items():
+                    #     if n != node.metadata.name:
+                    #         continue
+                    node_annotations = annotations[name]
+
+                    if gpu_key not in node_annotations:
+                        continue
+                    gpus = node_annotations[gpu_key].split(":")
+                    for gpu_data in gpus:
+                        data = gpu_data.split(",")
+                        if len(data) < 6:
                             continue
-                        if gpu_key not in node_annotations:
-                            continue
-                        gpus = node_annotations[gpu_key].split(":")
-                        for gpu_data in gpus:
-                            data = gpu_data.split(",")
-                            if len(data) < 6:
-                                continue
-                            try:
-                                mem = f"{math.floor(int(data[2])/1000)}G"
-                            except:
-                                mem = data[2]
-                            gpu_info[n]["gpus"].append({
-                                "ready": node_states[n]["Ready"],
-                                "memory": mem,
-                                "model": data[4]
-                            })
+                        try:
+                            mem = f"{math.floor(int(data[2])/1000)}G"
+                        except:
+                            mem = data[2]
+                        gpu_info[name]["gpus"].append({
+                            "ready": node_states[name]["Ready"],
+                            "memory": mem,
+                            "model": data[4]
+                        })
                 if backend == "amd.com/gpu":
                     
-                    for n, node_annotations in labels.items():
-                        if n != node.metadata.name:
-                            continue
+                    # for n, node_annotations in labels.items():
+                    #     if n != node.metadata.name:
+                    #         continue
+                    node_annotations = labels[name]
                         
-                        memory = None
-                        model = None
-                        if "amd.com/gpu.vram" in node_annotations:
-                            memory = node_annotations["amd.com/gpu.vram"]
-                        if "amd.com/gpu.family" in node_annotations:
-                            model = node_annotations["amd.com/gpu.family"]
-                        if memory is not None and model is not None:
-                            gpu_info[n]["gpus"].append({
-                                "ready": node_states[n]["Ready"],
-                                "memory": memory,
-                                "model": f"AMD GPU {model}"
-                            })
+                    memory = None
+                    model = None
+                    if "amd.com/gpu.vram" in node_annotations:
+                        memory = node_annotations["amd.com/gpu.vram"]
+                    if "amd.com/gpu.family" in node_annotations:
+                        model = node_annotations["amd.com/gpu.family"]
+                    if memory is not None and model is not None:
+                        gpu_info[name]["gpus"].append({
+                            "ready": node_states[name]["Ready"],
+                            "memory": memory,
+                            "model": f"AMD GPU {model}"
+                        })
         return gpu_info
     
     def read_node(self, node_names: list=None):
