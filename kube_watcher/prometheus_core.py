@@ -27,9 +27,10 @@ logging.basicConfig(level=logging.INFO)
 
 class PrometheusAPI():
     def __init__(self, url, **kwargs):
-      self.prom = PrometheusConnect(url=url, **kwargs)
+      self.prom = PrometheusConnect(url=url, headers={"X-Scope-OrgID": "anonymous"}, **kwargs)
 
     def query(self, query):
+
         return self.prom.custom_query(query=query)
 
     def get_nodes_stats(self, node_ids, start_time, end_time, resources=["amd_com_gpu", "nvidia_com_gpu"], step="1h", phase="Running", aggregate_node_results=False):
@@ -68,6 +69,8 @@ class PrometheusAPI():
                 end_time=end_time_dt,
                 step=step
             )
+            if len(node_metric) == 0:
+                return {"error": "No nodes matched"}
             
             # Convert to DataFrame
             node_df = MetricRangeDataFrame(node_metric).reset_index()
@@ -94,6 +97,9 @@ class PrometheusAPI():
                 end_time=end_time_dt,
                 step=step
             )
+
+            if len(resource_metric) == 0:
+                return {"error": "No resources matched"}
             
             # Convert to DataFrame
             # The result of this query is a single time series (since it's a sum over all series)
@@ -120,7 +126,8 @@ class PrometheusAPI():
             # We use a melt-like approach for the final output, so a time-based merge is key.
             
             # Get common timestamp column
-            timestamp_col = 'timestamp' 
+            timestamp_col = 'timestamp'
+
             
             # Get only the relevant columns for merging
             # Note: If 'aggregate_node_results' is True, 'node' column won't exist in node_df.
@@ -279,15 +286,26 @@ class PrometheusAPI():
             }
 
 if __name__ == "__main__":
-    client = PrometheusAPI(url="http://51.159.173.70:9090", disable_ssl=True) # works as long as we are port forwarding from control plane
+    PROMETHEUS = "http://localhost:32298"
+    # import requests
+    # response = requests.get(
+    #     f"{PROMETHEUS}/api/v1/query",
+    #     params={'query': 'up'},
+    #     headers={'X-Scope-OrgID': 'anonymous'}
+    # ).json()
+    # print(response)
+    # exit()
+
+    client = PrometheusAPI(url=PROMETHEUS, disable_ssl=True) # works as long as we are port forwarding from control plane
     
     logger.info("connected")
 
     result = client.get_nodes_stats(
-        node_ids=['kalavai-camtl01-adapting-turtle-66819513', 'kalavai-camtl01-apt-pegasus-d2da114d', 'kalavai-camtl01-cheerful-hen-392e5fa9', 'kalavai-camtl01-deep-grizzly-73000f2a', 'kalavai-camtl01-driving-kite-237e3687', 'kalavai-camtl01-helpful-hyena-9e796fed', 'kalavai-camtl01-humane-sawfly-53f85009', 'kalavai-camtl01-humble-raccoon-4becdf51', 'kalavai-camtl01-key-hookworm-f19fab97', 'kalavai-camtl01-nearby-shark-81c63f4c', 'kalavai-camtl01-obliging-ox-c05dcc10', 'kalavai-camtl01-one-alien-d6af1aa2', 'kalavai-camtl01-prompt-elk-f85f8c41', 'kalavai-camtl01-pure-cicada-5fc780b1', 'kalavai-camtl01-rational-boa-dd85afa4', 'kalavai-camtl01-safe-sturgeon-09ab7948', 'kalavai-camtl01-sharp-loon-2589b5d7', 'kalavai-camtl01-smashing-burro-70cf2327', 'kalavai-camtl01-together-slug-82b98a65', 'kalavai-camtl01-tolerant-calf-8600f60e', 'kalavai-frsbg01-aware-bluegill-ef84f035', 'kalavai-frsbg01-blessed-gar-aef2a0de', 'kalavai-frsbg01-dashing-collie-fc6ce470', 'kalavai-frsbg01-destined-kit-54409b83', 'kalavai-frsbg01-diverse-lacewing-21cbef1c', 'kalavai-frsbg01-dominant-pangolin-8c90e3b6', 'kalavai-frsbg01-endless-aphid-5c1086ca', 'kalavai-frsbg01-endless-mustang-41662349', 'kalavai-frsbg01-growing-oriole-5ad22132', 'kalavai-frsbg01-improved-kingfish-6a10bbdc', 'kalavai-frsbg01-loving-magpie-0d5d84cc', 'kalavai-frsbg01-polite-tetra-40d83508', 'kalavai-frsbg01-positive-man-5d52ee6e', 'kalavai-frsbg01-possible-stallion-07a3fde5', 'kalavai-frsbg01-refined-badger-2204e91b', 'kalavai-frsbg01-right-weasel-2a18486b', 'kalavai-frsbg01-saved-sloth-5e06d5dc', 'kalavai-frsbg01-stable-oriole-f0c26cfb', 'kalavai-frsbg01-teaching-tetra-f1e6799f', 'kalavai-frsbg01-united-feline-f82d99ab'],
-        start_time="24h",
+        node_ids=['pop-os-482bc5e0'],
+        resources=["cpu"],
+        start_time="4h",
         end_time="now",
-        step="1h",
+        step="10m",
         aggregate_node_results=False
     )
     # result = client.get_cumulative_compute_usage(
