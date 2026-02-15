@@ -156,8 +156,7 @@ class GetJobsOverviewRequest(BaseModel):
     force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
 
 class GetLabelledResourcesRequest(BaseModel):
-    label: str
-    value: Optional[Union[str, None]] = Field(None, description="Optional value to match the label")
+    labels: Dict[str, Union[str, None]]
     force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
     tail_lines: int = 100
     

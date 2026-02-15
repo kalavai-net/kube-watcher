@@ -7,6 +7,7 @@ import base64
 import yaml
 from collections import defaultdict
 import uuid
+from typing import Union
 
 import tarfile
 import glob
@@ -162,6 +163,18 @@ class KubeAPI():
                 matching_nodes.append(node.metadata.name)
                 
         return matching_nodes
+
+    def get_services_with_labels(self, labels: dict[str, Union[str,None]], namespace: str) -> list:
+        selector = ",".join([f"{key}={value}" if value is not None else key for key, value in labels.items()])
+        services = self.core_api.list_namespaced_service(
+            namespace=namespace,
+            label_selector=selector,
+            _preload_content=False
+        )
+        raw_data = json.loads(services.data)
+
+        return raw_data.get("items", [])
+
     
     def get_nodes_with_pressure(self, pressures=["DiskPressure", "MemoryPressure", "PIDPressure"]):
         """Get nodes with pressure signals"""
@@ -711,13 +724,16 @@ class KubeAPI():
         )
         return force_serialisation(response)
     
-    def find_pods_with_label(self, label_key:str, label_value=None, namespace: str=None):
+    def find_pods_with_label(self, labels: dict, namespace: str=None):
 
         resources_found = defaultdict(dict)
         resource_types = {
             'pod': self.core_api.list_pod_for_all_namespaces if namespace is None else self.core_api.list_namespaced_pod
         }
-        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+        label_selector = ",".join(
+            [f"{label_key}={label_value}" if label_value is not None else label_key for label_key, label_value in labels.items()]
+        )
+        label_key = "-".join(labels.keys())
         for resource_type, list_func in resource_types.items():
             try:
                 resources = list_func(label_selector=label_selector) if namespace is None else list_func(namespace, label_selector=label_selector)
@@ -737,12 +753,11 @@ class KubeAPI():
             namespace=namespace
         )
     
-    def get_logs_for_labels(self, label_key, label_value=None, namespace=None, tail_lines=100):
+    def get_logs_for_labels(self, labels, namespace=None, tail_lines=100):
         """Get logs for all pods that match a label key:value"""
         match = self.find_pods_with_label(
             namespace=namespace,
-            label_key=label_key,
-            label_value=label_value
+            labels=labels
         )
         logs = defaultdict(dict)
         for label_match, pods in match.items():
@@ -755,12 +770,11 @@ class KubeAPI():
         
         return logs
     
-    def describe_pods_for_labels(self, label_key, label_value, namespace):
+    def describe_pods_for_labels(self, labels, namespace):
         """Get describe for all pods that match a label key:value"""
         match = self.find_pods_with_label(
             namespace=namespace,
-            label_key=label_key,
-            label_value=label_value
+            labels=labels
         )
         logs = defaultdict(dict)
         for label_match, pods in match.items():
@@ -886,10 +900,9 @@ class KubeAPI():
             namespace=namespace
         )
     
-    def get_pods_status_for_label(self, label_key, label_value=None, namespace=None):
+    def get_pods_status_for_label(self, labels, namespace=None):
         res = self.find_pods_with_label(
-            label_key=label_key,
-            label_value=label_value,
+            labels=labels,
             namespace=namespace
         )
         pod_statuses = defaultdict(dict)
@@ -1212,7 +1225,7 @@ class KubeAPI():
             yaml_strs=config,
             force_namespace=force_namespace)
 
-    def find_resources_with_label(self, namespace:str, label_key:str, label_value=None):
+    def find_resources_with_label(self, namespace:str, labels: dict):
         core_api = client.CoreV1Api()
         apps_api = client.AppsV1Api()
         batch_v1_api = client.BatchV1Api()
@@ -1232,7 +1245,9 @@ class KubeAPI():
             'secret': core_api.list_namespaced_secret
         }
 
-        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+        label_selector = ",".join(
+            [f"{label_key}={label_value}" if label_value is not None else label_key for label_key, label_value in labels.items()]
+        )
 
         for resource_type, list_func in resource_types.items():
             try:
@@ -1266,13 +1281,12 @@ class KubeAPI():
 
         return service_ports
     
-    def get_job_info_for_labels(self, label_key, label_value, namespace, tail_lines=100):
+    def get_job_info_for_labels(self, labels, namespace, tail_lines=100):
         """Aggregates kubectl describe and kubectl logs when available"""
         job_info = defaultdict(dict)
         try:
             match = self.get_logs_for_labels(
-                label_key=label_key,
-                label_value=label_value,
+                labels=labels,
                 namespace=namespace,
                 tail_lines=tail_lines
             )
@@ -1285,8 +1299,7 @@ class KubeAPI():
             pass
         try:
             match = self.describe_pods_for_labels(
-                label_key=label_key,
-                label_value=label_value,
+                labels=labels,
                 namespace=namespace
             )
             for label_match, descriptions in match.items():
@@ -1409,7 +1422,13 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     print(
-        api.helm_pull_schema(chart_name="kalavai-templates/vllm")
+        json.dumps(
+            api.get_services_with_labels(
+                labels={"app.kubernetes.io/component":"kuberay-apiserver"},
+                namespace="kuberay"
+            ),
+            indent=2
+        )
     )
     exit()
     res = api.list_namespaced_kalavaijob(namespace="default", label_selector=None)

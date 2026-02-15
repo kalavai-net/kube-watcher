@@ -411,8 +411,7 @@ async def get_logs_for_label(request: GetLabelledResourcesRequest, can_force_nam
         namespace = request.force_namespace
     logs = kube_api.get_logs_for_labels(
         namespace=namespace,
-        label_key=request.label,
-        label_value=request.value,
+        labels=request.labels,
         tail_lines=request.tail_lines)
     return logs
 
@@ -427,8 +426,7 @@ async def get_job_details_for_label(request: GetLabelledResourcesRequest, can_fo
         namespace = request.force_namespace
     logs = kube_api.get_job_info_for_labels(
         namespace=namespace,
-        label_key=request.label,
-        label_value=request.value,
+        labels=request.labels,
         tail_lines=request.tail_lines)
     return logs
 
@@ -460,6 +458,24 @@ async def get_jobs_overview(request: GetJobsOverviewRequest, can_force_namespace
 
     return ns_logs
 
+@app.post("/v1/get_services_for_label", 
+    operation_id="get_services_for_label",
+    summary="Get services with a given set of labels in a set of namespaces in the Kalavai compute pool",
+    tags=["workload_info"],
+    description="Get services with a given set of labels in a set of namespaces in the Kalavai compute pool",
+    response_description="List of services matching the labels given in the namespaces in the kalavai pool")
+async def get_services_for_label(request: GetLabelledResourcesRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    ns_services = defaultdict(dict)
+    if can_force_namespace and request.force_namespace is not None:
+        namespaces = [request.force_namespace]
+
+    for namespace in namespaces:
+        services = kube_api.get_services_with_labels(
+            labels=request.labels,
+            namespace=namespace)
+        ns_services[namespace] = services
+
+    return ns_services
 
 @app.post("/v1/describe_pods_for_label", 
     operation_id="describe_pods_for_label",
@@ -472,8 +488,7 @@ async def describe_pods_for_label(request: GetLabelledResourcesRequest, can_forc
         namespace = request.force_namespace
     logs = kube_api.describe_pods_for_labels(
         namespace=namespace,
-        label_key=request.label,
-        label_value=request.value)
+        labels=request.labels)
     return logs
 
 @app.post("/v1/get_pods_status_for_label", 
@@ -489,8 +504,7 @@ async def get_pods_status_for_label(request: GetLabelledResourcesRequest, can_fo
 
     for namespace in namespaces:
         pods_status = kube_api.get_pods_status_for_label(
-            label_key=request.label,
-            label_value=request.value,
+            labels=request.labels,
             namespace=namespace)
         ns_logs[namespace] = pods_status
 
@@ -934,9 +948,8 @@ async def get_resources_with_label(request: GetLabelledResourcesRequest, api_key
     ns_resources = {}
     for namespace in namespaces:
         ns_resources[namespace] = kube_api.find_resources_with_label(
-            namespace,
-            request.label,
-            request.value)
+            namespace=namespace,
+            labels=request.labels)
     return ns_resources
 
 @app.post("/v1/helm_add_repo", 
