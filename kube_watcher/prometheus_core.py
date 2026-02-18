@@ -19,18 +19,30 @@ import math
 
 from prometheus_api_client import PrometheusConnect, MetricRangeDataFrame
 from prometheus_api_client.utils import parse_datetime
+import pandas as pd
 
 
 logger = logging.getLogger("prometheus_api")
 logging.basicConfig(level=logging.INFO)
 
 
+def safe_prometheus_to_df(result):
+    # Prometheus API returns [] if no data matches
+    if not result:
+        # Return an empty DF with the columns your downstream 
+        # code expects so it doesn't crash on .reset_index()
+        return pd.DataFrame(columns=['timestamp', 'value', 'node', 'resource', 'namespace', 'pod'])
+    
+    # If using prometheus-pandas specifically:
+    return MetricRangeDataFrame(result).reset_index()
+
+
 class PrometheusAPI():
     def __init__(self, url, **kwargs):
+      self.url = url
       self.prom = PrometheusConnect(url=url, headers={"X-Scope-OrgID": "anonymous"}, **kwargs)
 
     def query(self, query):
-
         return self.prom.custom_query(query=query)
 
     def get_nodes_stats(self, node_ids, start_time, end_time, resources=["amd_com_gpu", "nvidia_com_gpu"], step="1h", phase="Running", aggregate_node_results=False):
@@ -69,11 +81,8 @@ class PrometheusAPI():
                 end_time=end_time_dt,
                 step=step
             )
-            if len(node_metric) == 0:
-                return {"error": "No nodes matched"}
-            
             # Convert to DataFrame
-            node_df = MetricRangeDataFrame(node_metric).reset_index()
+            node_df = safe_prometheus_to_df(node_metric)
 
             # --- 3. Resource Utilization Query ---
             resources_str = "|".join(resources)
@@ -98,12 +107,8 @@ class PrometheusAPI():
                 step=step
             )
 
-            if len(resource_metric) == 0:
-                return {"error": "No resources matched"}
-            
             # Convert to DataFrame
-            # The result of this query is a single time series (since it's a sum over all series)
-            resource_df = MetricRangeDataFrame(resource_metric).reset_index()
+            resource_df = safe_prometheus_to_df(resource_metric)
 
             # --- 4. Merge DataFrames ---
             # Both DataFrames share the 'index' (which is the timestamp).
@@ -176,7 +181,7 @@ class PrometheusAPI():
                 step=step
             )
 
-            metric_df = MetricRangeDataFrame(metric).reset_index()
+            metric_df = safe_prometheus_to_df(metric)
             metric_df = metric_df.fillna(value=0)
             return metric_df.to_dict(orient="list")
         except Exception as e:
@@ -286,34 +291,27 @@ class PrometheusAPI():
             }
 
 if __name__ == "__main__":
-    PROMETHEUS = "http://localhost:32298"
-    # import requests
-    # response = requests.get(
-    #     f"{PROMETHEUS}/api/v1/query",
-    #     params={'query': 'up'},
-    #     headers={'X-Scope-OrgID': 'anonymous'}
-    # ).json()
-    # print(response)
-    # exit()
+    PROMETHEUS = "http://51.159.177.196:32381"
 
     client = PrometheusAPI(url=PROMETHEUS, disable_ssl=True) # works as long as we are port forwarding from control plane
     
     logger.info("connected")
 
     result = client.get_nodes_stats(
-        node_ids=['pop-os-482bc5e0'],
-        resources=["cpu"],
-        start_time="4h",
+        node_ids=['kalavai-uspor01-whole-warthog-1584a51a'],
+        resources=["nvidia_com_gpu"],
+        start_time="10h",
         end_time="now",
         step="10m",
         aggregate_node_results=False
     )
-    # result = client.get_cumulative_compute_usage(
-    #     node_ids=["cogenai-worker-scw-l40s-2-a7638c30"],
-    #     resources=["amd_com_gpu", "nvidia_com_gpu"],
-    #     start_time="1h",
-    #     end_time="now",
-    #     step_seconds=60
-    # )
     print(result)
+    # result = client.get_cumulative_compute_usage(
+    #     node_ids=["kalavai-uspor01-whole-warthog-1584a51a"],
+    #     resources=["amd_com_gpu", "nvidia_com_gpu", "cpu"],
+    #     start_time="10h",
+    #     end_time="now",
+    #     step_seconds=600
+    # )
+    # print(result)
     
