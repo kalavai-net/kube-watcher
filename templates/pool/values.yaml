@@ -24,8 +24,8 @@
   description: "Kube watcher version to install in the pool"
 
 - name: watcher_image_tag
-  value: "v2025.12.11"
-  default: "v2025.12.11"
+  value: "v2025.12.16"
+  default: "v2025.12.16"
   editable: true
   required: false
   description: "Kube watcher image tag to install in the pool"
@@ -52,8 +52,8 @@
   description: "Kube watcher readonly key (read only privileges)"
 
 - name: kalavai_api_version
-  value: "0.1.10"
-  default: "0.1.10"
+  value: "0.1.11"
+  default: "0.1.11"
   editable: true
   required: false
   description: "Kalavai API service version to install in the pool"

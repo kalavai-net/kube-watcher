@@ -47,13 +47,14 @@ spec:
         name: kalavai
         namespace: default
   values:
+    forced_namespace: {{USER_ID}}
     bridge:
       replicas: 1
       image_tag: {{kalavai_api_image_tag}}
       labels:
         kalavai.job.name: {{deployment_id}}
       enabled: true
-      watcher_api_url: watcher-api:8000 #watcher-api-service.{{USER_ID}}.svc.cluster.local:8000
+      watcher_api_url: watcher-api-service:8000 #watcher-api-service.{{USER_ID}}.svc.cluster.local:8000
       watcher_api_key: {{watcher_admin_key}}
       service:
         type: ClusterIP
