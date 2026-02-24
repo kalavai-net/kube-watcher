@@ -291,27 +291,34 @@ class PrometheusAPI():
             }
 
 if __name__ == "__main__":
-    PROMETHEUS = "http://51.159.177.196:32381"
+    PROMETHEUS = "http://51.159.177.196:9090"
+    # import requests
+    # response = requests.get(
+    #     f"{PROMETHEUS}/api/v1/query",
+    #     params={'query': 'up'},
+    #     headers={'X-Scope-OrgID': 'anonymous'}
+    # ).json()
+    # print(response)
+    # exit()
 
     client = PrometheusAPI(url=PROMETHEUS, disable_ssl=True) # works as long as we are port forwarding from control plane
     
     logger.info("connected")
 
     result = client.get_nodes_stats(
-        node_ids=['kalavai-uspor01-whole-warthog-1584a51a'],
+        node_ids=["kalavai-frsbg01-united-feline-f91dee0d"],
         resources=["nvidia_com_gpu"],
-        start_time="10h",
+        start_time="4h",
         end_time="now",
         step="10m",
         aggregate_node_results=False
     )
-    print(result)
     # result = client.get_cumulative_compute_usage(
-    #     node_ids=["kalavai-uspor01-whole-warthog-1584a51a"],
-    #     resources=["amd_com_gpu", "nvidia_com_gpu", "cpu"],
-    #     start_time="10h",
+    #     node_ids=["cogenai-worker-scw-l40s-2-a7638c30"],
+    #     resources=["amd_com_gpu", "nvidia_com_gpu"],
+    #     start_time="1h",
     #     end_time="now",
-    #     step_seconds=600
+    #     step_seconds=60
     # )
-    # print(result)
+    print(result)
     

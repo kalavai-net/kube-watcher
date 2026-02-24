@@ -268,15 +268,21 @@ class KubeAPI():
 
         return available_resources
 
-    def get_node_labels(self, node_names=None):
+    def get_node_labels(self, node_names=None, label_filter=None, label_prefix="kalavai"):
         # Fetch raw JSON to avoid expensive object instantiation
-        response = self.core_api.list_node(
-            _preload_content=False
-        )
+        kwargs = {"_preload_content": False}
+        if label_filter:
+            kwargs["label_selector"] = ",".join(
+                [f"{key}={value}" if value is not None else key for key, value in label_filter.items()]
+            )
+        response = self.core_api.list_node(**kwargs)
         nodes_data = json.loads(response.data)
         
         return {
-            node["metadata"]["name"]: node["metadata"].get("labels", {})
+            node["metadata"]["name"]: {
+                k: v for k, v in node["metadata"].get("labels", {}).items()
+                if label_prefix is None or k.startswith(label_prefix)
+            }
             for node in nodes_data.get("items", []) if node_names is None or node["metadata"]["name"] in node_names
         }
 

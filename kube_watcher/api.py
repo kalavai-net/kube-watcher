@@ -230,7 +230,10 @@ async def cluster_labels(api_key: str = Depends(verify_read_key)):
     description="Gets labels associated with a set of nodes in the kalavai pool",
     response_description="Labels for the nodes in the kalavai pool")
 async def node_labels(request: NodesRequest, api_key: str = Depends(verify_read_key)):
-    labels = kube_api.get_node_labels(node_names=request.node_names)
+    labels = kube_api.get_node_labels(
+        node_names=request.node_names,
+        label_filter=request.node_labels
+    )
     return labels
 
 @app.post("/v1/get_node_gpus", 
@@ -240,8 +243,8 @@ async def node_labels(request: NodesRequest, api_key: str = Depends(verify_read_
     description="Gets GPU details associated with a set of nodes in the kalavai pool",
     response_description="GPUs for the nodes in the kalavai pool")
 async def node_gpus(request: NodesRequest, api_key: str = Depends(verify_read_key)):
-    labels = kube_api.get_node_gpus(node_names=request.node_names)
-    return labels
+    gpus = kube_api.get_node_gpus(node_names=request.node_names)
+    return gpus
 
 @app.post("/v1/get_pods_with_status", 
     operation_id="get_pods_with_status",
