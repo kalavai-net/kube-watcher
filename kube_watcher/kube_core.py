@@ -38,7 +38,9 @@ class KubeAPI():
 
     def _extract_resources(self, fn, node_names=None, aggregate=True):
         """Generalisation to extract values in dict form"""
-        nodes = self.core_api.list_node()
+        #nodes = self.core_api.list_node()
+        response = self.core_api.list_node(_preload_content=False)
+        nodes = json.loads(response.data)
         if aggregate:
             data = {"online": defaultdict(int), "total": defaultdict(int)}
             def _add_value(data, node, status):
@@ -50,29 +52,29 @@ class KubeAPI():
                 parse_resource_value(resources=fn(node), out_data_dict=data["total"])
         else:
             data = {
-                node.metadata.name: {"online": defaultdict(int), "total": defaultdict(int)}
-                for node in nodes.items
+                node.get("metadata", {}).get("name"): {"online": defaultdict(int), "total": defaultdict(int)}
+                for node in nodes.get("items", [])
             }
             def _add_value(data, node, status):
                 if status:
-                    data[node.metadata.name]["online"]["n_nodes"] += 1
-                    parse_resource_value(resources=fn(node), out_data_dict=data[node.metadata.name]["online"])
+                    data[node.get("metadata", {}).get("name")]["online"]["n_nodes"] += 1
+                    parse_resource_value(resources=fn(node), out_data_dict=data[node.get("metadata", {}).get("name")]["online"])
 
-                data[node.metadata.name]["total"]["n_nodes"] += 1
-                parse_resource_value(resources=fn(node), out_data_dict=data[node.metadata.name]["total"])
+                data[node.get("metadata", {}).get("name")]["total"]["n_nodes"] += 1
+                parse_resource_value(resources=fn(node), out_data_dict=data[node.get("metadata", {}).get("name")]["total"])
         
-        for node in nodes.items:
-            if node_names is not None and node.metadata.name not in node_names:
+        for node in nodes.get("items", []):
+            if node_names is not None and node.get("metadata", {}).get("name") not in node_names:
                 continue
-            status = True if self.extract_node_readiness(node).status == "True" else False
+            status = True if self.extract_node_readiness(node).get("status") == "True" else False
             _add_value(data=data, node=node, status=status)
         return data
     
     
     def extract_node_readiness(self, node):
         """Extract the readiness of a node from its status information (from extract_node_status)"""
-        for condition in node.status.conditions:
-            if condition.type == "Ready":
+        for condition in node.get("status", {}).get("conditions", []):
+            if condition.get("type") == "Ready":
                 return condition
         return None
     
@@ -81,7 +83,7 @@ class KubeAPI():
         - total --> nodes labels as reported in node labels
         - online --> nodes labels (for those with status Ready) as reported in node labels
         """
-        fn = lambda node: node.metadata.labels
+        fn = lambda node: node.get("metadata", {}).get("labels", {})
         return self._extract_resources(fn=fn)
     
     def extract_node_conditions(self, status, conditions=None):
@@ -118,16 +120,6 @@ class KubeAPI():
             node_status[name]["unschedulable"] = spec.get("unschedulable", False)
             
         return node_status
-
-
-        # nodes = self.core_api.list_node()
-        # node_status = {}
-        # for node in nodes.items:
-        #     node_status[node.metadata.name] = self.extract_node_conditions(node=node, conditions=conditions)
-        #     # add schedulable state
-        #     node_status[node.metadata.name]["unschedulable"] = False if node.spec.unschedulable is None else node.spec.unschedulable
-        
-        # return node_status
     
     def get_nodes(self):
         node_list = self.core_api.list_node()
@@ -194,14 +186,6 @@ class KubeAPI():
                 all_pressures[name] = active_pressures
                 
         return all_pressures
-
-        # nodes = self.core_api.list_node()
-        # all_pressures = {}
-        # for node in nodes.items:
-        #     pressures = { key: value for key, value in self.extract_node_conditions(status=node.status, conditions=pressures).items() if value }
-        #     if pressures:
-        #         all_pressures[node.metadata.name] = pressures
-        # return all_pressures
     
     def get_pods_with_status(self, node_name, statuses=["Failed", "Unknown"]): # Failed, Running, Succeeded, Pending, Unknown
         """Get pods with failing statuses (or any other specific status)"""
@@ -237,7 +221,7 @@ class KubeAPI():
     def get_total_allocatable_resources(self, node_names=None):
         """Get total allocatable resources (available and used) in the cluster"""
         total_resources = self._extract_resources(
-            fn=lambda node: node.status.allocatable,
+            fn=lambda node: node.get("status", {}).get("allocatable", {}),
             node_names=node_names)
         return total_resources["total"]
     
@@ -248,19 +232,20 @@ class KubeAPI():
         - gpus
         - pods
         """
-        total_resources = self._extract_resources(fn=lambda node: node.status.allocatable, node_names=node_names)
+        total_resources = self._extract_resources(fn=lambda node: node.get("status", {}).get("allocatable", {}), node_names=node_names)
         available_resources = total_resources["online"]
 
         # remove requested (and used) resources
-        pods = self.core_api.list_pod_for_all_namespaces(watch=False).items
-        for pod in pods:
-            node_name = pod.spec.node_name
+        raw_pods = self.core_api.list_pod_for_all_namespaces(_preload_content=False)
+        pods_dict = json.loads(raw_pods.data)
+        for pod in pods_dict.get("items", []):
+            node_name = pod.get("spec", {}).get("nodeName")
             if node_names is not None and node_name not in node_names:
                 continue
-            if node_name and pod.status.phase == 'Running':
+            if node_name and pod.get("status", {}).get("phase") == 'Running':
                 available_resources["pods"] -= 1
-                for container in pod.spec.containers:
-                    reqs = container.resources.requests
+                for container in pod.get("spec", {}).get("containers", []):
+                    reqs = container.get("resources", {}).get("requests", {})
                     if reqs:
                         for resource in available_resources.keys():
                             if resource in reqs:
@@ -285,16 +270,6 @@ class KubeAPI():
             }
             for node in nodes_data.get("items", []) if node_names is None or node["metadata"]["name"] in node_names
         }
-
-        # nodes = self.core_api.list_node()
-        # node_labels = {}
-        # for node in nodes.items:
-        #     name = node.metadata.name
-        #     if node_names is not None and name not in node_names:
-        #         pass
-        #     else:
-        #         node_labels[name] = node.metadata.labels
-        # return node_labels
     
     def get_node_annotations(self, node_names=None):
         # Fetch raw JSON to avoid expensive object instantiation
@@ -305,16 +280,6 @@ class KubeAPI():
             node["metadata"]["name"]: node["metadata"].get("annotations", {})
             for node in nodes_data.get("items", []) if node_names is None or node["metadata"]["name"] in node_names
         }
-    
-        # nodes = self.core_api.list_node()
-        # node_labels = {}
-        # for node in nodes.items:
-        #     name = node.metadata.name
-        #     if node_names is not None and name not in node_names:
-        #         pass
-        #     else:
-        #         node_labels[name] = node.metadata.annotations
-        # return node_labels
 
     def get_node_available_resources(self, node_names=None):
         """Gets available resources (not currently used) in the cluster disaggregated per node:
@@ -325,7 +290,7 @@ class KubeAPI():
 
         TODO: this does not scale well with larger number of nodes. Consider switching to the CustomObjectsApi
         """
-        total_resources = self._extract_resources(fn=lambda node: node.status.allocatable, node_names=node_names, aggregate=False)
+        total_resources = self._extract_resources(fn=lambda node: node.get("status", {}).get("allocatable", {}), node_names=node_names, aggregate=False)
         available_resources = {node: value["online"] for node, value in total_resources.items()}
 
         # get raw data (more efficient)
