@@ -28,13 +28,16 @@ class JobTemplate(Enum):
     #flexible = 99
 
 class NodeStatusRequest(BaseModel):
-    node_names: List[str] = None
-    node_labels: dict = None
+    node_names: Optional[List[str]] = Field(None, description="Optional list of nodes to filter node stats")
+    node_labels: Optional[Dict[str, str]] = Field(None, description="Optional dictionary of node labels to filter node stats")
     start_time: str = "1h"
     end_time: str = "now"
     step: str = "1m"
     resources: List[str] = ["amd_com_gpu", "nvidia_com_gpu"]
     aggregate_results: bool = False
+
+class FetchNodesRequest(BaseModel):
+    node_labels: Optional[Dict[str, str]] = Field(None, description="Dictionary of label key-value pairs to filter nodes by")
 
 class StorageClaimRequest(BaseModel):
     name: str
@@ -67,12 +70,12 @@ class KubecostParameters(BaseModel):
 class ComputeUsageRequest(BaseModel):
     resources: List[str] = ["amd_com_gpu", "nvidia_com_gpu", "cpu", "memory"]
     resource_mapping: dict = {"amd_com_gpu": "gpus", "nvidia_com_gpu": "gpus", "memory": "ram"}
-    node_names: List[str] = None
-    namespaces: List[str] = None
+    node_names: Optional[List[str]] = Field(None, description="Optional list of nodes to filter compute usage")
+    namespaces: Optional[List[str]] = Field(None, description="Optional list of namespaces to filter compute usage")
     start_time: str
     end_time: str
     step_seconds: int = 300
-    node_labels: dict = None
+    node_labels: Optional[Dict[str, str]] = Field(None, description="Optional dictionary of node labels to filter compute usage")
     normalize: bool = False
 
 class NodeCostRequest(BaseModel):
@@ -114,8 +117,8 @@ class DeepsparseDeploymentListRequest(BaseModel):
     namespace: str
     
 class NodesRequest(BaseModel):
-    node_names: List[str] = None
-    node_labels: dict = None
+    node_names: Optional[List[str]] = Field(None, description="Optional list of nodes to filter node stats")
+    node_labels: Optional[Dict[str, str]] = Field(None, description="Optional dictionary of node labels to filter node stats")
     schedulable: bool = True
     detailed: bool = False
 

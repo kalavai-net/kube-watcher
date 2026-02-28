@@ -36,7 +36,8 @@ from kube_watcher.models import (
     NodeLabelsRequest,
     ComputeUsageRequest,
     GetJobsOverviewRequest,
-    HelmRepo
+    HelmRepo,
+    FetchNodesRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -265,17 +266,17 @@ async def pods_with_status(request: PodsWithStatusRequest, api_key: str = Depend
         )
     return pods
 
-@app.get("/v1/get_nodes", 
-    operation_id="get_nodes",
+@app.post("/v1/fetch_nodes", 
+    operation_id="fetch_nodes",
     summary="Get connected nodes in the Kalavai compute pool",
     tags=["pool_info"],
-    description="Gets connected nodes in the kalavai pool",
+    description="Gets connected nodes in the kalavai pool. Can filter by labels using request body",
     response_description="Nodes in the kalavai pool")
-async def get_nodes(api_key: str = Depends(verify_read_key)):
-    return kube_api.get_nodes_states()
+async def get_nodes(request: FetchNodesRequest, api_key: str = Depends(verify_read_key)):
+    return kube_api.get_nodes_states(node_labels=request.node_labels)
 
-@app.post("/v1/get_nodes_stats", 
-    operation_id="get_nodes_stats",
+@app.post("/v1/fetch_nodes_stats", 
+    operation_id="fetch_nodes_stats",
     summary="Get node runtime stats for a set of nodes in the Kalavai compute pool",
     tags=["pool_info"],
     description="Gets node runtime stats for a set of nodes in the kalavai pool",
@@ -545,8 +546,8 @@ async def get_deployments(api_key: str = Depends(verify_read_key), namespaces: s
         )
     return ns_deployments
 
-@app.post("/v1/get_compute_usage", 
-    operation_id="get_compute_usage",
+@app.post("/v1/fetch_compute_usage", 
+    operation_id="fetch_compute_usage",
     summary="Get compute usage for a set of resources in the Kalavai compute pool",
     tags=["pool_info"],
     description="Gets the compute usage for a set of nodes/namespaces in the kalavai pool as monitored by prometheus.",

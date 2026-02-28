@@ -98,12 +98,18 @@ class KubeAPI():
                 
         return extracted
     
-    def get_nodes_states(self, conditions=None):
+    def get_nodes_states(self, conditions=None, node_labels=None):
         """Get the status of nodes on certain conditions (default all)"""
         # 1. Fetch only the necessary fields to reduce I/O
         # Note: 'status' is excluded in PartialObjectMetadata, so we use a field selector 
         # or just raw JSON if we need the full status.
-        response = self.core_api.list_node(_preload_content=False)
+
+        if node_labels is not None:
+            selector = ",".join([f"{key}={value}" if value is not None else key for key, value in node_labels.items()])
+        else:
+            selector = None
+
+        response = self.core_api.list_node(_preload_content=False, label_selector=selector)
         nodes_data = json.loads(response.data)
         
         node_status = {}
@@ -122,15 +128,16 @@ class KubeAPI():
         return node_status
     
     def get_nodes(self):
-        node_list = self.core_api.list_node()
+        node_list = self.core_api.list_node(_preload_content=False)
+        nodes_data = json.loads(node_list.data)
         nodes = []
-        for spec in node_list.items:
-            nodes.append(spec.metadata.name)
+        for spec in nodes_data.get("items", []):
+            nodes.append(spec.get("metadata", {}).get("name"))
         return nodes
     
     def get_nodes_with_labels(self, labels: dict) -> list:
         """
-        Get list of nodes that contain one or more specified labels (or annotations)
+        Get list of nodes that contain one or more specified labels using server-side filtering
         
         Args:
             labels (dict): Dictionary of label key-value pairs to match
@@ -138,23 +145,15 @@ class KubeAPI():
         Returns:
             list: List of node names that match the specified labels
         """
-        nodes = self.core_api.list_node()
-        matching_nodes = []
+        # Build label selector string for server-side filtering
+        selector = ",".join([f"{key}={value}" if value is not None else key for key, value in labels.items()])
         
-        for node in nodes.items:
-            # Check labels
-            node_labels = node.metadata.labels
-            # Check annotations
-            node_annotations = node.metadata.annotations
-            # Check if all specified labels match either in labels or annotations
-            if all(
-                (node_labels and node_labels.get(key) == value) or 
-                (node_annotations and node_annotations.get(key) == value) 
-                for key, value in labels.items()
-            ):
-                matching_nodes.append(node.metadata.name)
-                
-        return matching_nodes
+        # Use server-side label selector - much more efficient than client-side filtering
+        nodes = self.core_api.list_node(label_selector=selector, _preload_content=False)
+        nodes_data = json.loads(nodes.data)
+        
+        # Extract just the node names
+        return [node.get("metadata", {}).get("name") for node in nodes_data.get("items", [])]
 
     def get_services_with_labels(self, labels: dict[str, Union[str,None]], namespace: str) -> list:
         selector = ",".join([f"{key}={value}" if value is not None else key for key, value in labels.items()])

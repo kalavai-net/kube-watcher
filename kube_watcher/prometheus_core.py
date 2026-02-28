@@ -45,9 +45,18 @@ class PrometheusAPI():
     def query(self, query):
         return self.prom.custom_query(query=query)
 
-    def get_nodes_stats(self, node_ids, start_time, end_time, resources=["amd_com_gpu", "nvidia_com_gpu"], step="1h", phase="Running", aggregate_node_results=False):
+    def get_nodes_stats(
+        self,
+        node_ids,
+        start_time,
+        end_time,
+        resources=["amd_com_gpu", "nvidia_com_gpu"],
+        step="1h",
+        phase="Running",
+        aggregate_node_results=False
+    ):
         """
-        Retrieves both node status (Ready condition) and aggregated resource requests 
+        Retrieves both node status (Ready condition) and comprehensive resource metrics 
         for a list of nodes and custom resources over a time range.
 
         :param node_ids: List of node names to query status for.
@@ -56,7 +65,12 @@ class PrometheusAPI():
         :param end_time: End of the query time range.
         :param step: Step size for the range query (e.g., '1h', '5m').
         :param aggregate_node_results: If True, aggregates the node status result into a single sum.
-        :return: Dictionary containing the merged time series data, or an error dict.
+        :return: Dictionary containing the merged time series data with fields:
+                 - node_status_ready: Node readiness status over time
+                 - total_resources: Total allocatable resources in the cluster
+                 - used_resources: Resources currently used by running pods
+                 - unused_resources: Available resources not currently used
+                 or an error dict.
         """
         try:
             # 1. Prepare time and query arguments
@@ -84,12 +98,21 @@ class PrometheusAPI():
             # Convert to DataFrame
             node_df = safe_prometheus_to_df(node_metric)
 
-            # --- 3. Resource Utilization Query ---
+            # --- 3. Resource Capacity and Utilization Queries ---
             resources_str = "|".join(resources)
+            
+            # 3a. Total resource capacity (what the cluster has)
+            capacity_query = f"""
+            sum(
+                kube_node_status_allocatable{{resource=~"{resources_str}", node=~"{node_str}"}}
+            )
+            """
+            
+            # 3b. Used resources (what's currently requested by running pods)
             # Note: I've added phase="Running" to the kube_pod_status_phase selector 
             # as it's common to only look at resources requested by running pods. 
             # You may adjust this phase if needed (e.g., to "").
-            resource_query = f"""
+            used_query = f"""
             sum(
                 max by (namespace, pod) (
                     kube_pod_container_resource_requests{{resource=~"{resources_str}", node=~"{node_str}"}}
@@ -99,21 +122,28 @@ class PrometheusAPI():
             )
             """
 
-            # Execute Resource Utilization Query
-            resource_metric = self.prom.custom_query_range(
-                query=resource_query,
+            # Execute Resource Capacity Query
+            capacity_metric = self.prom.custom_query_range(
+                query=capacity_query,
                 start_time=start_time_dt,
                 end_time=end_time_dt,
                 step=step
             )
+            capacity_df = safe_prometheus_to_df(capacity_metric)
 
-            # Convert to DataFrame
-            resource_df = safe_prometheus_to_df(resource_metric)
+            # Execute Resource Used Query
+            used_metric = self.prom.custom_query_range(
+                query=used_query,
+                start_time=start_time_dt,
+                end_time=end_time_dt,
+                step=step
+            )
+            used_df = safe_prometheus_to_df(used_metric)
 
             # --- 4. Merge DataFrames ---
-            # Both DataFrames share the 'index' (which is the timestamp).
+            # All DataFrames share the 'index' (which is the timestamp).
             # We merge them to align the time series data.
-            # This assumes your 'step' and 'time range' are identical for both queries, which they are.
+            # This assumes your 'step' and 'time range' are identical for all queries, which they are.
             
             # Step 1: Clean up column names for the merge
             # Node Status DF columns: ['__name__', 'node', 'instance', 'job', 'timestamp', 'value']
@@ -121,10 +151,11 @@ class PrometheusAPI():
             
             # Rename the 'value' column to be descriptive before merging
             node_df = node_df.rename(columns={'value': 'node_status_ready'})
-            resource_df = resource_df.rename(columns={'value': 'total_resource_requests'})
+            capacity_df = capacity_df.rename(columns={'value': 'total_resources'})
+            used_df = used_df.rename(columns={'value': 'used_resources'})
 
             # The 'node_df' has multiple rows per timestamp (one per node/metric label),
-            # while 'resource_df' has only one row per timestamp (the total sum).
+            # while the resource DataFrames have only one row per timestamp (the total sum).
             # We perform a left merge on the 'node_df' to include the single-row resource data.
             
             # Select key columns before the merge for simplicity
@@ -142,12 +173,21 @@ class PrometheusAPI():
                 # We keep 'node' to differentiate the status of each node
                 node_value_cols = [timestamp_col, 'node', 'node_status_ready'] 
 
-            # Merge on the shared 'timestamp' column
+            # Merge all dataframes on the shared 'timestamp' column
             merged_df = node_df[node_value_cols].merge(
-                resource_df[[timestamp_col, 'total_resource_requests']],
+                capacity_df[[timestamp_col, 'total_resources']],
+                on=timestamp_col,
+                how='left'
+            ).merge(
+                used_df[[timestamp_col, 'used_resources']],
                 on=timestamp_col,
                 how='left'
             )
+            
+            # Calculate unused resources
+            #merged_df['unused_resources'] = merged_df['total_resources'] - merged_df['used_resources']
+            
+            # Fill NaN values with 0
             merged_df = merged_df.fillna(value=0)
 
             # Convert the final merged DataFrame to a dictionary
@@ -306,8 +346,8 @@ if __name__ == "__main__":
     logger.info("connected")
 
     result = client.get_nodes_stats(
-        node_ids=["kalavai-frsbg01-united-feline-f91dee0d"],
-        resources=["nvidia_com_gpu"],
+        node_ids=["kalavai-frsbg01-blessed-gar-d92348fe"],
+        resources=["cpu"],
         start_time="4h",
         end_time="now",
         step="10m",
