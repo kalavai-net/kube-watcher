@@ -1283,29 +1283,33 @@ class KubeAPI():
 
         return job_info
     
-    def set_resource_quota(self, namespace: str, quotas: str):
+    def set_resource_quota(self, namespace: str, quotas: str, labels: dict=None):
         """
         Set resource quota for a given namespace
         
         If exists, it will update it
         """
 
+        name = "resource-quota"
+        metadata = {"name": name}
+        if labels is not None:
+            metadata["labels"] = labels
         try:
             self.core_api.delete_namespaced_resource_quota(
-                name="resource-quota",
+                name=name,
                 namespace=namespace,
                 grace_period_seconds=0
             )
             time.sleep(2)
         except Exception as e:
             print(f"[WARNING]: Error deleting quota for {namespace}: {str(e)}")
-
+        
         result = self.core_api.create_namespaced_resource_quota(
             namespace=namespace,
             body=client.V1ResourceQuota(
                 api_version="v1",
                 kind="ResourceQuota",
-                metadata={"name": "resource-quota"},
+                metadata=metadata,
                 spec=client.V1ResourceQuotaSpec(
                     hard=quotas
                 )

@@ -132,9 +132,10 @@ class GenericDeploymentRequest(BaseModel):
 
 class UserWorkspaceRequest(BaseModel):
     force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
-    user_id: str = None
-    node_name: str = None
-    quota: dict = None
+    user_id: Optional[Union[str, None]] = Field(None, description="Optional user id override")
+    node_name: Optional[Union[str, None]] = Field(None, description="Optional node name override")
+    quota: Optional[Union[dict, None]] = Field(None, description="Optional quota override")
+    labels: Optional[Union[dict, None]] = Field(None, description="Optional labels to use for the user space (namespace and resource quota)")
 
 class CustomObjectRequest(BaseModel):
     group: str

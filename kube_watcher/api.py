@@ -635,7 +635,7 @@ async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: 
     try:
         kube_api.create_namespace(
             name=namespace,
-            labels={"monitor-pods-datasets": "enabled"})
+            labels=request.labels)
 
         # add annotation to user node
         if request.user_id is not None and request.node_name is not None:
@@ -647,7 +647,8 @@ async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: 
         if request.quota:
             kube_api.set_resource_quota(
                 namespace=namespace,
-                quotas=request.quota)
+                quotas=request.quota,
+                labels=request.labels)
 
     except Exception as e:
         return {"error": str(e)}
@@ -685,11 +686,12 @@ async def set_user_quota(request: UserWorkspaceRequest, can_force_namespace: boo
     
     kube_api.create_namespace(
         name=request.user_id,
-        labels={"monitor-pods-datasets": "enabled"})
+        labels=request.labels)
     try:
         kube_api.set_resource_quota(
             namespace=request.user_id,
-            quotas=request.quota)
+            quotas=request.quota,
+            labels=request.labels)
     except Exception as e:
         return {"error": str(e)}
     return {"status": "success"}
