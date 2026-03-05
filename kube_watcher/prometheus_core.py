@@ -12,6 +12,7 @@ PROMETHEUS QUERIES:
 - List pods in a specific node: kube_pod_info{node="carlosfm-desktop-1"}
 
 """
+import time
 import logging
 from collections import defaultdict
 from dateutil.parser import parse as parse_datetime
@@ -89,12 +90,15 @@ class PrometheusAPI():
                 node_status_query = f"sum({node_status_query})"
                 
             # Execute Node Status Query
+            t = time.time()
             node_metric = self.prom.custom_query_range(
                 query=node_status_query,
                 start_time=start_time_dt,
                 end_time=end_time_dt,
                 step=step
             )
+            logger.debug(f"Node status query: {node_status_query}")
+            logger.info(f"Node status query took {time.time() - t} seconds")
             # Convert to DataFrame
             node_df = safe_prometheus_to_df(node_metric)
 
@@ -107,7 +111,20 @@ class PrometheusAPI():
                 kube_node_status_allocatable{{resource=~"{resources_str}", node=~"{node_str}"}}
             )
             """
-            
+
+            # Execute Resource Capacity Query
+            t = time.time()
+            capacity_metric = self.prom.custom_query_range(
+                query=capacity_query,
+                start_time=start_time_dt,
+                end_time=end_time_dt,
+                step=step
+            )
+            logger.debug(f"Capacity query: {capacity_query}")
+            logger.info(f"Capacity query took {time.time() - t} seconds")
+            capacity_df = safe_prometheus_to_df(capacity_metric)
+
+            # Execute Resource Used Query
             # 3b. Used resources (what's currently requested by running pods)
             # Note: I've added phase="Running" to the kube_pod_status_phase selector 
             # as it's common to only look at resources requested by running pods. 
@@ -121,23 +138,15 @@ class PrometheusAPI():
                 (kube_pod_status_phase{{phase="{phase}"}} == 1)
             )
             """
-
-            # Execute Resource Capacity Query
-            capacity_metric = self.prom.custom_query_range(
-                query=capacity_query,
-                start_time=start_time_dt,
-                end_time=end_time_dt,
-                step=step
-            )
-            capacity_df = safe_prometheus_to_df(capacity_metric)
-
-            # Execute Resource Used Query
+            t = time.time()
             used_metric = self.prom.custom_query_range(
                 query=used_query,
                 start_time=start_time_dt,
                 end_time=end_time_dt,
                 step=step
             )
+            logger.debug(f"Used query: {used_query}")
+            logger.info(f"Used query took {time.time() - t} seconds")
             used_df = safe_prometheus_to_df(used_metric)
 
             # --- 4. Merge DataFrames ---
@@ -291,14 +300,16 @@ class PrometheusAPI():
             * on(namespace, pod) group_left()
             {running}
             """
-
+            t = time.time()
+            logger.debug(f"Node filter Query: {query}")
             metric = self.prom.custom_query_range(
                 query=query,
                 start_time=start_time,
                 end_time=end_time,
                 step=f"{step_seconds}s",
             )
-
+            logger.info(f"Node filter Query took {time.time() - t} seconds")
+            
             resource_hours = {resource: 0.0 for resource in resources}
 
             for series in metric:
@@ -346,19 +357,61 @@ if __name__ == "__main__":
     logger.info("connected")
 
     result = client.get_nodes_stats(
-        node_ids=["kalavai-frsbg01-blessed-gar-d92348fe"],
-        resources=["cpu"],
-        start_time="4h",
+        node_ids=[
+            "kalavai-frsbg01-aware-bluegill-2ba2c072",
+            "kalavai-frsbg01-blessed-gar-d92348fe",
+            "kalavai-frsbg01-dashing-collie-0d0184ae",
+            "kalavai-frsbg01-destined-kit-b6638d61", 
+            "kalavai-frsbg01-diverse-lacewing-a7e1c610",
+            "kalavai-frsbg01-dominant-pangolin-2f4cb88e",
+            "kalavai-frsbg01-endless-aphid-b8b93325", 
+            "kalavai-frsbg01-endless-mustang-eab4b5b",
+            "kalavai-frsbg01-growing-oriole-d70c5758",
+            "kalavai-frsbg01-improved-kingfish-cf789ecb",
+            "kalavai-frsbg01-loving-magpie-40096628",
+            "kalavai-frsbg01-polite-tetra-403f00bc",
+            "kalavai-frsbg01-positive-man-5a3ade83",
+            "kalavai-frsbg01-possible-stallion-d68a8954",
+            "kalavai-frsbg01-refined-badger-ceaf7f58",
+            "kalavai-frsbg01-right-weasel-6ab3f965",
+            "kalavai-frsbg01-saved-sloth-1d73c6b0",
+            "kalavai-frsbg01-stable-oriole-24455ec0",
+            "kalavai-frsbg01-teaching-tetra-dd1ffb81",
+            "kalavai-frsbg01-united-feline-0fc9f66a"
+        ],
+        resources=["nvidia_com_gpu", "amd_com_gpu"],
+        start_time="24h",
         end_time="now",
-        step="10m",
+        step="1h",
         aggregate_node_results=False
     )
     # result = client.get_cumulative_compute_usage(
-    #     node_ids=["cogenai-worker-scw-l40s-2-a7638c30"],
+    #     node_ids=[
+    #         "kalavai-frsbg01-aware-bluegill-2ba2c072",
+    #         "kalavai-frsbg01-blessed-gar-d92348fe",
+    #         "kalavai-frsbg01-dashing-collie-0d0184ae",
+    #         "kalavai-frsbg01-destined-kit-b6638d61", 
+    #         "kalavai-frsbg01-diverse-lacewing-a7e1c610",
+    #         "kalavai-frsbg01-dominant-pangolin-2f4cb88e",
+    #         "kalavai-frsbg01-endless-aphid-b8b93325", 
+    #         "kalavai-frsbg01-endless-mustang-eab4b5b",
+    #         "kalavai-frsbg01-growing-oriole-d70c5758",
+    #         "kalavai-frsbg01-improved-kingfish-cf789ecb",
+    #         "kalavai-frsbg01-loving-magpie-40096628",
+    #         "kalavai-frsbg01-polite-tetra-403f00bc",
+    #         "kalavai-frsbg01-positive-man-5a3ade83",
+    #         "kalavai-frsbg01-possible-stallion-d68a8954",
+    #         "kalavai-frsbg01-refined-badger-ceaf7f58",
+    #         "kalavai-frsbg01-right-weasel-6ab3f965",
+    #         "kalavai-frsbg01-saved-sloth-1d73c6b0",
+    #         "kalavai-frsbg01-stable-oriole-24455ec0",
+    #         "kalavai-frsbg01-teaching-tetra-dd1ffb81",
+    #         "kalavai-frsbg01-united-feline-0fc9f66a"
+    #     ],
     #     resources=["amd_com_gpu", "nvidia_com_gpu"],
-    #     start_time="1h",
+    #     start_time="4h",
     #     end_time="now",
-    #     step_seconds=60
+    #     step_seconds=10
     # )
-    print(result)
+    #print(result)
     
