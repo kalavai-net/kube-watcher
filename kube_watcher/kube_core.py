@@ -8,6 +8,7 @@ import yaml
 from collections import defaultdict
 import uuid
 from typing import Union
+import logging
 
 import tarfile
 import glob
@@ -26,6 +27,7 @@ from kube_watcher.utils import (
 
 LONGHORN_MANAGER_ENDPOINT = os.getenv("LONGHORN_MANAGER_ENDPOINT", "http://localhost:30132")
 
+logger = logging.getLogger(__name__)
 
 class KubeAPI():
     def __init__(self, in_cluster=False):
@@ -322,13 +324,13 @@ class KubeAPI():
         import time
         t = time.time()
         annotations = self.get_node_annotations()
-        print("---> get_node_annotations", time.time()-t)
-        labels = self.get_node_labels()
-        print("---> get_node_labels", time.time()-t)
+        logger.debug("---> get_node_annotations %s", time.time()-t)
+        labels = self.get_node_labels(label_prefix="")
+        logger.debug("---> get_node_labels %s", time.time()-t)
         node_states = self.get_nodes_states()
-        print("---> get_nodes_states", time.time()-t)
+        logger.debug("---> get_nodes_states %s", time.time()-t)
         node_resources = self.get_node_available_resources()
-        print("---> get_node_available_resources", time.time()-t)
+        logger.debug("---> get_node_available_resources %s", time.time()-t)
         for node in nodes:
             # parse different GPU backends (AMD, NVIDIA)
             name = node.metadata.name

@@ -244,6 +244,13 @@ async def node_labels(request: NodesRequest, api_key: str = Depends(verify_read_
     description="Gets GPU details associated with a set of nodes in the kalavai pool",
     response_description="GPUs for the nodes in the kalavai pool")
 async def node_gpus(request: NodesRequest, api_key: str = Depends(verify_read_key)):
+    if request.node_labels is not None:
+        node_names = kube_api.get_nodes_with_labels(
+            labels=request.node_labels)
+        if request.node_names is not None:
+            request.node_names = [node for node in node_names if node in request.node_names]
+        else:
+            request.node_names = node_names
     gpus = kube_api.get_node_gpus(node_names=request.node_names)
     return gpus
 
