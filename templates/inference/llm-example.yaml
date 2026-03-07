@@ -1,0 +1,335 @@
+# Example RayService YAML for Scalable LLM Deployment
+# This example demonstrates how to deploy a Large Language Model with autoscaling capabilities
+# using Ray Serve on Kubernetes with KubeRay operator.
+#
+# Key Features:
+# - LLM model serving with vLLM backend
+# - Autoscaling based on request load
+# - GPU resource management
+# - High availability configuration
+# - Proper health checks and monitoring
+
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: llm-service-example
+  labels:
+    # Required label for KubeRay operator
+    app.kubernetes.io/name: llm-service
+    app.kubernetes.io/component: rayservice
+spec:
+  # Health check thresholds (in seconds)
+  serviceUnhealthySecondThreshold: 1800  # 30 minutes for service health (increased for model download)
+  deploymentUnhealthySecondThreshold: 900  # 15 minutes for deployment health (increased for model initialization)
+  
+  # Ray Serve configuration for LLM deployment
+  # Uses the built-in Ray Serve LLM application with vLLM backend
+  serveConfigV2: |
+    applications:
+      - name: llm_app
+        # Built-in Ray Serve LLM application that provides OpenAI-compatible API
+        import_path: ray.serve.llm:build_openai_app
+        route_prefix: "/"
+        runtime_env:
+          env_vars:
+            # Disable VLLM V1 for compatibility
+            # VLLM_USE_V1: "1"
+            # Hugging Face token for accessing gated models (replace with your token)
+            HF_TOKEN: ""
+        args:
+          llm_configs:
+            - model_loading_config:
+                # Model identifier from Hugging Face Hub
+                model_id: "Qwen/Qwen3-1.7B"
+                model_source: "Qwen/Qwen3-1.7B"
+              deployment_config:
+                # Autoscaling configuration for the LLM deployment
+                autoscaling_config:
+                  # Minimum number of model replicas to maintain
+                  initial_replicas: 1
+                  min_replicas: 1
+                  # Maximum number of model replicas for scaling up
+                  max_replicas: 4
+                  # Target average ongoing requests per replica
+                  # Scale up when average > 2, scale down when average < 2
+                  target_ongoing_requests: 2
+                  # Delay before scaling up (prevents rapid scaling)
+                  upscale_delay_s: 30
+                  # Delay before scaling down (provides stability)
+                  downscale_delay_s: 300
+                  # Delay before scaling to zero (when min_replicas = 0)
+                  downscale_to_zero_delay_s: 600
+                  # Scaling factors for more aggressive/conservative scaling
+                  upscaling_factor: 1.5
+                  downscaling_factor: 0.8
+                  # Metrics collection interval
+                  metrics_interval_s: 10
+                  # Look back period for calculating averages
+                  look_back_period_s: 60
+                  # How to aggregate metrics over the look back period
+                  # Options: "mean", "max", "min"
+                  aggregation_function: "mean"
+              # vLLM engine configuration parameters
+              engine_kwargs:
+                # Tensor parallel size (should match number of GPUs per replica)
+                tensor_parallel_size: 1
+                # GPU memory usage configuration
+                gpu_memory_utilization: 0.85
+                # Maximum number of sequences to process in parallel
+                max_num_seqs: 128
+                # Context window size
+                max_model_len: 2048
+                # Enable CUDA graph for better performance
+                enforce_eager: false
+              # Runtime environment for the model
+              runtime_env:
+                env_vars:
+                  # VLLM_USE_V1: "1"
+                  HF_TOKEN: ""
+
+  # Ray Cluster configuration
+  rayClusterConfig:
+    # Ray version to use (should match container image)
+    rayVersion: "2.52.0"
+    
+    # Autoscaler configuration for the Ray cluster itself
+    autoscalerOptions:
+      # How aggressively to scale up resources
+      # Options: "Conservative", "Default", "Aggressive"
+      upscalingMode: "Default"
+      # How long to wait before scaling down idle workers
+      idleTimeoutSeconds: 60
+      # Maximum number of workers to scale down in a single iteration
+      #maxConcurrentScalingDownWorkers: 1
+    
+    # Enable built-in autoscaling for the Ray cluster
+    enableInTreeAutoscaling: true
+    
+    # Head node configuration
+    headGroupSpec:
+      # Service type for the head node
+      serviceType: ClusterIP
+      
+      # Ray start parameters for head node
+      rayStartParams:
+        dashboard-host: "0.0.0.0"
+        # Avoid running workloads on head node
+        num-cpus: "0"
+        num-gpus: "0"
+        # Enable GCS fault tolerance
+        #gcs-fault-tolerance-enabled: "true"
+      
+      # Pod template for head node
+      template:
+        metadata:
+          labels:
+            # Required labels for KubeRay
+            role: leader
+            app.kubernetes.io/name: llm-service
+            app.kubernetes.io/component: head
+        spec:
+          # Priority class for head node (should be higher than workers)
+          priorityClassName: "kalavai-system-priority"
+          
+          # Container configuration
+          containers:
+            - name: ray-head
+              # Use Ray LLM image with CUDA support
+              image: rayproject/ray-llm:2.52.0-py311-cu128
+              imagePullPolicy: IfNotPresent
+              
+              # Resource configuration
+              resources:
+                limits:
+                  cpu: 2
+                  memory: 14Gi
+                requests:
+                  cpu: 2
+                  memory: 14Gi
+              
+              # Pre-stop hook for graceful shutdown
+              lifecycle:
+                preStop:
+                  exec:
+                    command: ["/bin/sh", "-c", "ray stop"]
+              
+              # Port configuration
+              ports:
+                - containerPort: 6379
+                  name: gcs-server
+                  protocol: TCP
+                - containerPort: 8265
+                  name: dashboard
+                  protocol: TCP
+                - containerPort: 10001
+                  name: client
+                  protocol: TCP
+                - containerPort: 8000
+                  name: serve
+                  protocol: TCP
+              
+              # Health checks
+              # livenessProbe:
+              #   httpGet:
+              #     path: /api/health
+              #     port: 8265
+              #   initialDelaySeconds: 30
+              #   periodSeconds: 10
+              # readinessProbe:
+              #   httpGet:
+              #     path: /api/health
+              #     port: 8265
+              #   initialDelaySeconds: 10
+              #   periodSeconds: 5
+    
+    # Worker node configuration
+    workerGroupSpecs:
+      # GPU worker group for LLM inference
+      - groupName: gpu-workers
+        # Number of initial worker pods
+        replicas: 1
+        # Minimum number of workers (can be 0 for serverless)
+        minReplicas: 1
+        # Maximum number of workers for autoscaling
+        maxReplicas: 4
+        
+        # Ray start parameters for workers
+        rayStartParams:
+          # Number of GPUs per worker
+          num-gpus: "1"
+          
+        # Pod template for workers
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: llm-service
+              app.kubernetes.io/component: worker
+          spec:
+            # Priority class for workers
+            priorityClassName: "user-spot-priority"
+            
+            # Runtime class for GPU support
+            runtimeClassName: nvidia
+            
+            # Container configuration
+            containers:
+              - name: ray-worker
+                # Use Ray LLM image with CUDA support
+                image: rayproject/ray-llm:2.52.0-py311-cu128
+                imagePullPolicy: IfNotPresent
+                
+                # Resource configuration
+                resources:
+                  limits:
+                    # GPU allocation
+                    nvidia.com/gpu: 1
+                    # CPU and memory
+                    cpu: 2
+                    memory: 14Gi
+                  requests:
+                    nvidia.com/gpu: 1
+                    cpu: 2
+                    memory: 14Gi
+                
+                # Pre-stop hook for graceful shutdown
+                lifecycle:
+                  preStop:
+                    exec:
+                      command: ["/bin/sh", "-c", "ray stop"]
+                
+                # Custom health checks for LLM deployment
+                livenessProbe:
+                  exec:
+                    command:
+                      - bash
+                      - -c
+                      - "wget --tries 1 -T 2 -q -O- http://localhost:52365/api/local_raylet_healthz | grep success"
+                  initialDelaySeconds: 60  # Give time for Ray to start
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 3
+                
+                readinessProbe:
+                  exec:
+                    command:
+                      - bash
+                      - -c
+                      - "wget --tries 1 -T 2 -q -O- http://localhost:52365/api/local_raylet_healthz | grep success"
+                  initialDelaySeconds: 30  # Wait for Ray to be ready
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+                
+                # Environment variables
+                env:
+                  - name: CUDA_VISIBLE_DEVICES
+                    value: "0"
+                  - name: PYTHONPATH
+                    value: "/opt/conda/lib/python3.11/site-packages:$PYTHONPATH"
+
+---
+# Service configuration for external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-service-example-service
+  labels:
+    # Required labels for service discovery
+    app.kubernetes.io/name: llm-service
+    app.kubernetes.io/component: service
+spec:
+  # Service type for external access
+  type: NodePort
+  # or NodePort for testing
+  # type: NodePort
+  
+  # Selector for Ray head pod
+  selector:
+    role: leader
+    app.kubernetes.io/name: llm-service
+  
+  # Port configuration
+  ports:
+    - name: gcs-server
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+    - name: dashboard
+      port: 8265
+      targetPort: 8265
+      protocol: TCP
+    - name: client
+      port: 10001
+      targetPort: 10001
+      protocol: TCP
+    - name: serve
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+---
+# ConfigMap for additional configuration (optional)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-service-config
+data:
+  # Model configuration
+  model_config.yaml: |
+    model_id: "Qwen/Qwen3-1.7B"
+    max_tokens: 2048
+    temperature: 0.7
+    top_p: 0.9
+    top_k: 50
+  
+  # Autoscaling configuration
+  autoscaling_config.yaml: |
+    target_requests_per_replica: 2
+    scale_up_delay: 30
+    scale_down_delay: 300
+    max_replicas: 4
+  
+  # Monitoring configuration
+  monitoring_config.yaml: |
+    enable_metrics: true
+    metrics_port: 8080
+    log_level: "INFO"
