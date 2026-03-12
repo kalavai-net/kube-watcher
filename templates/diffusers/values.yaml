@@ -66,11 +66,18 @@
   description: "Number of cpus per worker"
 
 - name: memory
-  value: 4
-  default: 4
+  value: 8
+  default: 8
   editable: true
   required: false
   description: "Memory per worker"
+
+- name: sharedMemory
+  value: 8
+  default: 8
+  editable: true
+  required: false
+  description: "Shared memory per worker"
 
 - name: gpus
   value: 1

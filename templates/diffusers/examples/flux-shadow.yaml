@@ -5,8 +5,15 @@
   required: true
   description: "Name of the deployment job"
 
+- name: model_id
+  value: flux2klein
+  default: null
+  editable: true
+  required: true
+  description: "Huggingface model id to deploy. One of the following: https://huggingface.co/models?library=diffusers&sort=downloads"
+
 - name: working_memory
-  value: 30
+  value: 100
   default: 5
   editable: true
   required: true
@@ -20,7 +27,7 @@
   description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
 
 - name: min_replicas
-  value: 0
+  value: 1
   default: 0
   editable: true
   required: false
@@ -41,14 +48,14 @@
   description: "Huggingface access token, only required to load gated model weights"
 
 - name: cpus
-  value: 2
+  value: 4
   default: 2
   editable: true
   required: false
   description: "Number of cpus per worker"
 
 - name: memory
-  value: 16
+  value: 24
   default: 4
   editable: true
   required: false
@@ -61,16 +68,9 @@
   required: false
   description: "Number of gpus per worker"
 
-- name: litellm_base_url
-  value: "http://litellm.default.svc.cluster.local:4000"
-  default: "http://litellm.default.svc.cluster.local:4000"
-  editable: true
-  required: false
-  description: "Base URL of the LiteLLM service (central registry)"
-
-- name: litellm_key
-  value: ""
+- name: nodeport
+  value: "31311"
   default: ""
   editable: true
   required: false
-  description: "Master key of the LiteLLM service (central registry)"
+  description: "Specify the node port for the service that exposes the job"

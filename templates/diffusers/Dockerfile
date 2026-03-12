@@ -1,4 +1,4 @@
-FROM kalavai/ray-base:latest AS build-image
+FROM ghcr.io/kalavai-net/ray-base:latest AS build-image
 
 RUN apt update && apt install bc wget ffmpeg curl -y
 

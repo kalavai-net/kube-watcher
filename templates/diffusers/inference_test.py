@@ -4,18 +4,17 @@ import base64
 
 
 t = time.time()
-model_id = "stable-diffusion-v1-5/stable-diffusion-v1-5"
-#model_id = "stable-diffusion-v1-5/stable-diffusion-v1-5"
-prompt = "a realistic picture of a sunset."
+model_id = "black-forest-labs/FLUX.2-klein-4B"
+prompt = "a realistic picture of a sunset with a dancing potato."
 resp = requests.post(
-    f"http://0.0.0.0:8000/v1/images/generations",
+    f"http://kalavai-api.public.kalavai.net:31311/v1/images/generations",
     json={
         "prompt": prompt,
         "model": model_id,
         "n": 1,
-        "size": "512x512",
+        "size": "512x512", # only 256x256, 512x512, 1024x1024 are supported
         "response_format": "b64_json",
-        "extra": {"num_inference_steps": 50}
+        "extra": {"num_inference_steps": 10} # supported parameters https://huggingface.co/docs/diffusers/api/pipelines/flux#diffusers.FluxPipeline
     },
 )
 print(f"Inference time: {time.time()-t:.2f}s")

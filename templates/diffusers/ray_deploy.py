@@ -19,8 +19,14 @@ from io import BytesIO
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-import torch
 
+import torch
+from diffusers import (
+    AutoPipelineForText2Image,
+    StableDiffusionPipeline,
+    FluxPipeline,
+    Flux2KleinPipeline
+)
 import ray
 from ray import serve
 from ray.serve.handle import DeploymentHandle
@@ -28,12 +34,15 @@ from ray.serve.handle import DeploymentHandle
 
 app = FastAPI()
 
+# move to AutoPipeline https://huggingface.co/docs/diffusers/en/tutorials/autopipeline
+#   supports Stable Diffusion, Stable Diffusion XL, ControlNet, Kandinsky 2.1, Kandinsky 2.2, and DeepFloyd IF
 # add models from HF https://huggingface.co/models?library=diffusers&sort=trending
-supported_models = [
-    "stable-diffusion-v1-5/stable-diffusion-v1-5",
-    "CompVis/stable-diffusion-v1-4",
-    "black-forest-labs/FLUX.1-dev"
-]
+supported_models = {
+    "stable-diffusion-v1-5/stable-diffusion-v1-5": AutoPipelineForText2Image,
+    "CompVis/stable-diffusion-v1-4": AutoPipelineForText2Image,
+    "black-forest-labs/FLUX.1-dev": FluxPipeline,
+    "black-forest-labs/FLUX.2-klein-4B": Flux2KleinPipeline
+}
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", 8000))
 DEVICE = os.environ.get("DEVICE", "cuda")
@@ -99,7 +108,7 @@ class APIIngress:
     @app.post("/v1/images/generations", response_model=ImageGenerationResponse)
     async def image_generation(self, request: ImageGenerationRequest):
         """OpenAI-compatible image generation endpoint"""
-        if False and request.model not in supported_models:
+        if False and request.model not in supported_models.keys():
             raise HTTPException(status_code=400, detail=f"Model {request.model} is not supported")
         try:
             # Parse size string (e.g., "1024x1024")
@@ -119,7 +128,7 @@ class APIIngress:
             # Generate images
             images = []
             for _ in range(request.n):
-                image = await self.handle.generate.remote(model_id=request.model, prompt=request.prompt, img_size=width, **request.extra)
+                image = await self.handle.generate.remote(model_id=request.model, prompt=request.prompt, height=height, width=width, **request.extra)
                 images.append(image)
             
             # Convert images to requested format
@@ -169,7 +178,7 @@ class APIIngress:
                     "root": model,
                     "parent": None
                 }
-            for model in supported_models
+            for model in supported_models.keys()
             ]
         }
 
@@ -192,23 +201,27 @@ class StableDiffusionV2:
         
     def load_model(self, model_id: str):
         if self.current_model != model_id:
-            # move to AutoPipeline https://huggingface.co/docs/diffusers/en/tutorials/autopipeline
-            #   supports Stable Diffusion, Stable Diffusion XL, ControlNet, Kandinsky 2.1, Kandinsky 2.2, and DeepFloyd IF
-            from diffusers import AutoPipelineForText2Image
-            from diffusers import StableDiffusionPipeline, FluxPipeline
-            self.pipe = AutoPipelineForText2Image.from_pretrained(
+            
+            # self.pipe = AutoPipelineForText2Image.from_pretrained(
+            #     model_id,
+            #     torch_dtype=torch.float16,
+            #     use_safetensors=True
+            # )
+            self.pipe = supported_models[model_id].from_pretrained(
                 model_id,
-                #scheduler=scheduler,
-                #revision="fp16",
-                torch_dtype=torch.float16,
-                use_safe_tenrors=True
+                torch_dtype=torch.float16
             )
-            #self.pipe = FluxPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16)
             if DEVICE == "cpu":
                 self.pipe.enable_model_cpu_offload()
             else:
                 self.pipe = self.pipe.to(DEVICE)
+            
             self.current_model = model_id
+
+            # After pipe creation in load_model method
+            self.pipe.enable_attention_slicing()  # Reduces memory usage
+            if hasattr(self.pipe, 'enable_vae_slicing'):
+                self.pipe.enable_vae_slicing()
 
     def generate(self, model_id: str, prompt: str, **kwargs):
         assert len(model_id), "Model not loaded"
@@ -216,7 +229,7 @@ class StableDiffusionV2:
         self.load_model(model_id)
 
         with torch.autocast(DEVICE):
-            image = self.pipe(prompt, **kwargs).images[0]
+            image = self.pipe(prompt=prompt, **kwargs).images[0]
             return image
 
 entrypoint = APIIngress.bind(StableDiffusionV2.bind())
