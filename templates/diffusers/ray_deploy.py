@@ -19,13 +19,18 @@ from io import BytesIO
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+from enum import Enum
 
 import torch
 from diffusers import (
     AutoPipelineForText2Image,
     StableDiffusionPipeline,
     FluxPipeline,
-    Flux2KleinPipeline
+    Flux2KleinPipeline,
+    EulerAncestralDiscreteScheduler,
+    DPMSolverMultistepScheduler,
+    UniPCMultistepScheduler,
+    LCMScheduler
 )
 import ray
 from ray import serve
@@ -33,6 +38,12 @@ from ray.serve.handle import DeploymentHandle
 
 
 app = FastAPI()
+
+class SchedulerEnum(str, Enum):
+    euler_ancestral = "euler_ancestral"
+    dpmpp_2m = "dpmpp_2m" 
+    unipc = "unipc"
+    lcm = "lcm"
 
 # move to AutoPipeline https://huggingface.co/docs/diffusers/en/tutorials/autopipeline
 #   supports Stable Diffusion, Stable Diffusion XL, ControlNet, Kandinsky 2.1, Kandinsky 2.2, and DeepFloyd IF
@@ -56,12 +67,15 @@ class ImageGenerationRequest(BaseModel):
     prompt: str = Field(..., description="A text description of the desired image")
     model: str = Field(default="stable-diffusion-v1-5", description="The model to use for image generation")
     n: int = Field(default=1, ge=1, le=10, description="The number of images to generate")
-    size: str = Field(default="1024x1024", description="The size of the generated images")
+    size: str = Field(default="512x512", description="The size of the generated images")
     quality: str = Field(default="standard", description="The quality of the image")
     response_format: str = Field(default="b64_json", description="The format in which the generated images are returned")
     style: Optional[str] = Field(default=None, description="The style of the generated images")
     user: Optional[str] = Field(default=None, description="A unique identifier representing your end-user")
     extra: Optional[dict] = Field(default=None, description="Extra parameters for a diffusers pipeline")
+    scheduler: SchedulerEnum = Field(default=SchedulerEnum.euler_ancestral, description="Scheduler to use for faster generation")
+    compile: bool = Field(default=True, description="Whether to compile the pipeline for faster inference")
+    batch_size: int = Field(default=1, ge=1, le=4, description="Batch size for parallel generation")
 
 class ImageEditRequest(BaseModel):
     image: str = Field(..., description="The image to edit")
@@ -125,11 +139,26 @@ class APIIngress:
             if width not in [256, 512, 1024]:
                 raise HTTPException(status_code=400, detail="Size must be one of: 256, 512, 1024")
             
-            # Generate images
+            # Generate images with batch processing
             images = []
-            for _ in range(request.n):
-                image = await self.handle.generate.remote(model_id=request.model, prompt=request.prompt, height=height, width=width, **request.extra)
-                images.append(image)
+            remaining_images = request.n
+            
+            while remaining_images > 0:
+                current_batch_size = min(request.batch_size, remaining_images)
+                
+                # Generate batch of images
+                batch_images = await self.handle.generate.remote(
+                    model_id=request.model, 
+                    prompt=request.prompt, 
+                    height=height, 
+                    width=width, 
+                    num_images=current_batch_size,
+                    scheduler=request.scheduler,
+                    compile=request.compile,
+                    **request.extra
+                )
+                images.extend(batch_images)
+                remaining_images -= current_batch_size
             
             # Convert images to requested format
             data = []
@@ -194,43 +223,87 @@ class APIIngress:
 )
 class StableDiffusionV2:
     def __init__(self):
-        # scheduler = EulerDiscreteScheduler.from_pretrained(
-        #     model_id, subfolder="scheduler"
-        # )
         self.current_model = None
+        self.current_scheduler = None
+        self.compiled_pipe = None
         
-    def load_model(self, model_id: str):
-        if self.current_model != model_id:
+        # Available schedulers for faster generation
+        self.schedulers = {
+            SchedulerEnum.euler_ancestral: EulerAncestralDiscreteScheduler,
+            SchedulerEnum.dpmpp_2m: DPMSolverMultistepScheduler,
+            SchedulerEnum.unipc: UniPCMultistepScheduler,
+            SchedulerEnum.lcm: LCMScheduler
+        }
+        
+    def load_model(self, model_id: str, scheduler_name: SchedulerEnum = SchedulerEnum.euler_ancestral, compile: bool = True):
+        if self.current_model != model_id or self.current_scheduler != scheduler_name:
             
-            # self.pipe = AutoPipelineForText2Image.from_pretrained(
-            #     model_id,
-            #     torch_dtype=torch.float16,
-            #     use_safetensors=True
-            # )
+            # Load pipeline
             self.pipe = supported_models[model_id].from_pretrained(
                 model_id,
-                torch_dtype=torch.float16
+                torch_dtype=torch.float16,
+                use_safetensors=True
             )
+            
+            # Set faster scheduler
+            if scheduler_name in self.schedulers:
+                self.pipe.scheduler = self.schedulers[scheduler_name].from_config(self.pipe.scheduler.config)
+            
             if DEVICE == "cpu":
                 self.pipe.enable_model_cpu_offload()
             else:
                 self.pipe = self.pipe.to(DEVICE)
             
-            self.current_model = model_id
-
-            # After pipe creation in load_model method
-            self.pipe.enable_attention_slicing()  # Reduces memory usage
+            # Memory optimizations
+            self.pipe.enable_attention_slicing()
             if hasattr(self.pipe, 'enable_vae_slicing'):
                 self.pipe.enable_vae_slicing()
+            
+            # Enable CPU for VAE when using CUDA to save memory
+            if DEVICE == "cuda" and hasattr(self.pipe, 'enable_sequential_cpu_offload'):
+                self.pipe.enable_sequential_cpu_offload()
+            
+            # Compile pipeline for faster inference
+            if compile and DEVICE == "cuda":
+                try:
+                    print("Compiling pipeline for faster inference...")
+                    self.compiled_pipe = torch.compile(self.pipe, mode="reduce-overhead", fullgraph=True)
+                except Exception as e:
+                    print(f"Compilation failed: {e}, using uncompiled pipeline")
+                    self.compiled_pipe = self.pipe
+            else:
+                self.compiled_pipe = self.pipe
+            
+            self.current_model = model_id
+            self.current_scheduler = scheduler_name
 
-    def generate(self, model_id: str, prompt: str, **kwargs):
+    def generate(self, model_id: str, prompt: str, num_images: int = 1, **kwargs):
+        """Generate one or more images with optimized performance"""
         assert len(model_id), "Model not loaded"
         assert len(prompt), "prompt parameter cannot be empty"
-        self.load_model(model_id)
-
+        
+        scheduler_name = kwargs.pop('scheduler', SchedulerEnum.euler_ancestral)
+        compile = kwargs.pop('compile', True)
+        
+        self.load_model(model_id, scheduler_name, compile)
+        
+        # Use compiled pipeline if available
+        pipe = self.compiled_pipe if self.compiled_pipe else self.pipe
+        
+        # Optimize inference parameters for speed
+        generation_kwargs = {
+            'prompt': [prompt] * num_images if num_images > 1 else prompt,
+            **kwargs
+        }
+        
+        # Use LCM scheduler for ultra-fast generation if requested
+        if scheduler_name == SchedulerEnum.lcm:
+            generation_kwargs['num_inference_steps'] = kwargs.get('num_inference_steps', 4)
+            generation_kwargs['guidance_scale'] = kwargs.get('guidance_scale', 1.0)
+        
         with torch.autocast(DEVICE):
-            image = self.pipe(prompt=prompt, **kwargs).images[0]
-            return image
+            images = pipe(**generation_kwargs).images
+            return images[0] if num_images == 1 else images
 
 entrypoint = APIIngress.bind(StableDiffusionV2.bind())
 
