@@ -80,14 +80,22 @@ spec:
           - sh
           - -c
           - |
-            # open ports
-            #sudo bash -c 'echo -n "16384-32768" > /var/lib/vastai_kaalia/host_port_range'
-            # set public IP
-            #sudo bash -c 'echo -n "172.13.108.14" > /var/lib/vastai_kaalia/host_ipaddr'
-            wget https://console.vast.ai/install -O install; sudo python3 install $VASTAI_CODE --interactive; history -d $((HISTCMD-1)); 
-            sleep 30;
+            AKASH_VERSION="$(curl -s https://api.github.com/repos/akash-network/provider/releases/latest | jq -r '.tag_name')"
+            AKASH_CHAIN_ID="$(curl -s "$AKASH_NET/chain-id.txt")"
+            AKASH_NODE="$(curl -s "$AKASH_NET/rpc-nodes.txt" | shuf -n 1)"
+
           env:
-          - name: AKASH_NET=
+          # https://akash.network/docs/developers/deployment/cli/installation-guide/#fund-your-account
+          - name: AKASH_NET
+            value: "https://raw.githubusercontent.com/akash-network/net/main/mainnet"
+          - name: AKASH_GAS
+            value: "https://raw.githubusercontent.com/akash-network/net/main/mainnet"
+          - name: AKASH_GAS_ADJUSTMENT
+            value: "https://raw.githubusercontent.com/akash-network/net/main/mainnet"
+          - name: AKASH_GAS_PRICES
+            value: "https://raw.githubusercontent.com/akash-network/net/main/mainnet"
+          - name: AKASH_SIGN_MODE
+            value: "https://raw.githubusercontent.com/akash-network/net/main/mainnet"
           - name: VASTAI_CODE
             valueFrom:
               secretKeyRef:
