@@ -1,3 +1,4 @@
+import re
 from string import Template
 import json 
 import datetime 
@@ -186,6 +187,42 @@ def create_flow_deployment_yaml(values, template_file=FLOW_DEPLOYMENT_TEMPLATE, 
     generates a yaml deployment file for a langflow serving
     """
     return create_deployment_yaml(values, template_file=template_file, default_values=default_values)
+
+
+def sanitize_kubernetes_name(name):
+    """
+    Ensure a name is Kubernetes compliant:
+    - Alphanumeric characters and hyphens only
+    - Maximum length of 64 characters
+    - Cannot start or end with a hyphen
+    - Cannot have consecutive hyphens
+    
+    Args:
+        name (str): The original name
+        
+    Returns:
+        str: Kubernetes-compliant name
+    """
+    if not name:
+        return name
+    
+    # Remove invalid characters, keep only alphanumeric and hyphens
+    sanitized = re.sub(r'[^a-zA-Z0-9-]', '', name)
+    
+    # Remove consecutive hyphens
+    sanitized = re.sub(r'-+', '-', sanitized)
+    
+    # Remove leading and trailing hyphens
+    sanitized = sanitized.strip('-')
+    
+    # Truncate to 64 characters
+    sanitized = sanitized[:64]
+    
+    # Ensure it's not empty after sanitization
+    if not sanitized:
+        sanitized = "resource"
+    
+    return sanitized
 
 
 def create_agent_builder_deployment_yaml(values, template_file=AGENT_BUILDER_TEMPLATE, default_values=None):

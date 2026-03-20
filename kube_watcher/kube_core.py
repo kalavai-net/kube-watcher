@@ -21,7 +21,8 @@ from kube_watcher.utils import (
     parse_resource_value,
     force_serialisation,
     extract_longhorn_metric_from_prometheus,
-    HelmClient
+    HelmClient,
+    sanitize_kubernetes_name
 )
 
 
@@ -609,7 +610,7 @@ class KubeAPI():
         Use the is_update flag to apply an update to an existing job
         """
 
-        name = name + "-" + str(uuid.uuid4())[:6] if not is_update else name
+        name = sanitize_kubernetes_name(name + "-" + str(uuid.uuid4())[:6]) if not is_update else name
 
         body = {
             "apiVersion": "kalavai.net/v1",
