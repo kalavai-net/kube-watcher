@@ -356,36 +356,9 @@ if __name__ == "__main__":
     
     logger.info("connected")
 
-    result = client.get_nodes_stats(
-        node_ids=[
-            "kalavai-frsbg01-aware-bluegill-2ba2c072",
-            "kalavai-frsbg01-blessed-gar-d92348fe",
-            "kalavai-frsbg01-dashing-collie-0d0184ae",
-            "kalavai-frsbg01-destined-kit-b6638d61", 
-            "kalavai-frsbg01-diverse-lacewing-a7e1c610",
-            "kalavai-frsbg01-dominant-pangolin-2f4cb88e",
-            "kalavai-frsbg01-endless-aphid-b8b93325", 
-            "kalavai-frsbg01-endless-mustang-eab4b5b",
-            "kalavai-frsbg01-growing-oriole-d70c5758",
-            "kalavai-frsbg01-improved-kingfish-cf789ecb",
-            "kalavai-frsbg01-loving-magpie-40096628",
-            "kalavai-frsbg01-polite-tetra-403f00bc",
-            "kalavai-frsbg01-positive-man-5a3ade83",
-            "kalavai-frsbg01-possible-stallion-d68a8954",
-            "kalavai-frsbg01-refined-badger-ceaf7f58",
-            "kalavai-frsbg01-right-weasel-6ab3f965",
-            "kalavai-frsbg01-saved-sloth-1d73c6b0",
-            "kalavai-frsbg01-stable-oriole-24455ec0",
-            "kalavai-frsbg01-teaching-tetra-dd1ffb81",
-            "kalavai-frsbg01-united-feline-0fc9f66a"
-        ],
-        resources=["nvidia_com_gpu", "amd_com_gpu"],
-        start_time="24h",
-        end_time="now",
-        step="1h",
-        aggregate_node_results=False
-    )
-    # result = client.get_cumulative_compute_usage(
+
+
+    # result = client.get_nodes_stats(
     #     node_ids=[
     #         "kalavai-frsbg01-aware-bluegill-2ba2c072",
     #         "kalavai-frsbg01-blessed-gar-d92348fe",
@@ -408,10 +381,20 @@ if __name__ == "__main__":
     #         "kalavai-frsbg01-teaching-tetra-dd1ffb81",
     #         "kalavai-frsbg01-united-feline-0fc9f66a"
     #     ],
-    #     resources=["amd_com_gpu", "nvidia_com_gpu"],
-    #     start_time="4h",
+    #     resources=["nvidia_com_gpu", "amd_com_gpu"],
+    #     start_time="24h",
     #     end_time="now",
-    #     step_seconds=10
+    #     step="1h",
+    #     aggregate_node_results=False
     # )
-    #print(result)
+    result = client.get_cumulative_compute_usage(
+        namespaces=[
+            "shadow"
+        ],
+        resources=["cpu", "memory", "nvidia_com_gpu"],
+        start_time="4h",
+        end_time="now",
+        step_seconds=10
+    )
+    print(result)
     

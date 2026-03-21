@@ -562,18 +562,16 @@ async def get_deployments(api_key: str = Depends(verify_read_key), namespaces: s
 async def compute_usage(request: ComputeUsageRequest, api_key: str = Depends(verify_read_key)):
     prometheus = PrometheusAPI(url=PROMETHEUS_ENDPOINT)
 
-    if request.node_names is None and request.node_labels is None:
-        raise HTTPException(status_code=400, detail="node_names or node_labels must be provided")
+    if request.node_names is None and request.node_labels is None and request.namespaces is None:
+        raise HTTPException(status_code=400, detail="node_names or node_labels or namespaces must be provided")
         
     if request.node_labels is not None:
         request.node_names = kube_api.get_nodes_with_labels(
             labels=request.node_labels
         )
-    if request.node_names is None or len(request.node_names) == 0:
-        metrics = {resource: 0 for resource in request.resources}
+        if request.node_names is None or len(request.node_names) == 0:
+            metrics = {resource: 0 for resource in request.resources}
     else:
-        print(f"Getting compute usage for nodes: {request.node_names}")
-
         metrics = prometheus.get_cumulative_compute_usage(
             resources=request.resources,
             start_time=request.start_time,
