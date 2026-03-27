@@ -1,33 +1,43 @@
 import json
 import requests
 import datetime
-import time
 import yaml
 
-URL = "http://51.159.157.183:30001"
-API_KEY = "aad25d2f-b24c-42c2-8a2a-2b2df1ec8bbf"
+URL = "http://51.159.177.196:30001" # "https://kube.cogenai.kalavai.net"
+API_KEY = ""
+PRIORITY_CLASS = "test-low-priority"
+USER_SPACE = "shadow"
 
 
 if __name__ == "__main__":
 
-    # response = requests.get(
-    #     f"{URL}/v1/get_job_templates",
-    #     headers={"X-API-KEY": "5b3a22a2-6287-4176-b16a-e8fbf7a81ee1", "USER": "carlosfm"},
-    #     params={
-    #         "type": "model"
+    # response = requests.post(
+    #     f"{URL}/v1/fetch_compute_usage",
+    #     headers={"X-API-KEY": API_KEY},
+    #     json={
+    #         "node_labels": {
+    #             "kalavai.cluster.user": "shadow",
+                
+    #         },
+    #         "start_time": "2026-03-19T00:00:00",
+    #         "end_time": "now",
     #     }
     # )
+    # result = response.json()
     # print(
-    #     response.json()
+    #     json.dumps(result, indent=2)
     # )
     # exit()
 
-    with open("templates/sglang/examples/qwen3-0.6b-rocm.yaml", "r") as f:
+    target_labels = {
+        "kalavai/instance": "rtx-a4500"
+    }
+    with open("templates/diffusers/examples/flux-shadow.yaml", "r") as f:
         values = yaml.safe_load(f)
         values_dict = {variable["name"]: variable['value'] for variable in values}
-    with open("templates/sglang/template.yaml", "r") as f:
+    with open("templates/diffusers/template.yaml", "r") as f:
         template = f.read()
-    with open("templates/sglang/values.yaml", "r") as f:
+    with open("templates/diffusers/values.yaml", "r") as f:
         defaults = f.read()
 
     response = requests.post(
@@ -35,12 +45,18 @@ if __name__ == "__main__":
         headers={"X-API-KEY": API_KEY, "USER": "carlosfm"},
         json={
             "template": template,
+            "force_namespace": USER_SPACE,
             "template_values": values_dict,
             "default_values": defaults,
-            "replicas": 1
+            "target_labels": target_labels,
+            "random_suffix": False,
+            "replicas": 1,
+            "priority": PRIORITY_CLASS
         }
     )
-    print(response.text)
-    print(json.dumps(response.json(), indent=3))
+    result = response.json()
+    print(
+        json.dumps(result, indent=2)
+    )
 
     
