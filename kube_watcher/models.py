@@ -30,6 +30,7 @@ class JobTemplate(Enum):
 class NodeStatusRequest(BaseModel):
     node_names: Optional[List[str]] = Field(None, description="Optional list of nodes to filter node stats")
     node_labels: Optional[Dict[str, str]] = Field(None, description="Optional dictionary of node labels to filter node stats")
+    namespaces: Optional[List[str]] = Field(None, description="Optional list of namespaces to filter node usage")
     start_time: str = "1h"
     end_time: str = "now"
     step: str = "1m"

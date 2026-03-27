@@ -286,7 +286,7 @@ async def get_nodes(request: FetchNodesRequest, api_key: str = Depends(verify_re
     operation_id="fetch_nodes_stats",
     summary="Get node runtime stats for a set of nodes in the Kalavai compute pool",
     tags=["pool_info"],
-    description="Gets node runtime stats for a set of nodes in the kalavai pool",
+    description="Gets node runtime stats for a set of nodes in the kalavai pool; time series",
     response_description="Node runtime stats for the nodes in the kalavai pool")
 async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_read_key)):
     client = PrometheusAPI(url=PROMETHEUS_ENDPOINT, disable_ssl=True) # works as long as we are port forwarding from control plane
@@ -307,7 +307,8 @@ async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_r
         end_time=request.end_time,
         step=request.step,
         aggregate_node_results=request.aggregate_results,
-        resources=request.resources
+        resources=request.resources,
+        namespaces=request.namespaces
     )
     return result
 

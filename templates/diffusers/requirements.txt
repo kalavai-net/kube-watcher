@@ -8,3 +8,4 @@ ray[serve]
 Pillow
 requests
 uvicorn
+bitsandbytes

@@ -10,7 +10,7 @@ COPY ray_deploy.py .
 
 # install dependencies
 #pip3 install lmcache --prefer-binary --no-cache-dir && \
-RUN pip3 install -r requirements.txt --no-cache-dir
+RUN pip3 install -r requirements.txt --timeout 300 --retries 3 --no-cache-dir
 
 RUN chmod +x /home/ray/workspace/run_model.sh
 

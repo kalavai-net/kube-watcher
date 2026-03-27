@@ -1,19 +1,19 @@
-- name: deployment_name
-  value: diffusers
-  default: diffusers
-  editable: true
-  required: true
-  description: "Name of the deployment job"
-
 - name: model_id
-  value: flux2klein
+  value: flux2klein-test
   default: null
   editable: true
   required: true
   description: "Huggingface model id to deploy. One of the following: https://huggingface.co/models?library=diffusers&sort=downloads"
 
+- name: quantization
+  value: true
+  default: false
+  editable: true
+  required: false
+  description: "Enable model quantization for faster inference"
+
 - name: working_memory
-  value: 100
+  value: 50
   default: 5
   editable: true
   required: true
@@ -55,11 +55,18 @@
   description: "Number of cpus per worker"
 
 - name: memory
-  value: 24
+  value: 26
   default: 4
   editable: true
   required: false
   description: "Memory per worker"
+
+- name: sharedMemory
+  value: 8
+  default: 8
+  editable: true
+  required: false
+  description: "Shared memory per worker"
 
 - name: gpus
   value: 1
@@ -69,7 +76,7 @@
   description: "Number of gpus per worker"
 
 - name: nodeport
-  value: "31311"
+  value: "" #"31311"
   default: ""
   editable: true
   required: false

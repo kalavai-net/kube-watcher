@@ -1,5 +1,5 @@
 - name: deployment_name
-  value: comfyui-large
+  value: comfyui
   default: comfyui
   editable: true
   required: true
@@ -13,14 +13,14 @@
   description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
 
 - name: cpus
-  value: 2
+  value: 4
   default: 2
   editable: true
   required: false
   description: "Number of cpus per worker"
 
 - name: memory
-  value: 32
+  value: 14
   default: 8
   editable: true
   required: false

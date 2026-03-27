@@ -87,15 +87,15 @@
   description: "Storage name for the postgres database (backend). Ignored if external_postgreSQL_url is set."
 
 - name: cpus
-  value: "2"
-  default: "2"
+  value: "1"
+  default: "1"
   editable: true
   required: false
   description: "CPUs per single worker (final one = cpus * num_workers)"
 
 - name: memory
-  value: "2"
-  default: "2"
+  value: "1"
+  default: "1"
   editable: true
   required: false
   description: "RAM memory per single worker (final one = memory * num_workers)"

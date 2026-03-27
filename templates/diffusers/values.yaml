@@ -58,6 +58,13 @@
   required: true
   description: "Huggingface access token, only required to load gated model weights"
 
+- name: quantization
+  value: false
+  default: false
+  editable: true
+  required: false
+  description: "Enable model quantization for faster inference"
+
 - name: cpus
   value: 2
   default: 2

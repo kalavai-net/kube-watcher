@@ -34,6 +34,7 @@ rules:
         - helm.toolkit.fluxcd.io
         - source.toolkit.fluxcd.io
         - kalavai.net
+        - traefik.io
     resources:
       - pods
       - componentstatuses
@@ -75,6 +76,7 @@ rules:
       - jobs
       - jobs/status
       - datasets
+      - middlewares
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

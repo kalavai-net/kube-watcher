@@ -54,7 +54,8 @@ class PrometheusAPI():
         resources=["amd_com_gpu", "nvidia_com_gpu"],
         step="1h",
         phase="Running",
-        aggregate_node_results=False
+        aggregate_node_results=False,
+        namespaces=None
     ):
         """
         Retrieves both node status (Ready condition) and comprehensive resource metrics 
@@ -65,7 +66,9 @@ class PrometheusAPI():
         :param start_time: Start of the query time range (e.g., '2025-11-01T00:00:00Z').
         :param end_time: End of the query time range.
         :param step: Step size for the range query (e.g., '1h', '5m').
+        :param phase: Pod phase to filter (default "Running").
         :param aggregate_node_results: If True, aggregates the node status result into a single sum.
+        :param namespaces: List of namespaces to filter workloads by (default None for all namespaces).
         :return: Dictionary containing the merged time series data with fields:
                  - node_status_ready: Node readiness status over time
                  - total_resources: Total allocatable resources in the cluster
@@ -129,10 +132,17 @@ class PrometheusAPI():
             # Note: I've added phase="Running" to the kube_pod_status_phase selector 
             # as it's common to only look at resources requested by running pods. 
             # You may adjust this phase if needed (e.g., to "").
+            
+            # Build namespace filter if specified
+            namespace_filter = ""
+            if namespaces:
+                namespaces_str = "|".join(namespaces)
+                namespace_filter = f',namespace=~"{namespaces_str}"'
+            
             used_query = f"""
             sum(
                 max by (namespace, pod) (
-                    kube_pod_container_resource_requests{{resource=~"{resources_str}", node=~"{node_str}"}}
+                    kube_pod_container_resource_requests{{resource=~"{resources_str}", node=~"{node_str}"{namespace_filter}}}
                 )
                 * on(namespace, pod) group_left()
                 (kube_pod_status_phase{{phase="{phase}"}} == 1)
@@ -284,7 +294,8 @@ class PrometheusAPI():
             if node_ids:
                 nodes_str = "|".join(node_ids)
                 node_filter = f'node=~"{nodes_str}"'
-                pod_info = f'kube_pod_info{{{node_filter}}}'
+                # Use max() to deduplicate kube_pod_info entries for the same pod
+                pod_info = f'max by (namespace, pod, node) (kube_pod_info{{{node_filter}}})'
                 # Join the resource requests with pod_info to limit to selected nodes
                 left_expr = f'({base}) * on(namespace, pod) group_left(node) ({pod_info})'
             else:
@@ -360,41 +371,48 @@ if __name__ == "__main__":
 
     # result = client.get_nodes_stats(
     #     node_ids=[
-    #         "kalavai-frsbg01-aware-bluegill-2ba2c072",
-    #         "kalavai-frsbg01-blessed-gar-d92348fe",
-    #         "kalavai-frsbg01-dashing-collie-0d0184ae",
-    #         "kalavai-frsbg01-destined-kit-b6638d61", 
-    #         "kalavai-frsbg01-diverse-lacewing-a7e1c610",
-    #         "kalavai-frsbg01-dominant-pangolin-2f4cb88e",
-    #         "kalavai-frsbg01-endless-aphid-b8b93325", 
-    #         "kalavai-frsbg01-endless-mustang-eab4b5b",
-    #         "kalavai-frsbg01-growing-oriole-d70c5758",
-    #         "kalavai-frsbg01-improved-kingfish-cf789ecb",
-    #         "kalavai-frsbg01-loving-magpie-40096628",
-    #         "kalavai-frsbg01-polite-tetra-403f00bc",
-    #         "kalavai-frsbg01-positive-man-5a3ade83",
-    #         "kalavai-frsbg01-possible-stallion-d68a8954",
-    #         "kalavai-frsbg01-refined-badger-ceaf7f58",
-    #         "kalavai-frsbg01-right-weasel-6ab3f965",
-    #         "kalavai-frsbg01-saved-sloth-1d73c6b0",
-    #         "kalavai-frsbg01-stable-oriole-24455ec0",
-    #         "kalavai-frsbg01-teaching-tetra-dd1ffb81",
-    #         "kalavai-frsbg01-united-feline-0fc9f66a"
+    #         "kalavai-frsbg01-aware-bluegill-db4ba4d3",
+    #         "kalavai-frsbg01-blessed-gar-e54b5e6d",
+    #         "kalavai-frsbg01-dashing-collie-759d2ed4",
+    #         "kalavai-frsbg01-destined-kit-74c620a3", 
+    #         "kalavai-frsbg01-diverse-lacewing-f8d1e486",
+    #         "kalavai-frsbg01-dominant-pangolin-3b18aef1",
+    #         "kalavai-frsbg01-endless-aphid-6e39c49f", 
+    #         "kalavai-frsbg01-endless-mustang-5fe96f48",
+    #         "kalavai-frsbg01-growing-oriole-7db4bbd5",
+    #         "kalavai-frsbg01-improved-kingfish-534cd322",
+    #         "kalavai-frsbg01-loving-magpie-2887e099",
+    #         "kalavai-frsbg01-polite-tetra-e8652e1f",
+    #         "kalavai-frsbg01-positive-man-bcb7efb2",
+    #         "kalavai-frsbg01-possible-stallion-28a969e8",
+    #         "kalavai-frsbg01-refined-badger-73aa0d21",
+    #         "kalavai-frsbg01-right-weasel-f961183e",
+    #         "kalavai-frsbg01-saved-sloth-028b0a8d",
+    #         "kalavai-frsbg01-stable-oriole-3559f020",
+    #         "kalavai-frsbg01-teaching-tetra-aed113af",
+    #         "kalavai-frsbg01-united-feline-4cec52e8"
     #     ],
     #     resources=["nvidia_com_gpu", "amd_com_gpu"],
     #     start_time="24h",
     #     end_time="now",
     #     step="1h",
-    #     aggregate_node_results=False
+    #     aggregate_node_results=True,
+    #     namespaces=["shadow"]
     # )
+    # print(result)
+    # exit()
     result = client.get_cumulative_compute_usage(
         namespaces=[
             "shadow"
         ],
+        node_ids=[
+            "production1-server-3-scw-bf624a40"
+
+        ],
         resources=["cpu", "memory", "nvidia_com_gpu"],
-        start_time="4h",
+        start_time="24h",
         end_time="now",
-        step_seconds=10
+        step_seconds=300
     )
     print(result)
     

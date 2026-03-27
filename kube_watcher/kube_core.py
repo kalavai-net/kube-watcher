@@ -873,6 +873,25 @@ class KubeAPI():
             namespace=namespace
         )
     
+    def list_namespaced_middleware(self, namespace, label_selector):
+        resources = self.kube_get_custom_objects(
+            group="traefik.io",
+            api_version="v1alpha1",
+            namespace=namespace,
+            plural="middlewares",
+            label_selector=label_selector
+        )
+        return resources
+
+    def delete_namespaced_middleware(self, name, namespace):
+        return self.kube_delete_custom_object(
+            group="traefik.io",
+            api_version="v1alpha1",
+            plural="middlewares",
+            name=name,
+            namespace=namespace
+        )
+    
     def get_pods_status_for_label(self, labels, namespace=None):
         res = self.find_pods_with_label(
             labels=labels,
@@ -1167,7 +1186,8 @@ class KubeAPI():
             'job': (self.list_namespaced_vcjob, self.delete_namespaced_vcjob),
             'secret': (core_api.list_namespaced_secret, core_api.delete_namespaced_secret),
             "ingress": (networking_api.list_namespaced_ingress, networking_api.delete_namespaced_ingress),
-            "kalavaijob": (self.list_namespaced_kalavaijob, self.delete_namespaced_kalavaijob)
+            "kalavaijob": (self.list_namespaced_kalavaijob, self.delete_namespaced_kalavaijob),
+            "middleware": (self.list_namespaced_middleware, self.delete_namespaced_middleware)
         }
 
         for resource_type, (list_func, delete_func) in resource_types.items():

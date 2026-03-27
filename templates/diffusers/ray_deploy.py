@@ -17,33 +17,20 @@ from datetime import datetime
 from typing import List, Optional
 from io import BytesIO
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from enum import Enum
 
 import torch
-from diffusers import (
-    AutoPipelineForText2Image,
-    StableDiffusionPipeline,
-    FluxPipeline,
-    Flux2KleinPipeline,
-    EulerAncestralDiscreteScheduler,
-    DPMSolverMultistepScheduler,
-    UniPCMultistepScheduler,
-    LCMScheduler
-)
 import ray
 from ray import serve
 from ray.serve.handle import DeploymentHandle
-
+from diffusers import (
+    AutoPipelineForText2Image,
+    FluxPipeline,
+    Flux2KleinPipeline,
+)
+from diffusers.quantizers import PipelineQuantizationConfig
 
 app = FastAPI()
-
-class SchedulerEnum(str, Enum):
-    euler_ancestral = "euler_ancestral"
-    dpmpp_2m = "dpmpp_2m" 
-    unipc = "unipc"
-    lcm = "lcm"
 
 # move to AutoPipeline https://huggingface.co/docs/diffusers/en/tutorials/autopipeline
 #   supports Stable Diffusion, Stable Diffusion XL, ControlNet, Kandinsky 2.1, Kandinsky 2.2, and DeepFloyd IF
@@ -52,14 +39,22 @@ supported_models = {
     "stable-diffusion-v1-5/stable-diffusion-v1-5": AutoPipelineForText2Image,
     "CompVis/stable-diffusion-v1-4": AutoPipelineForText2Image,
     "black-forest-labs/FLUX.1-dev": FluxPipeline,
-    "black-forest-labs/FLUX.2-klein-4B": Flux2KleinPipeline
+    "black-forest-labs/FLUX.2-klein-4B": Flux2KleinPipeline,
+    "black-forest-labs/FLUX.2-klein-9B": Flux2KleinPipeline
 }
+components_to_quantize = [
+    "transformer",
+    "text_encoder_2",
+    "text_encoder" # small  usually
+    #"vae", # loss of quality
+]
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", 8000))
 DEVICE = os.environ.get("DEVICE", "cuda")
 NUM_GPUS = int(os.environ.get("NUM_GPUS", 1))
 MIN_REPLICAS = int(os.environ.get("MIN_REPLICAS", 0))
 MAX_REPLICAS = int(os.environ.get("MAX_REPLICAS", 1))
+QUANTIZATION = os.environ.get("QUANTIZATION", "false").lower() == "true"
 
 
 # OpenAI-compatible request models
@@ -73,8 +68,6 @@ class ImageGenerationRequest(BaseModel):
     style: Optional[str] = Field(default=None, description="The style of the generated images")
     user: Optional[str] = Field(default=None, description="A unique identifier representing your end-user")
     extra: Optional[dict] = Field(default=None, description="Extra parameters for a diffusers pipeline")
-    scheduler: SchedulerEnum = Field(default=SchedulerEnum.euler_ancestral, description="Scheduler to use for faster generation")
-    compile: bool = Field(default=True, description="Whether to compile the pipeline for faster inference")
     batch_size: int = Field(default=1, ge=1, le=4, description="Batch size for parallel generation")
 
 class ImageEditRequest(BaseModel):
@@ -153,8 +146,6 @@ class APIIngress:
                     height=height, 
                     width=width, 
                     num_images=current_batch_size,
-                    scheduler=request.scheduler,
-                    compile=request.compile,
                     **request.extra
                 )
                 images.extend(batch_images)
@@ -163,9 +154,10 @@ class APIIngress:
             # Convert images to requested format
             data = []
             for image in images:
+                t = time.time()
                 file_stream = BytesIO()
                 image.save(file_stream, "PNG")
-                
+                print(f"Image saved in {time.time() - t:.2f}s")
                 if request.response_format == "url":
                     raise HTTPException(status_code=501, detail="URL response format is not yet implemented")
                 elif request.response_format == "b64_json":
@@ -218,92 +210,76 @@ class APIIngress:
 
 
 @serve.deployment(
-    ray_actor_options={"num_gpus": NUM_GPUS},
+    ray_actor_options={"num_gpus": NUM_GPUS if DEVICE == "cuda" else 0},
     autoscaling_config={"min_replicas": MIN_REPLICAS, "max_replicas": MAX_REPLICAS},
 )
 class StableDiffusionV2:
     def __init__(self):
         self.current_model = None
-        self.current_scheduler = None
-        self.compiled_pipe = None
         
-        # Available schedulers for faster generation
-        self.schedulers = {
-            SchedulerEnum.euler_ancestral: EulerAncestralDiscreteScheduler,
-            SchedulerEnum.dpmpp_2m: DPMSolverMultistepScheduler,
-            SchedulerEnum.unipc: UniPCMultistepScheduler,
-            SchedulerEnum.lcm: LCMScheduler
-        }
-        
-    def load_model(self, model_id: str, scheduler_name: SchedulerEnum = SchedulerEnum.euler_ancestral, compile: bool = True):
-        if self.current_model != model_id or self.current_scheduler != scheduler_name:
+    def load_model(self, model_id: str):
+        if self.current_model != model_id:
+            
+            # Prepare quantization config if enabled
+            quantization_config = None
+            if QUANTIZATION:
+                
+                quantization_config = PipelineQuantizationConfig(
+                    quant_backend="bitsandbytes_4bit",
+                    quant_kwargs={
+                        "load_in_4bit": True, 
+                        "bnb_4bit_quant_type": "nf4", 
+                        "bnb_4bit_compute_dtype": torch.float16
+                    },
+                    components_to_quantize=components_to_quantize,
+                )
             
             # Load pipeline
+            load_kwargs = {
+                "use_safetensors": True
+            }
+            if DEVICE == "cuda":
+                load_kwargs["torch_dtype"] = torch.float16
+            
+            if quantization_config:
+                load_kwargs["quantization_config"] = quantization_config
+                print(f"Loading model {model_id} with 4-bit quantization")
+            
             self.pipe = supported_models[model_id].from_pretrained(
                 model_id,
-                torch_dtype=torch.float16,
-                use_safetensors=True
+                **load_kwargs
             )
-            
-            # Set faster scheduler
-            if scheduler_name in self.schedulers:
-                self.pipe.scheduler = self.schedulers[scheduler_name].from_config(self.pipe.scheduler.config)
-            
-            if DEVICE == "cpu":
-                self.pipe.enable_model_cpu_offload()
-            else:
+            # Only move to device if it's CUDA (models load on CPU by default)
+            if DEVICE == "cuda":
                 self.pipe = self.pipe.to(DEVICE)
             
-            # Memory optimizations
-            self.pipe.enable_attention_slicing()
-            if hasattr(self.pipe, 'enable_vae_slicing'):
-                self.pipe.enable_vae_slicing()
-            
-            # Enable CPU for VAE when using CUDA to save memory
-            if DEVICE == "cuda" and hasattr(self.pipe, 'enable_sequential_cpu_offload'):
-                self.pipe.enable_sequential_cpu_offload()
-            
-            # Compile pipeline for faster inference
-            if compile and DEVICE == "cuda":
-                try:
-                    print("Compiling pipeline for faster inference...")
-                    self.compiled_pipe = torch.compile(self.pipe, mode="reduce-overhead", fullgraph=True)
-                except Exception as e:
-                    print(f"Compilation failed: {e}, using uncompiled pipeline")
-                    self.compiled_pipe = self.pipe
-            else:
-                self.compiled_pipe = self.pipe
+            # if DEVICE == "cuda":
+            #     self.pipe.enable_model_cpu_offload()
             
             self.current_model = model_id
-            self.current_scheduler = scheduler_name
 
     def generate(self, model_id: str, prompt: str, num_images: int = 1, **kwargs):
         """Generate one or more images with optimized performance"""
         assert len(model_id), "Model not loaded"
         assert len(prompt), "prompt parameter cannot be empty"
         
-        scheduler_name = kwargs.pop('scheduler', SchedulerEnum.euler_ancestral)
-        compile = kwargs.pop('compile', True)
-        
-        self.load_model(model_id, scheduler_name, compile)
-        
-        # Use compiled pipeline if available
-        pipe = self.compiled_pipe if self.compiled_pipe else self.pipe
+        self.load_model(model_id)
         
         # Optimize inference parameters for speed
         generation_kwargs = {
-            'prompt': [prompt] * num_images if num_images > 1 else prompt,
-            **kwargs
+            'prompt': [prompt] * num_images,  # Always pass as list
+            'num_images_per_prompt': 1  # We handle multiple images via prompt list
         }
         
-        # Use LCM scheduler for ultra-fast generation if requested
-        if scheduler_name == SchedulerEnum.lcm:
-            generation_kwargs['num_inference_steps'] = kwargs.get('num_inference_steps', 4)
-            generation_kwargs['guidance_scale'] = kwargs.get('guidance_scale', 1.0)
+        if kwargs:
+            generation_kwargs.update(kwargs)
         
         with torch.autocast(DEVICE):
-            images = pipe(**generation_kwargs).images
-            return images[0] if num_images == 1 else images
+            result = self.pipe(**generation_kwargs)
+            images = result.images  # This is always a list
+            
+            # Always return a list, even for single images
+            return images[:num_images]  # Return list of requested images
 
 entrypoint = APIIngress.bind(StableDiffusionV2.bind())
 

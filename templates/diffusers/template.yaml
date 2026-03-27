@@ -209,6 +209,10 @@ spec:
             value: "0.0.0.0"
           - name: PORT
             value: "8000"
+          - name: QUANTIZATION
+            value: "{{quantization}}"
+          - name: QUANTIZATION_BITS
+            value: "{{quantization_bits}}"
           - name: DEVICE
           {% if gpus and gpus > 0 %}
             value: "cuda"
