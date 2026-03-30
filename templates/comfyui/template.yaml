@@ -73,7 +73,7 @@ spec:
         {% endif %}
         containers:
         - name: container
-          image: docker.io/kalavai/comfyui-cuda:latest
+          image: ghcr.io/kalavai-net/comfyui:latest
           imagePullPolicy: Always
           command:
           - sh
