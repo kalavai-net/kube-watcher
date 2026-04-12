@@ -145,7 +145,7 @@ class PrometheusAPI():
                     kube_pod_container_resource_requests{{resource=~"{resources_str}", node=~"{node_str}"{namespace_filter}}}
                 )
                 * on(namespace, pod) group_left()
-                (kube_pod_status_phase{{phase="{phase}"}} == 1)
+                (max by (namespace, pod) (kube_pod_status_phase{{phase="{phase}"}} == 1))
             )
             """
             t = time.time()
@@ -228,7 +228,7 @@ class PrometheusAPI():
                     kube_pod_container_resource_requests{{resource=~"{resources_str}"}}
                 )
                 * on(namespace, pod) group_left()
-                (kube_pod_status_phase{{phase="{phase}"}} == 1)
+                (max by (namespace, pod) (kube_pod_status_phase{{phase="{phase}"}} == 1))
             )
             """
             if aggregate_results:
@@ -256,6 +256,7 @@ class PrometheusAPI():
         normalize=False,
         namespaces=None,
         node_ids=None,
+        pod_labels=None,
     ):
         """
         Collapse a Prometheus range query into resource-hours for selected pods.
@@ -268,6 +269,7 @@ class PrometheusAPI():
             normalize: if True, average over window length (hours)
             namespaces: list[str] of namespaces to include
             node_ids: list[str] of node names to include
+            pod_labels: dict[str, str] of label key=value pairs to filter pods
         Returns:
             dict[resource] -> hours (total) or average (per hour)
         """
@@ -285,7 +287,31 @@ class PrometheusAPI():
                 ns_str = "|".join(namespaces)
                 filters.append(f'namespace=~"{ns_str}"')
 
-            # Base resource metric with namespace filter
+            # Label filtering - add labels directly to resource metric
+            if pod_labels:
+                label_filters = []
+                for key, value in pod_labels.items():
+                    label_filters.append(f'{key}="{value}"')
+                
+                if label_filters:
+                    label_selector = ",".join(label_filters)
+                    filters.append(label_selector)
+                    logger.debug(f"Added labels to resource filter: {label_selector}")
+                    
+                    # Test this approach
+                    try:
+                        test_filter = ",".join(filters)
+                        test_query = f'kube_pod_container_resource_requests{{{test_filter}}}'
+                        test_result = self.prom.custom_query(query=test_query)
+                        logger.debug(f"Label filter test: {len(test_result)} results")
+                        if test_result:
+                            logger.debug(f"Label filtering approach successful")
+                        else:
+                            logger.warning(f"Label filtering returned no results, labels may not be available on resource metrics")
+                    except Exception as e:
+                        logger.warning(f"Label filter test failed: {e}")
+
+            # Base resource metric with all filters applied
             resource_selector = ",".join(filters)
             base = f'kube_pod_container_resource_requests{{{resource_selector}}}'
 
@@ -302,7 +328,8 @@ class PrometheusAPI():
                 left_expr = base
 
             # Filter to only Running pods
-            running = f'(kube_pod_status_phase{{phase="{phase}"}} == 1)'
+            # Use max() to deduplicate kube_pod_status_phase entries from multiple kube-state-metrics instances
+            running = f'max by (namespace, pod) (kube_pod_status_phase{{phase="{phase}"}} == 1)'
 
             query = f"""
             max by (namespace, pod, resource) (
@@ -312,7 +339,7 @@ class PrometheusAPI():
             {running}
             """
             t = time.time()
-            logger.debug(f"Node filter Query: {query}")
+            logger.debug(f"Full query: {query}")
             metric = self.prom.custom_query_range(
                 query=query,
                 start_time=start_time,
@@ -353,31 +380,59 @@ class PrometheusAPI():
             }
 
 if __name__ == "__main__":
+    # test on server: kubectl port-forward --address 0.0.0.0 -n monitoring svc/thanos-query-frontend 9090:9090
     PROMETHEUS = "http://51.159.177.196:9090"
-    # import requests
-    # response = requests.get(
-    #     f"{PROMETHEUS}/api/v1/query",
-    #     params={'query': 'up'},
-    #     headers={'X-Scope-OrgID': 'anonymous'}
-    # ).json()
-    # print(response)
-    # exit()
-
-    client = PrometheusAPI(url=PROMETHEUS, disable_ssl=True) # works as long as we are port forwarding from control plane
-    
+    client = PrometheusAPI(url=PROMETHEUS, disable_ssl=True)
     logger.info("connected")
 
+#     # Convert time strings to datetime objects
+#     start_time_dt = parse_datetime("8h")
+#     end_time_dt = parse_datetime("now")
 
+#     result = client.prom.custom_query_range(
+#         query="""sum(
+#   container_memory_usage_bytes{container!=""} 
+#   * on(pod, namespace) 
+#   group_left(label_role) 
+#   kube_pod_labels{label_role="leader"}
+# ) by (pod)""",
+#         start_time=start_time_dt,
+#         end_time=end_time_dt,
+#         step="1m"
+#     )
+#     print(result)
+#     exit()
+    
 
     # result = client.get_nodes_stats(
     #     node_ids=[
+    #         "kalavai-camtl01-0-d24a95db-6dac9105",
+    #         "kalavai-camtl01-1-251518e2-defe1ded",
+    #         "kalavai-camtl01-10-41fdff0c-dc1efdef",
+    #         "kalavai-camtl01-11-6557449b-a5c276c9",
+    #         "kalavai-camtl01-12-4c5d261a-82493df4",
+    #         "kalavai-camtl01-13-9dc21be4-907516d0",
+    #         "kalavai-camtl01-14-cf4eeb07-3f9c98ff",
+    #         "kalavai-camtl01-15-b28a44ea-3639dbc8",
+    #         "kalavai-camtl01-16-cce2c392-b080b803",
+    #         "kalavai-camtl01-17-a289c09e-1c0b01c9",
+    #         "kalavai-camtl01-18-65ac7277-0c6c0e0f",
+    #         "kalavai-camtl01-19-e5c71e6c-bc7db06d",
+    #         "kalavai-camtl01-2-03188cee-a4344d5f",
+    #         "kalavai-camtl01-3-bb317fa4-fc8ea816",
+    #         "kalavai-camtl01-4-4874f925-fdf7f22c",
+    #         "kalavai-camtl01-5-87e07ebc-e0123c85",
+    #         "kalavai-camtl01-6-f2fa4195-b9e260cd",
+    #         "kalavai-camtl01-7-96da0f93-7faf6d75",
+    #         "kalavai-camtl01-8-674b4211-e274d4c7",
+    #         "kalavai-camtl01-9-168a13e3-e991a7f9",
     #         "kalavai-frsbg01-aware-bluegill-db4ba4d3",
     #         "kalavai-frsbg01-blessed-gar-e54b5e6d",
     #         "kalavai-frsbg01-dashing-collie-759d2ed4",
-    #         "kalavai-frsbg01-destined-kit-74c620a3", 
+    #         "kalavai-frsbg01-destined-kit-74c620a3",
     #         "kalavai-frsbg01-diverse-lacewing-f8d1e486",
     #         "kalavai-frsbg01-dominant-pangolin-3b18aef1",
-    #         "kalavai-frsbg01-endless-aphid-6e39c49f", 
+    #         "kalavai-frsbg01-endless-aphid-6e39c49f",
     #         "kalavai-frsbg01-endless-mustang-5fe96f48",
     #         "kalavai-frsbg01-growing-oriole-7db4bbd5",
     #         "kalavai-frsbg01-improved-kingfish-534cd322",
@@ -390,29 +445,124 @@ if __name__ == "__main__":
     #         "kalavai-frsbg01-saved-sloth-028b0a8d",
     #         "kalavai-frsbg01-stable-oriole-3559f020",
     #         "kalavai-frsbg01-teaching-tetra-aed113af",
-    #         "kalavai-frsbg01-united-feline-4cec52e8"
+    #         "kalavai-frsbg01-united-feline-4cec52e8",
+    #         "kalavai-uspor01-0-e7dee8e0-3ea4c8cb",
+    #         "kalavai-uspor01-1-c9ccc729-5d28baf3",
+    #         "kalavai-uspor01-10-ef48ced6-aae3e4a7",
+    #         "kalavai-uspor01-11-894ce924-323d02da",
+    #         "kalavai-uspor01-12-91883fe3-d86f7e6e",
+    #         "kalavai-uspor01-13-50d8aa5b-72592ab1",
+    #         "kalavai-uspor01-14-b4cc92eb-0c4ab032",
+    #         "kalavai-uspor01-15-92b1620b-5d03fda5",
+    #         "kalavai-uspor01-16-5a899e7b-1b4936af",
+    #         "kalavai-uspor01-17-245bc70d-cca17a04",
+    #         "kalavai-uspor01-18-03d0152f-5c048f82",
+    #         "kalavai-uspor01-19-5531f387-b36b8957",
+    #         "kalavai-uspor01-2-a70cded6-70ac4b0b",
+    #         "kalavai-uspor01-3-149a065c-5e06f7eb",
+    #         "kalavai-uspor01-4-a2474c70-288ca8a8",
+    #         "kalavai-uspor01-5-b993d2b6-365f2201",
+    #         "kalavai-uspor01-6-807c71e4-ce9cdb9d",
+    #         "kalavai-uspor01-7-2b093d4d-e81376f4",
+    #         "kalavai-uspor01-8-7dd54296-4b17abb2",
+    #         "kalavai-uspor01-9-d7774fe9-b776c292"
+
     #     ],
     #     resources=["nvidia_com_gpu", "amd_com_gpu"],
-    #     start_time="24h",
+    #     start_time="7d",
     #     end_time="now",
-    #     step="1h",
+    #     step="2h",
     #     aggregate_node_results=True,
     #     namespaces=["shadow"]
     # )
     # print(result)
     # exit()
+
+    start_time_dt = parse_datetime("38d")
+    end_time_dt = parse_datetime("7d")
+    print(start_time_dt)
+    print(end_time_dt)
     result = client.get_cumulative_compute_usage(
         namespaces=[
             "shadow"
         ],
         node_ids=[
-            "production1-server-3-scw-bf624a40"
+            "kalavai-frsbg01-aware-bluegill-db4ba4d3",
+            "kalavai-frsbg01-blessed-gar-e54b5e6d",
+            "kalavai-frsbg01-dashing-collie-759d2ed4",
+            "kalavai-frsbg01-destined-kit-74c620a3",
+            "kalavai-frsbg01-diverse-lacewing-f8d1e486",
+            "kalavai-frsbg01-dominant-pangolin-3b18aef1",
+            "kalavai-frsbg01-endless-aphid-6e39c49f",
+            "kalavai-frsbg01-endless-mustang-5fe96f48",
+            "kalavai-frsbg01-growing-oriole-7db4bbd5",
+            "kalavai-frsbg01-improved-kingfish-534cd322",
+            "kalavai-frsbg01-loving-magpie-2887e099",
+            "kalavai-frsbg01-polite-tetra-e8652e1f",
+            "kalavai-frsbg01-positive-man-bcb7efb2",
+            "kalavai-frsbg01-possible-stallion-28a969e8",
+            "kalavai-frsbg01-refined-badger-73aa0d21",
+            "kalavai-frsbg01-right-weasel-f961183e",
+            "kalavai-frsbg01-saved-sloth-028b0a8d",
+            "kalavai-frsbg01-stable-oriole-3559f020",
+            "kalavai-frsbg01-teaching-tetra-aed113af",
+            "kalavai-frsbg01-united-feline-4cec52e8",
+            # "kalavai-camtl01-0-d24a95db-6dac9105",
+            # "kalavai-camtl01-1-251518e2-defe1ded",
+            # "kalavai-camtl01-10-41fdff0c-dc1efdef",
+            # "kalavai-camtl01-11-6557449b-a5c276c9",
+            # "kalavai-camtl01-12-4c5d261a-82493df4",
+            # "kalavai-camtl01-13-9dc21be4-907516d0",
+            # "kalavai-camtl01-14-cf4eeb07-3f9c98ff",
+            # "kalavai-camtl01-15-b28a44ea-3639dbc8",
+            # "kalavai-camtl01-16-cce2c392-b080b803",
+            # "kalavai-camtl01-17-a289c09e-1c0b01c9",
+            # "kalavai-camtl01-18-65ac7277-0c6c0e0f",
+            # "kalavai-camtl01-19-e5c71e6c-bc7db06d",
+            # "kalavai-camtl01-2-03188cee-a4344d5f",
+            # "kalavai-camtl01-3-bb317fa4-fc8ea816",
+            # "kalavai-camtl01-4-4874f925-fdf7f22c",
+            # "kalavai-camtl01-5-87e07ebc-e0123c85",
+            # "kalavai-camtl01-6-f2fa4195-b9e260cd",
+            # "kalavai-camtl01-7-96da0f93-7faf6d75",
+            # "kalavai-camtl01-8-674b4211-e274d4c7",
+            # "kalavai-camtl01-9-168a13e3-e991a7f9",
+            # "kalavai-uspor01-0-e7dee8e0-3ea4c8cb",
+            # "kalavai-uspor01-1-c9ccc729-5d28baf3",
+            # "kalavai-uspor01-10-ef48ced6-aae3e4a7",
+            # "kalavai-uspor01-11-894ce924-323d02da",
+            # "kalavai-uspor01-12-91883fe3-d86f7e6e",
+            # "kalavai-uspor01-13-50d8aa5b-72592ab1",
+            # "kalavai-uspor01-14-b4cc92eb-0c4ab032",
+            # "kalavai-uspor01-15-92b1620b-5d03fda5",
+            # "kalavai-uspor01-16-5a899e7b-1b4936af",
+            # "kalavai-uspor01-17-245bc70d-cca17a04",
+            # "kalavai-uspor01-18-03d0152f-5c048f82",
+            # "kalavai-uspor01-19-5531f387-b36b8957",
+            # "kalavai-uspor01-2-a70cded6-70ac4b0b",
+            # "kalavai-uspor01-3-149a065c-5e06f7eb",
+            # "kalavai-uspor01-4-a2474c70-288ca8a8",
+            # "kalavai-uspor01-5-b993d2b6-365f2201",
+            # "kalavai-uspor01-6-807c71e4-ce9cdb9d",
+            # "kalavai-uspor01-7-2b093d4d-e81376f4",
+            # "kalavai-uspor01-8-7dd54296-4b17abb2",
+            # "kalavai-uspor01-9-d7774fe9-b776c292"
 
         ],
-        resources=["cpu", "memory", "nvidia_com_gpu"],
-        start_time="24h",
-        end_time="now",
-        step_seconds=300
+        resources=["nvidia_com_gpu"],
+        start_time=start_time_dt,
+        end_time=end_time_dt,
+        step_seconds=600,  # Use 10 minute steps for longer range
+        #pod_labels={"role": "leader"}  # Temporarily disable to test base query
     )
     print(result)
+    
+    # Example with label filtering - only count pods with specific labels
+    # result_with_labels = client.get_cumulative_compute_usage(
+    #     resources=["cpu", "memory"],
+    #     start_time="1d",
+    #     end_time="now",
+    #     labels={"app": "nginx", "tier": "frontend"}  # Only pods with app=nginx AND tier=frontend
+    # )
+    # print("Label-filtered result:", result_with_labels)
     

@@ -13,6 +13,7 @@ import logging
 import tarfile
 import glob
 from kubernetes import config, client, utils
+from fastapi import HTTPException
 
 from kube_watcher.utils import (
     create_flow_deployment_yaml,
@@ -589,6 +590,122 @@ class KubeAPI():
             deployment_results["failed"].append({"yaml": body, "error": str(e)})
 
         return deployment_results
+
+    def create_or_update_secret(self, name: str, namespace: str, data: dict, encrypt_data: bool = True):
+        # Handle data encoding based on encrypt_data flag
+        if encrypt_data:
+            # Ensure data is base64 encoded for opaque secrets
+            encoded_data = {}
+            for key, value in data.items():
+                if isinstance(value, str):
+                    # If already base64 encoded, don't double encode
+                    try:
+                        base64.b64decode(value, validate=True)
+                        encoded_data[key] = value
+                    except Exception:
+                        # Not base64 encoded, encode it
+                        encoded_data[key] = base64.b64encode(value.encode()).decode()
+                else:
+                    # Convert to string and encode
+                    encoded_data[key] = base64.b64encode(str(value).encode()).decode()
+        else:
+            # Store data as-is without encoding
+            encoded_data = data
+        
+        try:
+            # Try to create the secret first
+            secret = self.core_api.create_namespaced_secret(
+                namespace=namespace,
+                body={
+                    "apiVersion": "v1",
+                    "kind": "Secret",
+                    "metadata": {
+                        "name": name,
+                        "namespace": namespace
+                    },
+                    "type": "Opaque",
+                    "data": encoded_data
+                }
+            )
+        except client.exceptions.ApiException as e:
+            if e.status == 409:  # Conflict - secret already exists
+                # Update the existing secret
+                secret = self.core_api.patch_namespaced_secret(
+                    name=name,
+                    namespace=namespace,
+                    body={
+                        "data": encoded_data
+                    }
+                )
+            else:
+                raise
+        return secret
+    
+    def create_or_update_configmap(self, name: str, namespace: str, data: dict):
+        try:
+            # Try to create the ConfigMap first
+            configmap = self.core_api.create_namespaced_config_map(
+                namespace=namespace,
+                body={
+                    "apiVersion": "v1",
+                    "kind": "ConfigMap",
+                    "metadata": {
+                        "name": name,
+                        "namespace": namespace
+                    },
+                    "data": data
+                }
+            )
+        except client.exceptions.ApiException as e:
+            if e.status == 409:  # Conflict - ConfigMap already exists
+                # Update the existing ConfigMap
+                configmap = self.core_api.patch_namespaced_config_map(
+                    name=name,
+                    namespace=namespace,
+                    body={
+                        "data": data
+                    }
+                )
+            else:
+                raise
+        return configmap
+    
+    def create_or_update_user_data(self, name: str, namespace: str, data: dict, encrypted: bool = True):
+        if encrypted:
+            # Create or update Secret
+            return self.create_or_update_secret(name, namespace, data, encrypt_data=True)
+        else:
+            # Create or update ConfigMap
+            return self.create_or_update_configmap(name, namespace, data)
+    
+    def get_user_data(self, name: str, namespace: str, encrypted: bool = True):
+        try:
+            if encrypted:
+                # Get Secret
+                secret = self.core_api.read_namespaced_secret(name=name, namespace=namespace)
+                return {
+                    "name": secret.metadata.name,
+                    "namespace": secret.metadata.namespace,
+                    "type": "Secret",
+                    "data": secret.data,
+                    "created_at": secret.metadata.creation_timestamp.isoformat() if secret.metadata.creation_timestamp else None
+                }
+            else:
+                # Get ConfigMap
+                configmap = self.core_api.read_namespaced_config_map(name=name, namespace=namespace)
+                return {
+                    "name": configmap.metadata.name,
+                    "namespace": configmap.metadata.namespace,
+                    "type": "ConfigMap", 
+                    "data": configmap.data,
+                    "created_at": configmap.metadata.creation_timestamp.isoformat() if configmap.metadata.creation_timestamp else None
+                }
+        except client.exceptions.ApiException as e:
+            if e.status == 404:
+                resource_type = "Secret" if encrypted else "ConfigMap"
+                raise HTTPException(status_code=404, detail=f"{resource_type} '{name}' not found in namespace '{namespace}'")
+            else:
+                raise
     
     def deploy_template(
         self,
@@ -1419,12 +1536,11 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     print(
-        json.dumps(
-            api.get_services_with_labels(
-                labels={"app.kubernetes.io/component":"kuberay-apiserver"},
-                namespace="kuberay"
-            ),
-            indent=2
+        api.create_or_update_user_data(
+            name="test-secret",
+            namespace="default",
+            data={"test": "something"},
+            encrypted=False
         )
     )
     exit()

@@ -219,4 +219,21 @@ class NodeLabelsRequest(BaseModel):
     """
     node_name: str
     labels: Dict[str, str]
+
+class UserDataRequest(BaseModel):
+    """
+    Request model for creating or updating user data (Secrets or ConfigMaps).
+    
+    Attributes:
+        name (str): Name of the resource
+        namespace (str): Namespace where the resource should be created/updated
+        data (Dict[str, str]): Dictionary of data (key-value pairs)
+        encrypted (bool): Whether to create a Secret (True) or ConfigMap (False)
+        force_namespace (Optional[str]): Optional namespace override
+    """
+    name: str
+    namespace: str
+    data: Optional[Union[None, Dict[str, str]]] = None
+    encrypted: bool = Field(True, description="Whether to create a Secret (True) or ConfigMap (False)")
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
      

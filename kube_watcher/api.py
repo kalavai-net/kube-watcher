@@ -37,7 +37,8 @@ from kube_watcher.models import (
     ComputeUsageRequest,
     GetJobsOverviewRequest,
     HelmRepo,
-    FetchNodesRequest
+    FetchNodesRequest,
+    UserDataRequest
 )
 from kube_watcher.kube_core import (
     KubeAPI
@@ -298,10 +299,10 @@ async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_r
         request.node_names = kube_api.get_nodes_with_labels(
             labels=request.node_labels)
         
-        if request.node_names is None or len(request.node_names) == 0:
-            return {}
+    if request.namespaces is None and (request.node_names is None or len(request.node_names) == 0):
+        return {}
     
-    result = client.get_nodes_stats(
+    return client.get_nodes_stats(
         node_ids=request.node_names,
         start_time=request.start_time,
         end_time=request.end_time,
@@ -310,7 +311,6 @@ async def node_stats(request: NodeStatusRequest, api_key: str = Depends(verify_r
         resources=request.resources,
         namespaces=request.namespaces
     )
-    return result
 
 @app.post("/v1/delete_nodes", 
     operation_id="delete_nodes",
@@ -570,8 +570,9 @@ async def compute_usage(request: ComputeUsageRequest, api_key: str = Depends(ver
         request.node_names = kube_api.get_nodes_with_labels(
             labels=request.node_labels
         )
-        if request.node_names is None or len(request.node_names) == 0:
-            metrics = {resource: 0 for resource in request.resources}
+    
+    if request.namespaces is None and (request.node_names is None or len(request.node_names) == 0):
+        metrics = {resource: 0 for resource in request.resources}
     else:
         metrics = prometheus.get_cumulative_compute_usage(
             resources=request.resources,
@@ -714,6 +715,56 @@ async def get_user_quota(user_id: str, can_force_namespace: bool = Depends(verif
         namespace=user_id)
 
     return quotas
+
+@app.post("/v1/create_or_update_user_data", 
+    operation_id="create_or_update_user_data",
+    summary="Create or update user data (Secret or ConfigMap) in the Kalavai compute pool",
+    tags=["pool_management"],
+    description="Creates a Secret if encrypted=True or ConfigMap if encrypted=False. Creates the resource if it doesn't exist or updates it if it does. Secrets are base64 encoded and stored as Opaque type, ConfigMaps store plain text configuration data.",
+    response_description="Result of the operation")
+async def create_or_update_user_data(request: UserDataRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+    
+    try:
+        resource = kube_api.create_or_update_user_data(
+            name=request.name,
+            namespace=namespace,
+            data=request.data,
+            encrypted=request.encrypted
+        )
+        resource_type = "Secret" if request.encrypted else "ConfigMap"
+        return {"status": "success", "message": f"{resource_type} '{request.name}' created/updated successfully in namespace '{namespace}'"}
+    except Exception as e:
+        resource_type = "Secret" if request.encrypted else "ConfigMap"
+        raise HTTPException(status_code=500, detail=f"Failed to create/update {resource_type}: {str(e)}")
+
+@app.post("/v1/fetch_user_data", 
+    operation_id="fetch_user_data",
+    summary="Get user data (Secret or ConfigMap) from the Kalavai compute pool",
+    tags=["pool_management"],
+    description="Gets a Secret if encrypted=True or ConfigMap if encrypted=False. Returns the resource data and metadata.",
+    response_description="User data resource information")
+async def fetch_user_data(request: UserDataRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespaces: str = Depends(verify_read_namespaces)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+    else:
+        # Use the first available namespace for read operations
+        namespace = namespaces[0] if isinstance(namespaces, list) else namespaces
+    
+    try:
+        resource = kube_api.get_user_data(
+            name=request.name,
+            namespace=namespace,
+            encrypted=request.encrypted
+        )
+        return resource
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        resource_type = "Secret" if request.encrypted else "ConfigMap"
+        raise HTTPException(status_code=500, detail=f"Failed to get {resource_type}: {str(e)}")
+
 
 @app.get("/v1/get_job_templates", 
     operation_id="get_job_templates",
@@ -1017,7 +1068,6 @@ async def helm_show_chart(chart_name: str, api_key: str = Depends(verify_read_ke
     response_description="Result of the operation")
 async def helm_pull_schema(chart_name: str, api_key: str = Depends(verify_read_key)):
     return kube_api.helm_pull_schema(chart_name=chart_name)
-
 
 # Endpoint to check health
 @app.get("/v1/health", 
