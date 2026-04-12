@@ -16,4 +16,8 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI && \
 
 WORKDIR /workspace/ComfyUI
 
+# Install custom nodes
+# ComfyUI manager
+RUN cd custom_nodes && git clone https://github.com/ltdrdata/ComfyUI-Manager comfyui-manager
+
 CMD [ "python", "main.py" ]

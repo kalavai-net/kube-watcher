@@ -125,7 +125,7 @@ spec:
             limits:
               cpu: 0.05
               memory: 0.05Gi
-        restartPolicy: OnFailure
+        restartPolicy: Never
 {% endif %}
   - replicas: 1   # One ps pod specified
     name: server
@@ -180,32 +180,39 @@ spec:
         {% endif %}
         containers:
         - name: sglang-leader
-          image: docker.io/kalavai/ray-sglang-cuda:latest
+          image: docker.io/lmsysorg/sglang:v0.5.9-cu129-amd64
           command:
           - sh
           - -c
           - |
             PS_HOST=`cat /etc/volcano/server.host`;
-            # Download model weights
-            # /home/ray/workspace/download_model.sh \
-            #   --model_id={{model_id}} \
-            #   --remote_dir="/home/ray/cache";
+            df -h;
             nvidia-smi;
             # Run model
-            # --model_path="/home/ray/cache/{{model_id}}" \
-            /home/ray/workspace/run_model.sh \
-              --command="server" \
-              --model_path="{{model_id}}" \
-              --model_id={{model_id}} \
-              --server_ip=$PS_HOST:5000 \
-              --extra='{{extra}}' \
-              --template_url='{{template_url}}' \
-              --tensor_parallel_size={{gpus}} \
-              --pipeline_parallel_size={{workers}} \
-              --tool_call_parser={{tool_call_parser}} \
-              --dist_timeout={{dist_timeout}} \
-              --node_rank=0 \
-              --num_nodes={{workers}};
+            # /home/ray/workspace/run_model.sh \
+            #   --command="server" \
+            #   --model_path="{{model_id}}" \
+            #   --model_id={{model_id}} \
+            #   --server_ip=$PS_HOST:5000 \
+            #   --extra='{{extra}}' \
+            #   --template_url='{{template_url}}' \
+            #   --tensor_parallel_size={{gpus}} \
+            #   --pipeline_parallel_size={{workers}} \
+            #   --tool_call_parser={{tool_call_parser}} \
+            #   --dist_timeout={{dist_timeout}} \
+            #   --node_rank=0 \
+            #   --num_nodes={{workers}};
+            python -m sglang.launch_server \
+            --dist-init-addr $PS_HOST:5000 \
+            --nnodes {{workers}} \
+            --node-rank 0 \
+            --model-path {{model_id}} \
+            --served-model-name {{model_id}} \
+            --host 0.0.0.0 --port 8080 \
+            --tp-size {{workers}} \
+            --pp-size 1 \
+            --tool-call-parser {{tool_call_parser}} \
+            --dist-timeout {{dist_timeout}}
             exit 1
           env:
           - name: HF_TOKEN
@@ -243,8 +250,8 @@ spec:
         - name: shm
           emptyDir:
             medium: Memory
-            sizeLimit: {{memory * 0.5}}Gi
-        restartPolicy: OnFailure
+            sizeLimit: {{memory * 0.25}}Gi
+        restartPolicy: Never
   - replicas: {{workers - 1}}
     name: worker
     maxRetry: 100000
@@ -293,34 +300,39 @@ spec:
         {% endif %}
         containers:
         - name: sglang-worker
-          image: docker.io/kalavai/ray-sglang-cuda:latest
+          image: docker.io/lmsysorg/sglang:v0.5.9-cu129-amd64
           command:
           - sh
           - -c
           - |
             PS_HOST=`cat /etc/volcano/server.host`;
-            # Download model weights
-            # /home/ray/workspace/download_model.sh \
-            #   --model_id={{model_id}} \
-            #   --remote_dir="/home/ray/cache";
             nvidia-smi;
             # Run model
             RANK=$(($VC_TASK_INDEX + 1));
             echo "Node rank: "$RANK;
-            # --model_path="/home/ray/cache/{{model_id}}" \
-            /home/ray/workspace/run_model.sh \
-              --command="worker" \
-              --model_path="{{model_id}}" \
-              --model_id={{model_id}} \
-              --server_ip=$PS_HOST:5000 \
-              --extra='{{extra}}' \
-              --template_url='{{template_url}}' \
-              --tensor_parallel_size={{gpus}} \
-              --pipeline_parallel_size={{workers}} \
-              --tool_call_parser={{tool_call_parser}} \
-              --node_rank=$RANK \
-              --dist_timeout={{dist_timeout}} \
-              --num_nodes={{workers}};
+            # /home/ray/workspace/run_model.sh \
+            #   --command="worker" \
+            #   --model_path="{{model_id}}" \
+            #   --model_id={{model_id}} \
+            #   --server_ip=$PS_HOST:5000 \
+            #   --extra='{{extra}}' \
+            #   --template_url='{{template_url}}' \
+            #   --tensor_parallel_size={{gpus}} \
+            #   --pipeline_parallel_size={{workers}} \
+            #   --tool_call_parser={{tool_call_parser}} \
+            #   --node_rank=$RANK \
+            #   --dist_timeout={{dist_timeout}} \
+            #   --num_nodes={{workers}};
+            python3 -m sglang.launch_server \
+              --dist-init-addr $PS_HOST:5000 \
+              --nnodes {{workers}} \
+              --node-rank $RANK \
+              --model-path {{model_id}} \
+              --served-model-name {{model_id}} \
+              --tp-size {{workers}} \
+              --pp-size 1 \
+              --tool-call-parser {{tool_call_parser}} \
+              --dist-timeout {{dist_timeout}}
             exit 1
           env:
           - name: HF_TOKEN
@@ -347,8 +359,8 @@ spec:
         - name: shm
           emptyDir:
             medium: Memory
-            sizeLimit: {{memory * 0.5}}Gi
-        restartPolicy: OnFailure
+            sizeLimit: {{memory * 0.25}}Gi
+        restartPolicy: Never
 ---
 # deploy NodePort to expose model (if not using LiteLLM registration)
 {% if litellm_key == "" %}

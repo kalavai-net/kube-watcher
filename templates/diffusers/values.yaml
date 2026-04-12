@@ -65,6 +65,13 @@
   required: false
   description: "Enable model quantization for faster inference"
 
+- name: compile_mode
+  value: null
+  default: null
+  editable: true
+  required: false
+  description: "Compile the transformer model for faster inference. Options: reduce-overhead, max-autotune, regional"
+
 - name: cpus
   value: 2
   default: 2

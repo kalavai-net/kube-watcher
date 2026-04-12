@@ -1,5 +1,5 @@
 - name: model_id
-  value: flux2klein-test
+  value: flux2klein
   default: null
   editable: true
   required: true
@@ -12,29 +12,37 @@
   required: false
   description: "Enable model quantization for faster inference"
 
+- name: compile_mode
+  value: "max-autotune"
+  default: null
+  editable: true
+  required: false
+  description: "Compile the transformer model for faster inference. Options: reduce-overhead, max-autotune, regional"
+
+
 - name: working_memory
-  value: 50
+  value: 90
   default: 5
   editable: true
   required: true
   description: "Temporary storage to use to cache model weights (in GB), should be big enough to hold the model weights. All workers should have enough free disk to accommodate the weights."
 
 - name: workers
-  value: 1
+  value: 2
   default: 1
   editable: true
   required: true
   description: "Number of workers, corresponding to the number of nodes (or machines) that will be used to deploy the model"
 
 - name: min_replicas
-  value: 1
+  value: 2
   default: 0
   editable: true
   required: false
   description: "Minimum number of model replicas to be loaded at any given time"
 
 - name: max_replicas
-  value: 1
+  value: 2
   default: 1
   editable: true
   required: false
@@ -55,14 +63,14 @@
   description: "Number of cpus per worker"
 
 - name: memory
-  value: 26
+  value: 14
   default: 4
   editable: true
   required: false
   description: "Memory per worker"
 
 - name: sharedMemory
-  value: 8
+  value: 6
   default: 8
   editable: true
   required: false
@@ -76,7 +84,7 @@
   description: "Number of gpus per worker"
 
 - name: nodeport
-  value: "" #"31311"
+  value: "31112" #"31311"
   default: ""
   editable: true
   required: false

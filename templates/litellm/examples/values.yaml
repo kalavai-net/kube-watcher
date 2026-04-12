@@ -1,5 +1,5 @@
 - name: deployment_name
-  value: litellm
+  value: litellm-test
   default: litellm
   description: "Name of the deployment job"
   
@@ -9,7 +9,7 @@
   description: "Number of replicas to deploy"
 
 - name: master_key
-  value: "sk-XXX"
+  value: "sk-1234"
   default: "sk-1234"
   description: ""
 
@@ -31,18 +31,11 @@
   description: ""
 
 - name: ui_password
-  value: "XXX"
-  default: "mypassword"
+  value: "password"
+  default: "password"
   editable: true
   required: false
   description: ""
-
-- name: external_postgreSQL_url
-  value: "postgresql://doadmin:XXXXXXX@cogen-litellm-do-user-14127040-0.g.db.ondigitalocean.com:25060/litellm?sslmode=require"
-  default: ""
-  editable: true
-  required: false
-  description: "Connect to external DB instead of deploying a local DB (of the form 'postgres://<postgres_user>:<postgres_password>@<db_url>/<db_name>)'"
 
 - name: cpus
   value: "1"

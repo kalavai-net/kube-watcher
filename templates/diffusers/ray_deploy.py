@@ -1,5 +1,4 @@
 """
-TODO: support AutoPipelineForImage2Image, AutoPipelineForInpainting
 https://learnopencv.com/hugging-face-diffusers/
 
 Serve:
@@ -13,6 +12,7 @@ python ray_inference.py
 import os
 import base64
 import time
+import logging
 from datetime import datetime
 from typing import List, Optional
 from io import BytesIO
@@ -28,7 +28,68 @@ from diffusers import (
     FluxPipeline,
     Flux2KleinPipeline,
 )
+
 from diffusers.quantizers import PipelineQuantizationConfig
+
+
+###############################
+###############################
+def load_pipeline(model_class, model_id: str, device: str, dtype: torch.dtype = torch.float16, quantization: bool = False, compile_mode: str = None):
+    # Load pipeline
+    load_kwargs = {
+        "use_safetensors": True,
+        "torch_dtype": dtype
+    }
+        
+    if quantization:
+        load_kwargs["quantization_config"] = PipelineQuantizationConfig(
+            quant_backend="bitsandbytes_4bit",
+            quant_kwargs={
+                "load_in_4bit": True, 
+                "bnb_4bit_quant_type": "nf4", 
+                "bnb_4bit_compute_dtype": dtype
+            },
+            components_to_quantize=[
+                "transformer",
+                "text_encoder_2",
+                "text_encoder",
+                "vae",  # Enable VAE quantization to save VRAM
+            ]
+        )
+    
+    pipe = model_class.from_pretrained(
+        model_id,
+        low_cpu_mem_usage=True,
+        **load_kwargs
+    )
+
+    # graph optimisation (requires compilation when model changes)
+    if hasattr(pipe, 'transformer') and compile_mode is not None:
+        match compile_mode:
+            case "reduce-overhead":
+                # OPTION A: The Balanced Approach (Recommended)
+                # Fast to compile (~1-2 min), solid 15-20% speedup.
+                pipe.transformer = torch.compile(pipe.transformer, mode="reduce-overhead")
+            case "max-autotune":
+                # OPTION B: The Maximum Speed Approach
+                # Slow to compile (~5 min), up to 30-40% speedup on RTX 40/50 series.
+                # This uses Triton kernels and CUDA graphs.
+                pipe.transformer = torch.compile(pipe.transformer, mode="max-autotune")
+            case "regional":
+                # OPTION C: regional compilation, single block. Best trade off speed vs gen time
+                pipe.transformer.compile_repeated_blocks(fullgraph=True, dynamic=True)
+    
+    if device == "cuda":
+        pipe = pipe.to(device)
+    
+    # Enable VAE tiling for high-resolution images to reduce memory usage
+    if hasattr(pipe, 'vae'):
+        pipe.vae.enable_tiling()
+    
+    return pipe
+
+###############################
+###############################
 
 app = FastAPI()
 
@@ -36,25 +97,36 @@ app = FastAPI()
 #   supports Stable Diffusion, Stable Diffusion XL, ControlNet, Kandinsky 2.1, Kandinsky 2.2, and DeepFloyd IF
 # add models from HF https://huggingface.co/models?library=diffusers&sort=trending
 supported_models = {
-    "stable-diffusion-v1-5/stable-diffusion-v1-5": AutoPipelineForText2Image,
-    "CompVis/stable-diffusion-v1-4": AutoPipelineForText2Image,
-    "black-forest-labs/FLUX.1-dev": FluxPipeline,
-    "black-forest-labs/FLUX.2-klein-4B": Flux2KleinPipeline,
-    "black-forest-labs/FLUX.2-klein-9B": Flux2KleinPipeline
+    "stable-diffusion-v1-5/stable-diffusion-v1-5": {
+        "class": AutoPipelineForText2Image,
+        "fn": load_pipeline
+    },
+    "CompVis/stable-diffusion-v1-4": {
+        "class": AutoPipelineForText2Image,
+        "fn": load_pipeline
+    },
+    "black-forest-labs/FLUX.1-dev": {
+        "class": FluxPipeline,
+        "fn": load_pipeline
+    },
+    "black-forest-labs/FLUX.2-klein-4B": {
+        "class": Flux2KleinPipeline,
+        "fn": load_pipeline
+    },
+    "black-forest-labs/FLUX.2-klein-9B": {
+        "class": Flux2KleinPipeline,
+        "fn": load_pipeline
+    }
 }
-components_to_quantize = [
-    "transformer",
-    "text_encoder_2",
-    "text_encoder" # small  usually
-    #"vae", # loss of quality
-]
+
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", 8000))
-DEVICE = os.environ.get("DEVICE", "cuda")
+DEVICE = os.environ.get("DEVICE", "cpu")
 NUM_GPUS = int(os.environ.get("NUM_GPUS", 1))
 MIN_REPLICAS = int(os.environ.get("MIN_REPLICAS", 0))
 MAX_REPLICAS = int(os.environ.get("MAX_REPLICAS", 1))
 QUANTIZATION = os.environ.get("QUANTIZATION", "false").lower() == "true"
+COMPILE_MODE = os.environ.get("COMPILE_MODE", None)
 
 
 # OpenAI-compatible request models
@@ -111,6 +183,15 @@ class ErrorResponse(BaseModel):
 class APIIngress:
     def __init__(self, diffusion_model_handle: DeploymentHandle) -> None:
         self.handle = diffusion_model_handle
+        # Configure logger for this deployment
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setLevel(logging.INFO)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
     @app.post("/v1/images/generations", response_model=ImageGenerationResponse)
     async def image_generation(self, request: ImageGenerationRequest):
@@ -136,6 +217,7 @@ class APIIngress:
             images = []
             remaining_images = request.n
             
+            t = time.time()
             while remaining_images > 0:
                 current_batch_size = min(request.batch_size, remaining_images)
                 
@@ -151,13 +233,15 @@ class APIIngress:
                 images.extend(batch_images)
                 remaining_images -= current_batch_size
             
+            self.logger.info(f"--> Batch generation completed in {time.time() - t:.2f}s")
+            
             # Convert images to requested format
             data = []
+            t = time.time()
             for image in images:
-                t = time.time()
+                
                 file_stream = BytesIO()
                 image.save(file_stream, "PNG")
-                print(f"Image saved in {time.time() - t:.2f}s")
                 if request.response_format == "url":
                     raise HTTPException(status_code=501, detail="URL response format is not yet implemented")
                 elif request.response_format == "b64_json":
@@ -165,7 +249,7 @@ class APIIngress:
                     data.append(ImageData(b64_json=b64_data))
                 else:
                     raise HTTPException(status_code=400, detail="response_format must be 'url' or 'b64_json'")
-            
+            self.logger.info(f"--> Image conversion completed in {time.time() - t:.2f}s")
             return ImageGenerationResponse(
                 created=int(time.time()),
                 data=data
@@ -219,42 +303,15 @@ class StableDiffusionV2:
         
     def load_model(self, model_id: str):
         if self.current_model != model_id:
-            
-            # Prepare quantization config if enabled
-            quantization_config = None
-            if QUANTIZATION:
-                
-                quantization_config = PipelineQuantizationConfig(
-                    quant_backend="bitsandbytes_4bit",
-                    quant_kwargs={
-                        "load_in_4bit": True, 
-                        "bnb_4bit_quant_type": "nf4", 
-                        "bnb_4bit_compute_dtype": torch.float16
-                    },
-                    components_to_quantize=components_to_quantize,
-                )
-            
-            # Load pipeline
-            load_kwargs = {
-                "use_safetensors": True
-            }
-            if DEVICE == "cuda":
-                load_kwargs["torch_dtype"] = torch.float16
-            
-            if quantization_config:
-                load_kwargs["quantization_config"] = quantization_config
-                print(f"Loading model {model_id} with 4-bit quantization")
-            
-            self.pipe = supported_models[model_id].from_pretrained(
-                model_id,
-                **load_kwargs
+
+            self.pipe = supported_models[model_id]["fn"](
+                model_id=model_id,
+                model_class=supported_models[model_id]["class"],
+                dtype=torch.float16 if DEVICE == "cuda" else torch.float32,
+                quantization=QUANTIZATION,
+                compile_mode=COMPILE_MODE,
+                device=DEVICE
             )
-            # Only move to device if it's CUDA (models load on CPU by default)
-            if DEVICE == "cuda":
-                self.pipe = self.pipe.to(DEVICE)
-            
-            # if DEVICE == "cuda":
-            #     self.pipe.enable_model_cpu_offload()
             
             self.current_model = model_id
 
@@ -281,21 +338,23 @@ class StableDiffusionV2:
             # Always return a list, even for single images
             return images[:num_images]  # Return list of requested images
 
-entrypoint = APIIngress.bind(StableDiffusionV2.bind())
 
-# connect to cluster (if run on head node, connect to existing instance)
-ray.init(address="auto")
-# bind address
-serve.start(
-    http_options={
-        "host": HOST,
-        "port": PORT
-    }
-)
-# Serve deployments
-serve.run(
-    entrypoint
-)
+if __name__ == "__main__":
+    entrypoint = APIIngress.bind(StableDiffusionV2.bind())
 
-while True:
-    time.sleep(10)
+    # connect to cluster (if run on head node, connect to existing instance)
+    ray.init(address="auto")
+    # bind address
+    serve.start(
+        http_options={
+            "host": HOST,
+            "port": PORT
+        }
+    )
+    # Serve deployments
+    serve.run(
+        entrypoint
+    )
+
+    while True:
+        time.sleep(10)

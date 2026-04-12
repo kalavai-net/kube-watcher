@@ -1,3 +1,2 @@
-#sglang[all]
 llmcompressor
-#huggingface_hub[hf_xet]
+huggingface_hub[hf_xet]

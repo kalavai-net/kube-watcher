@@ -183,7 +183,7 @@ spec:
           - sh
           - -c
           - |
-            RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size={{workers}} --ray_object_store_memory={{sharedMemory}};
+            RAY_BACKEND_LOG_LEVEL=error /home/ray/workspace/ray_init.sh leader --ray_cluster_size={{workers}} --ray_object_store_memory={{sharedMemory}} --ray_dashboard=1;
             sleep 30;
           {% if gpus and gpus > 0 %}
             nvidia-smi;
@@ -211,8 +211,8 @@ spec:
             value: "8000"
           - name: QUANTIZATION
             value: "{{quantization}}"
-          - name: QUANTIZATION_BITS
-            value: "{{quantization_bits}}"
+          - name: COMPILE_MODE
+            value: "{{compile_mode}}"
           - name: DEVICE
           {% if gpus and gpus > 0 %}
             value: "cuda"
@@ -222,6 +222,8 @@ spec:
           ports:
           - containerPort: 8000
             name: container-port
+          - containerPort: 8265
+            name: dashboard-port
           resources:
             requests:
               cpu: {{cpus}}
@@ -305,7 +307,7 @@ spec:
         {% endif %}
         containers:
         - name: vllm-worker
-          image: docker.io/kalavai/ray-diffusers:latest #v1.1.4
+          image: ghcr.io/kalavai-net/ray-diffusers:latest #v1.1.4
           command:
           - sh
           - -c
@@ -373,4 +375,8 @@ spec:
     {% if nodeport != "" %}
       nodePort: {{nodeport}}
     {% endif %}
+    - name: dashboard
+      port: 8265
+      targetPort: 8265
+      protocol: TCP
 {% endif %}

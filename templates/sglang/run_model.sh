@@ -68,7 +68,7 @@ fi
 
 if [ "$command" = "server" ]; then
   echo ">> Running as server..."
-  python3 -m sglang.launch_server \
+  python -m sglang.launch_server \
     --dist-init-addr $server_ip \
     --nnodes $num_nodes \
     --node-rank $node_rank \
@@ -83,7 +83,7 @@ if [ "$command" = "server" ]; then
     $template_str
 else
   echo ">> Running as worker..."
-  python3 -m sglang.launch_server \
+  python -m sglang.launch_server \
     --dist-init-addr $server_ip \
     --nnodes $num_nodes \
     --node-rank $node_rank \

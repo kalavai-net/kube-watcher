@@ -8,8 +8,8 @@ t = time.time()
 model_id = "black-forest-labs/FLUX.2-klein-9B"
 prompt = "a cartoon of a cat."
 resp = requests.post(
-    #f"http://kalavai-api.public.kalavai.net:32328/v1/images/generations",
-    f"http://kalavai-api.public.kalavai.net:31923/v1/images/generations",
+    #"http://85.190.74.236:8000/v1/images/generations",
+    "http://kalavai-api.public.kalavai.net:31112/v1/images/generations",
     json={
         "prompt": prompt,
         "model": model_id,

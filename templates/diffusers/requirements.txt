@@ -1,6 +1,9 @@
+--extra-index-url https://download.pytorch.org/whl/cu128
 fastapi
 pydantic
-torch
+torch==2.9.0+cu128
+torchvision==0.24.0+cu128
+torchaudio==2.9.0+cu128
 diffusers
 transformers
 accelerate
@@ -9,3 +12,4 @@ Pillow
 requests
 uvicorn
 bitsandbytes
+gguf>=0.10.0
