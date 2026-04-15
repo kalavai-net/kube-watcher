@@ -703,7 +703,7 @@ class KubeAPI():
         except client.exceptions.ApiException as e:
             if e.status == 404:
                 resource_type = "Secret" if encrypted else "ConfigMap"
-                raise HTTPException(status_code=404, detail=f"{resource_type} '{name}' not found in namespace '{namespace}'")
+                return {"error": f"{resource_type} '{name}' not found in namespace '{namespace}'"}
             else:
                 raise
     
