@@ -385,98 +385,98 @@ if __name__ == "__main__":
     client = PrometheusAPI(url=PROMETHEUS, disable_ssl=True)
     logger.info("connected")
 
-#     # Convert time strings to datetime objects
-#     start_time_dt = parse_datetime("8h")
+    # Convert time strings to datetime objects
+#     start_time_dt = parse_datetime("24h")
 #     end_time_dt = parse_datetime("now")
 
 #     result = client.prom.custom_query_range(
 #         query="""sum(
-#   container_memory_usage_bytes{container!=""} 
+#   kube_pod_container_resource_requests{resource="nvidia_com_gpu",container!=""} 
 #   * on(pod, namespace) 
-#   group_left(label_role) 
-#   kube_pod_labels{label_role="leader"}
+#   group_left(label_kalavai_job_name) 
+#   kube_pod_labels{label_kalavai_job_name="5a5d05c3-f65c-481d-aa80-d9237e775be4"}
 # ) by (pod)""",
 #         start_time=start_time_dt,
 #         end_time=end_time_dt,
-#         step="1m"
+#         step="10m"
 #     )
 #     print(result)
 #     exit()
     
 
-    # result = client.get_nodes_stats(
-    #     node_ids=[
-    #         "kalavai-camtl01-0-d24a95db-6dac9105",
-    #         "kalavai-camtl01-1-251518e2-defe1ded",
-    #         "kalavai-camtl01-10-41fdff0c-dc1efdef",
-    #         "kalavai-camtl01-11-6557449b-a5c276c9",
-    #         "kalavai-camtl01-12-4c5d261a-82493df4",
-    #         "kalavai-camtl01-13-9dc21be4-907516d0",
-    #         "kalavai-camtl01-14-cf4eeb07-3f9c98ff",
-    #         "kalavai-camtl01-15-b28a44ea-3639dbc8",
-    #         "kalavai-camtl01-16-cce2c392-b080b803",
-    #         "kalavai-camtl01-17-a289c09e-1c0b01c9",
-    #         "kalavai-camtl01-18-65ac7277-0c6c0e0f",
-    #         "kalavai-camtl01-19-e5c71e6c-bc7db06d",
-    #         "kalavai-camtl01-2-03188cee-a4344d5f",
-    #         "kalavai-camtl01-3-bb317fa4-fc8ea816",
-    #         "kalavai-camtl01-4-4874f925-fdf7f22c",
-    #         "kalavai-camtl01-5-87e07ebc-e0123c85",
-    #         "kalavai-camtl01-6-f2fa4195-b9e260cd",
-    #         "kalavai-camtl01-7-96da0f93-7faf6d75",
-    #         "kalavai-camtl01-8-674b4211-e274d4c7",
-    #         "kalavai-camtl01-9-168a13e3-e991a7f9",
-    #         "kalavai-frsbg01-aware-bluegill-db4ba4d3",
-    #         "kalavai-frsbg01-blessed-gar-e54b5e6d",
-    #         "kalavai-frsbg01-dashing-collie-759d2ed4",
-    #         "kalavai-frsbg01-destined-kit-74c620a3",
-    #         "kalavai-frsbg01-diverse-lacewing-f8d1e486",
-    #         "kalavai-frsbg01-dominant-pangolin-3b18aef1",
-    #         "kalavai-frsbg01-endless-aphid-6e39c49f",
-    #         "kalavai-frsbg01-endless-mustang-5fe96f48",
-    #         "kalavai-frsbg01-growing-oriole-7db4bbd5",
-    #         "kalavai-frsbg01-improved-kingfish-534cd322",
-    #         "kalavai-frsbg01-loving-magpie-2887e099",
-    #         "kalavai-frsbg01-polite-tetra-e8652e1f",
-    #         "kalavai-frsbg01-positive-man-bcb7efb2",
-    #         "kalavai-frsbg01-possible-stallion-28a969e8",
-    #         "kalavai-frsbg01-refined-badger-73aa0d21",
-    #         "kalavai-frsbg01-right-weasel-f961183e",
-    #         "kalavai-frsbg01-saved-sloth-028b0a8d",
-    #         "kalavai-frsbg01-stable-oriole-3559f020",
-    #         "kalavai-frsbg01-teaching-tetra-aed113af",
-    #         "kalavai-frsbg01-united-feline-4cec52e8",
-    #         "kalavai-uspor01-0-e7dee8e0-3ea4c8cb",
-    #         "kalavai-uspor01-1-c9ccc729-5d28baf3",
-    #         "kalavai-uspor01-10-ef48ced6-aae3e4a7",
-    #         "kalavai-uspor01-11-894ce924-323d02da",
-    #         "kalavai-uspor01-12-91883fe3-d86f7e6e",
-    #         "kalavai-uspor01-13-50d8aa5b-72592ab1",
-    #         "kalavai-uspor01-14-b4cc92eb-0c4ab032",
-    #         "kalavai-uspor01-15-92b1620b-5d03fda5",
-    #         "kalavai-uspor01-16-5a899e7b-1b4936af",
-    #         "kalavai-uspor01-17-245bc70d-cca17a04",
-    #         "kalavai-uspor01-18-03d0152f-5c048f82",
-    #         "kalavai-uspor01-19-5531f387-b36b8957",
-    #         "kalavai-uspor01-2-a70cded6-70ac4b0b",
-    #         "kalavai-uspor01-3-149a065c-5e06f7eb",
-    #         "kalavai-uspor01-4-a2474c70-288ca8a8",
-    #         "kalavai-uspor01-5-b993d2b6-365f2201",
-    #         "kalavai-uspor01-6-807c71e4-ce9cdb9d",
-    #         "kalavai-uspor01-7-2b093d4d-e81376f4",
-    #         "kalavai-uspor01-8-7dd54296-4b17abb2",
-    #         "kalavai-uspor01-9-d7774fe9-b776c292"
+    result = client.get_nodes_stats(
+        node_ids=[
+            "kalavai-camtl01-0-d24a95db-6dac9105",
+            "kalavai-camtl01-1-251518e2-defe1ded",
+            "kalavai-camtl01-10-41fdff0c-dc1efdef",
+            "kalavai-camtl01-11-6557449b-a5c276c9",
+            "kalavai-camtl01-12-4c5d261a-82493df4",
+            "kalavai-camtl01-13-9dc21be4-907516d0",
+            "kalavai-camtl01-14-cf4eeb07-3f9c98ff",
+            "kalavai-camtl01-15-b28a44ea-3639dbc8",
+            "kalavai-camtl01-16-cce2c392-b080b803",
+            "kalavai-camtl01-17-a289c09e-1c0b01c9",
+            "kalavai-camtl01-18-65ac7277-0c6c0e0f",
+            "kalavai-camtl01-19-e5c71e6c-bc7db06d",
+            "kalavai-camtl01-2-03188cee-a4344d5f",
+            "kalavai-camtl01-3-bb317fa4-fc8ea816",
+            "kalavai-camtl01-4-4874f925-fdf7f22c",
+            "kalavai-camtl01-5-87e07ebc-e0123c85",
+            "kalavai-camtl01-6-f2fa4195-b9e260cd",
+            "kalavai-camtl01-7-96da0f93-7faf6d75",
+            "kalavai-camtl01-8-674b4211-e274d4c7",
+            "kalavai-camtl01-9-168a13e3-e991a7f9",
+            "kalavai-frsbg01-aware-bluegill-db4ba4d3",
+            "kalavai-frsbg01-blessed-gar-e54b5e6d",
+            "kalavai-frsbg01-dashing-collie-759d2ed4",
+            "kalavai-frsbg01-destined-kit-74c620a3",
+            "kalavai-frsbg01-diverse-lacewing-f8d1e486",
+            "kalavai-frsbg01-dominant-pangolin-3b18aef1",
+            "kalavai-frsbg01-endless-aphid-6e39c49f",
+            "kalavai-frsbg01-endless-mustang-5fe96f48",
+            "kalavai-frsbg01-growing-oriole-7db4bbd5",
+            "kalavai-frsbg01-improved-kingfish-534cd322",
+            "kalavai-frsbg01-loving-magpie-2887e099",
+            "kalavai-frsbg01-polite-tetra-e8652e1f",
+            "kalavai-frsbg01-positive-man-bcb7efb2",
+            "kalavai-frsbg01-possible-stallion-28a969e8",
+            "kalavai-frsbg01-refined-badger-73aa0d21",
+            "kalavai-frsbg01-right-weasel-f961183e",
+            "kalavai-frsbg01-saved-sloth-028b0a8d",
+            "kalavai-frsbg01-stable-oriole-3559f020",
+            "kalavai-frsbg01-teaching-tetra-aed113af",
+            "kalavai-frsbg01-united-feline-4cec52e8",
+            "kalavai-uspor01-0-e7dee8e0-3ea4c8cb",
+            "kalavai-uspor01-1-c9ccc729-5d28baf3",
+            "kalavai-uspor01-10-ef48ced6-aae3e4a7",
+            "kalavai-uspor01-11-894ce924-323d02da",
+            "kalavai-uspor01-12-91883fe3-d86f7e6e",
+            "kalavai-uspor01-13-50d8aa5b-72592ab1",
+            "kalavai-uspor01-14-b4cc92eb-0c4ab032",
+            "kalavai-uspor01-15-92b1620b-5d03fda5",
+            "kalavai-uspor01-16-5a899e7b-1b4936af",
+            "kalavai-uspor01-17-245bc70d-cca17a04",
+            "kalavai-uspor01-18-03d0152f-5c048f82",
+            "kalavai-uspor01-19-5531f387-b36b8957",
+            "kalavai-uspor01-2-a70cded6-70ac4b0b",
+            "kalavai-uspor01-3-149a065c-5e06f7eb",
+            "kalavai-uspor01-4-a2474c70-288ca8a8",
+            "kalavai-uspor01-5-b993d2b6-365f2201",
+            "kalavai-uspor01-6-807c71e4-ce9cdb9d",
+            "kalavai-uspor01-7-2b093d4d-e81376f4",
+            "kalavai-uspor01-8-7dd54296-4b17abb2",
+            "kalavai-uspor01-9-d7774fe9-b776c292"
 
-    #     ],
-    #     resources=["nvidia_com_gpu", "amd_com_gpu"],
-    #     start_time="7d",
-    #     end_time="now",
-    #     step="2h",
-    #     aggregate_node_results=True,
-    #     namespaces=["shadow"]
-    # )
-    # print(result)
-    # exit()
+        ],
+        resources=["nvidia_com_gpu", "amd_com_gpu"],
+        start_time="1d",
+        end_time="now",
+        step="2h",
+        aggregate_node_results=True,
+        namespaces=["shadow"]
+    )
+    print(result)
+    exit()
 
     start_time_dt = parse_datetime("38d")
     end_time_dt = parse_datetime("7d")

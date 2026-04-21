@@ -181,6 +181,7 @@ class TemplateDeploymentRequest(BaseModel):
     replicas: int = 1
     priority: Literal["kalavai-system-priority", "user-high-priority", "user-spot-priority", "test-low-priority", "test-high-priority"] = "user-spot-priority"
     is_update: Optional[bool] = Field(False, description="If True, update existing deployment")
+    random_suffix: Optional[bool] = Field(True, description="If True, add a random suffix to the job name")
 
 class TemplateDeleteRequest(BaseModel):
     name: str

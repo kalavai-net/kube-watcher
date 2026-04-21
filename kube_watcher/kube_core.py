@@ -719,15 +719,16 @@ class KubeAPI():
         template_values,
         template_repo,
         template_version=None,
-        is_update=True
+        is_update=True,
+        random_suffix=True
     ):
         """
         Deploy KalavaiJob (templated jobs)
         
         Use the is_update flag to apply an update to an existing job
         """
-
-        name = sanitize_kubernetes_name(name + "-" + str(uuid.uuid4())[:6]) if not is_update else name
+        if random_suffix:
+            name = sanitize_kubernetes_name(name + "-" + str(uuid.uuid4())[:6]) if not is_update and random_suffix else name
 
         body = {
             "apiVersion": "kalavai.net/v1",
