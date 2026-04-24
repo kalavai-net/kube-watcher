@@ -706,6 +706,9 @@ class KubeAPI():
                 return {"error": f"{resource_type} '{name}' not found in namespace '{namespace}'"}
             else:
                 raise
+        except Exception as e:
+            print(f"Error getting user data: {str(e)}")
+            raise Exception(f"Failed to get user data: {str(e)}")
     
     def deploy_template(
         self,
@@ -719,7 +722,7 @@ class KubeAPI():
         template_values,
         template_repo,
         template_version=None,
-        is_update=True,
+        is_update=False,
         random_suffix=True
     ):
         """
@@ -727,8 +730,7 @@ class KubeAPI():
         
         Use the is_update flag to apply an update to an existing job
         """
-        if random_suffix:
-            name = sanitize_kubernetes_name(name + "-" + str(uuid.uuid4())[:6]) if not is_update and random_suffix else name
+        name = sanitize_kubernetes_name(name + "-" + str(uuid.uuid4())[:6]) if not is_update and random_suffix else name
 
         body = {
             "apiVersion": "kalavai.net/v1",

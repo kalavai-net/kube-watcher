@@ -751,7 +751,6 @@ async def fetch_user_data(request: UserDataRequest, can_force_namespace: bool = 
     else:
         # Use the first available namespace for read operations
         namespace = namespaces[0] if isinstance(namespaces, list) else namespaces
-    
     try:
         resource = kube_api.get_user_data(
             name=request.name,
@@ -759,10 +758,9 @@ async def fetch_user_data(request: UserDataRequest, can_force_namespace: bool = 
             encrypted=request.encrypted
         )
         return resource
-    except HTTPException as e:
-        raise e
     except Exception as e:
         resource_type = "Secret" if request.encrypted else "ConfigMap"
+        print("*****[fetch_user_data] Error:", str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get {resource_type}: {str(e)}")
 
 
@@ -909,6 +907,7 @@ async def deploy_template(request: TemplateDeploymentRequest, can_force_namespac
         is_update=request.is_update,
         random_suffix=request.random_suffix
     )
+    print("*******************", result)
     
     return result
 
