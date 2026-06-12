@@ -803,7 +803,7 @@ class KubeAPI():
             "apiVersion": "kalavai.net/v1",
             "kind": "KalavaiJob",
             "spec": spec
-        }x
+        }
         result = self.kube_patch_custom_object(
             name=name,
             group="kalavai.net",
