@@ -25,6 +25,7 @@ from kube_watcher.models import (
     CustomJobTemplateRequest,
     TemplateDeploymentRequest,
     TemplateDeleteRequest,
+    TemplateUpdateRequest,
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
     ServiceWithLabelRequest,
@@ -906,6 +907,27 @@ async def deploy_template(request: TemplateDeploymentRequest, can_force_namespac
         namespace=namespace,
         is_update=request.is_update,
         random_suffix=request.random_suffix
+    )
+    print("*******************", result)
+    
+    return result
+
+@app.post("/v1/patch_template", 
+    operation_id="patch_template",
+    summary="Patch a job from a template in the Kalavai compute pool",
+    tags=["workload_management"],
+    description="Patches a job from a template in the kalavai pool",
+    response_description="Patch result")
+async def patch_template(request: TemplateUpdateRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+
+    print(">>>> Patch template on NAMESPACE: ", namespace)
+
+    result = kube_api.patch_template(
+        name=request.name,
+        namespace=namespace,
+        spec=request.spec
     )
     print("*******************", result)
     

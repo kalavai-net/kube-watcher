@@ -591,6 +591,32 @@ class KubeAPI():
 
         return deployment_results
 
+    def kube_patch_custom_object(self, name, group, api_version, namespace, plural, patched_body):
+        deployment_results = {
+            "successful": [],
+            "failed": []
+        }
+        api = client.CustomObjectsApi(client.api_client.ApiClient())
+        if isinstance(patched_body, str):
+            patched_body = yaml.safe_load(patched_body)
+        try:
+            res = api.patch_namespaced_custom_object(
+                name=name,
+                group=group,
+                version=api_version,
+                namespace=namespace,
+                plural=plural,
+                patched_body=patched_body,
+                #content_type="application/merge-patch+json"
+            )
+            # Assuming res contains some identifiable information about the resource
+            deployment_results["successful"].append(str(res))
+        except Exception as e:
+            # Append the yaml that failed and the exception message for clarity
+            deployment_results["failed"].append({"yaml": patched_body, "error": str(e)})
+
+        return deployment_results
+
     def create_or_update_secret(self, name: str, namespace: str, data: dict, encrypt_data: bool = True):
         # Handle data encoding based on encrypt_data flag
         if encrypt_data:
@@ -761,6 +787,33 @@ class KubeAPI():
 
         return force_serialisation(result)
 
+    def patch_template(
+        self,
+        name,
+        namespace,
+        spec
+    ):
+        """
+        Patch KalavaiJob (templated jobs)
+        
+        Use the is_update flag to apply an update to an existing job
+        """
+        
+        patched_body = {
+            "apiVersion": "kalavai.net/v1",
+            "kind": "KalavaiJob",
+            "spec": spec
+        }
+        result = self.kube_patch_custom_object(
+            name=name,
+            group="kalavai.net",
+            api_version="v1",
+            namespace=namespace,
+            plural="kalavaijobs",
+            patched_body=patched_body
+        )
+
+        return force_serialisation(result)
     
     def kube_get_custom_objects(self, group, api_version, namespace, plural, label_selector=None):
 

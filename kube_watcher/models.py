@@ -183,6 +183,11 @@ class TemplateDeploymentRequest(BaseModel):
     is_update: Optional[bool] = Field(False, description="If True, update existing deployment")
     random_suffix: Optional[bool] = Field(True, description="If True, add a random suffix to the job name")
 
+class TemplateUpdateRequest(BaseModel):
+    name: str
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
+    spec: dict
+
 class TemplateDeleteRequest(BaseModel):
     name: str
     force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
