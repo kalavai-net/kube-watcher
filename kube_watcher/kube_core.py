@@ -601,12 +601,12 @@ class KubeAPI():
             patched_body = yaml.safe_load(patched_body)
         try:
             res = api.patch_namespaced_custom_object(
-                name=name,
-                group=group,
-                version=api_version,
-                namespace=namespace,
-                plural=plural,
-                patched_body=patched_body,
+                group,
+                api_version,
+                namespace,
+                plural,
+                name,
+                patched_body
                 #content_type="application/merge-patch+json"
             )
             # Assuming res contains some identifiable information about the resource
@@ -803,7 +803,7 @@ class KubeAPI():
             "apiVersion": "kalavai.net/v1",
             "kind": "KalavaiJob",
             "spec": spec
-        }
+        }x
         result = self.kube_patch_custom_object(
             name=name,
             group="kalavai.net",
