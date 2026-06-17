@@ -641,22 +641,18 @@ async def create_user_space(request: UserWorkspaceRequest, can_force_namespace: 
         namespace = request.force_namespace
 
     try:
-        kube_api.create_namespace(
+        result = kube_api.create_userspace(
             name=namespace,
-            labels=request.labels)
-
-        # add annotation to user node
+            extra_labels=request.labels,
+            resource_quota=request.quota
+        )
+        
+        # add annotation to user node if required
         if request.user_id is not None and request.node_name is not None:
             kube_api.add_annotation_to_node(
                 node_labels={"kubernetes.io/hostname": request.node_name},
                 annotation={KALAVAI_USER_KEY: request.user_id}
             )
-        # apply optional resource quotas
-        if request.quota:
-            kube_api.set_resource_quota(
-                namespace=namespace,
-                quotas=request.quota,
-                labels=request.labels)
 
     except Exception as e:
         return {"error": str(e)}

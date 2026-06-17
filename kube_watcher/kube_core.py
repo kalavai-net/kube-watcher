@@ -1174,14 +1174,53 @@ class KubeAPI():
         )
         return force_serialisation(result)
     
-    def create_namespace(self, name, labels={}):
+    def create_namespace(self, name, labels: dict=None):
+        """
+        Create a namespace with namespace requirements such as:
+        - namespace labels
+        - Gateway
+        - ClusterRoleBinding and Service account
+        
+        Args:
+            name: Namespace name
+            labels: Optional labels to apply to the namespace
+            
+        Returns:
+            Dictionary with creation result
+        """
+        results = {}
+        # Prepare labels
+        if labels is None:
+            labels = {}
+        labels.update({
+            "istio.io/use-waypoint": f"{name}-waypoint",
+            "istio.io/dataplane-mode": "ambient",
+            "istio.io/ingress-use-waypoint": "true"
+        })
+        
+        # Create namespace if not exists, otherwise patch with labels
         if name in self.list_namespaces():
-            return {"success": "already exists"}
-        result = self.core_api.create_namespace(
-            body=client.V1Namespace(
-                metadata=client.V1ObjectMeta(name=name, labels=labels))
-        )
-        return force_serialisation(result)
+            results["namespace"] = force_serialisation(
+                self.core_api.patch_namespace(
+                    name=name,
+                    body={
+                        "metadata": {
+                            "labels": labels
+                        }
+                    }
+                )
+            )
+        else:
+            results["namespace"] = force_serialisation(
+                self.core_api.create_namespace(
+                    body=client.V1Namespace(
+                        metadata=client.V1ObjectMeta(name=name, labels=labels))
+                )
+            )
+    
+        # create account objects
+        results["rbac"] = self.create_rbac_for_namespace(namespace=name)
+        return results
     
     def delete_namespace(self, name):
         result = self.core_api.delete_namespace(
@@ -1189,48 +1228,105 @@ class KubeAPI():
         )
         return force_serialisation(result)
     
-    def deploy_flow(
-        self,
-        deployment_name,
-        namespace,
-        flow_id,
-        flow_url,
-        api_key,
-        num_cores=1,
-        ram_memory="1Gi"
-    ):
-        # Deploy a deepsparse model
-        yaml = create_flow_deployment_yaml(
-            values={
-                "deployment_name": deployment_name,
-                "username": namespace,
-                "num_cores": num_cores,
-                "ram_memory": ram_memory,
-                "api_key": api_key,
-                "flow_id": flow_id,
-                "flow_url": flow_url
-            }
-        )
-        return self.kube_deploy(yaml)
-    
-    def delete_flow(
-        self,
-        deployment_name,
-        namespace
-    ):
-        """Delete a flow deployment within a namespace.
+    def create_rbac_for_namespace(self, namespace: str):
         """
+        Create necessary service account objects for a namespace's functioning:
+        - ClusterRoleBinding and ClusterRole
+        - Service account
+        - Gateway
+        """ 
+        rbac_api = client.RbacAuthorizationV1Api()
+        # Create cluster role
         try:
-            # TODO create a CRD for flow deployments so we don't have to delete individual components
-            # service
-            self.core_api.delete_namespaced_service(name=f"{deployment_name}-service", namespace=namespace)
-            # deployment
-            client.AppsV1Api().delete_namespaced_deployment(name=f"{deployment_name}", namespace=namespace)
-            # ingress
-            client.NetworkingV1Api().delete_namespaced_ingress(name=f"{deployment_name}-ingress", namespace=namespace)
-            return True
+            cluster_role = rbac_api.create_cluster_role(
+                body=client.V1ClusterRole(
+                    metadata=client.V1ObjectMeta(name=f"{namespace}-reader-role"),
+                    rules=[
+                        client.V1PolicyRule(
+                            api_groups=[""],
+                            resources=["nodes"],
+                            verbs=["get", "list", "watch"]
+                        )
+                    ]
+                )
+            )
         except Exception as e:
-            print(f"Exception when calling CoreV1Api->delete_namespace: {str(e)}")
+            cluster_role = {"Error": str(e)}
+        
+        # Create cluster role binding
+        try: 
+            cluster_role_binding = rbac_api.create_cluster_role_binding(
+                body=client.V1ClusterRoleBinding(
+                    metadata=client.V1ObjectMeta(name=f"{namespace}-reader-binding"),
+                    subjects=[
+                        client.V1Subject(
+                            kind="ServiceAccount",
+                            name="reader-sa",
+                            namespace=namespace
+                        )
+                    ],
+                    role_ref=client.V1RoleRef(
+                        kind="ClusterRole",
+                        name=f"{namespace}-reader-role",
+                        api_group="rbac.authorization.k8s.io"
+                    )
+                )
+            )
+        except Exception as e:
+            cluster_role_binding = {"Error": str(e)}
+        
+        try:
+            # Create service account
+            service_account = self.core_api.create_namespaced_service_account(
+                namespace=namespace,
+                body=client.V1ServiceAccount(
+                    metadata=client.V1ObjectMeta(
+                        name="reader-sa",
+                        namespace=namespace
+                    )
+                )
+            )
+        except Exception as e:
+            service_account = {"Error": str(e)}
+        
+        try:
+            # Create gateway
+            gateway = self.kube_deploy_custom_object(
+                group="gateway.networking.k8s.io",
+                api_version="v1",
+                namespace=namespace,
+                plural="gateways",
+                body={
+                    "apiVersion": "gateway.networking.k8s.io/v1",
+                    "kind": "Gateway",
+                    "metadata": {
+                        "labels": {
+                            "istio.io/waypoint-for": "all" # service, workload, all, none
+                        },
+                        "name": f"{namespace}-waypoint",
+                        "namespace": namespace
+                    },
+                    "spec": {
+                        "gatewayClassName": "istio-waypoint",
+                        "listeners": [
+                            {
+                            "name": "mesh",
+                            "port": 15008,
+                            "protocol": "HBONE"
+                            }
+                        ]
+                    }
+                }
+            )
+        except Exception as e:
+            gateway = {"Error": str(e)}
+        
+        return {
+            "cluster_role": force_serialisation(cluster_role),
+            "cluster_role_binding": force_serialisation(cluster_role_binding),
+            "service_account": force_serialisation(service_account),
+            "gateway": force_serialisation(gateway)
+        }
 
     def list_deployments(self, namespace, inspect_services=False):
         """ List deployments in a namespace"""
@@ -1253,84 +1349,6 @@ class KubeAPI():
                 model_deployments[service.metadata.name]["ports"] = [(port.node_port, port.target_port) for port in service.spec.ports]
 
         return model_deployments
-    
-    def get_storage_usage(self, namespace, target_storages: list=None):
-
-        storages = defaultdict(dict)
-
-        # get pvc statuses
-        pvc_list = self.core_api.list_namespaced_persistent_volume_claim(namespace)
-
-        for pvc in pvc_list.items:
-            storages[pvc.metadata.name] = {
-                "status": pvc.status.phase
-            }
-
-        # Fetch metrics
-        response = requests.get(f"{LONGHORN_MANAGER_ENDPOINT}/metrics")
-        if response.status_code != 200:
-            print("Failed to fetch metrics:", response.text)
-            exit()
-
-        # Parse metrics to extract longhorn PVC details
-        storage_capacity = extract_longhorn_metric_from_prometheus(
-            metric_keys=["longhorn_volume_actual_size", "longhorn_volume_capacity_bytes"],
-            map_fields={"longhorn_volume_actual_size": "used_capacity", "longhorn_volume_capacity_bytes": "total_capacity"},
-            metrics=response.text
-        )
-        for pvc in storages:
-            if pvc not in storage_capacity:
-                storage_capacity[pvc] = {"used_capacity": 0, "total_capacity": 0}
-            storages[pvc] = {**storages[pvc], **storage_capacity[pvc]}
-            
-        return {name: data for name, data in storages.items() if target_storages is None or name in target_storages}
-
-    def deploy_agent_builder(
-        self,
-        deployment_name,
-        namespace,
-        username,
-        password,
-        num_cores=1,
-        ram_memory="1Gi",
-        storage_memory="0.5Gi",
-        replicas=1
-    ):
-        # Deploy a deepsparse model
-        yaml = create_agent_builder_deployment_yaml(
-            values={
-                "deployment_name": deployment_name,
-                "namespace": namespace,
-                "username": base64.b64encode(username.encode("ascii")).decode("ascii"),
-                "password": password,
-                "num_cores": num_cores,
-                "ram_memory": ram_memory,
-                "storage_memory": storage_memory,
-                "replicas": replicas
-            }
-        )
-        return self.kube_deploy(yaml)
-    
-    def delete_agent_builder(
-        self,
-        deployment_name,
-        namespace
-    ):
-        """Delete an agent builder deployment within a namespace.
-        """
-        try:
-            # TODO create a CRD for flow deployments so we don't have to delete individual components
-            # service
-            self.core_api.delete_namespaced_service(name=f"{deployment_name}-agent-builder-service", namespace=namespace)
-            # deployment
-            client.AppsV1Api().delete_namespaced_deployment(name=f"{deployment_name}-agent-builder", namespace=namespace)
-            # ingress
-            client.NetworkingV1Api().delete_namespaced_ingress(name=f"{deployment_name}-agent-builder-ingress", namespace=namespace)
-            # pvc
-            self.core_api.delete_namespaced_persistent_volume_claim(name=f"{deployment_name}-agent-builder-pvc", namespace=namespace)
-            return True
-        except Exception as e:
-            print(f"Exception when calling delete agent builder: {str(e)}")
 
     def delete_labeled_resources(self, namespace, label_key: str, label_value: str = None):
         """Delete all resources in a namespace with a given label"""
@@ -1382,103 +1400,33 @@ class KubeAPI():
             "deleted_resources": deleted_resources,
             "failures": failed_resources
         }
-    
-    ## DEPRECATED ##
-        
-    def deploy_generic_model(self, config: str, force_namespace: str="default"):
-        # Deploy a generic config
-        return self.kube_deploy_plus(
-            yaml_strs=config,
-            force_namespace=force_namespace)
 
-    def find_resources_with_label(self, namespace:str, labels: dict):
-        core_api = client.CoreV1Api()
-        apps_api = client.AppsV1Api()
-        batch_v1_api = client.BatchV1Api()
-        #batch_v1beta1_api = client.BatchV1beta1Api()
+    def create_userspace(self,
+        name: str, 
+        extra_labels: dict=None, 
+        resource_quota: dict=None
+    ):
+        """
+        Create a userspace for a given namespace:
 
-        resources_found = {}
+        - Namespace with labels, ClusterRoleBinding, Service account and Gateway
+        - Resource quota
+        """
+        results = {}
+        # Create namespace
+        ns = self.create_namespace(
+            name=name,
+            labels=extra_labels)
+        results.update({"namespace": force_serialisation(ns)})
 
-        resource_types = {
-            'pod': core_api.list_namespaced_pod,
-            'service': core_api.list_namespaced_service,
-            'daemonset': apps_api.list_namespaced_daemon_set,
-            'deployment': apps_api.list_namespaced_deployment,
-            'replicaset': apps_api.list_namespaced_replica_set,
-            'statefulset': apps_api.list_namespaced_stateful_set,
-            'job': batch_v1_api.list_namespaced_job,
-            'persistentvolumeclaim': core_api.list_namespaced_persistent_volume_claim,
-            'secret': core_api.list_namespaced_secret
-        }
+        # apply optional resource quotas
+        if resource_quota is not None:
+            rq = self.set_resource_quota(
+                namespace=name,
+                quotas=resource_quota)
+            results.update({"resourcequota": force_serialisation(rq)})
+        return results
 
-        label_selector = ",".join(
-            [f"{label_key}={label_value}" if label_value is not None else label_key for label_key, label_value in labels.items()]
-        )
-
-        for resource_type, list_func in resource_types.items():
-            try:
-                resources = list_func(namespace, label_selector=label_selector)
-                if resources.items:
-                    resources_found[resource_type] = {resource.metadata.name: resource.metadata.to_dict() for resource in resources.items}
-            except Exception as e:
-                print(f"Exception when checking for {resource_type}: {e}")
-
-        return resources_found
-
-    def find_nodeport_url(self, namespace:str, label_key:str, label_value=None):
-        """ Termporary Way to find the nodeport url for a service with a given label"""
-
-    
-        # pull only the service with the given label
-        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
-
-        service_ports = {}        
-
-        resources = self.core_api.list_namespaced_service(namespace, label_selector=label_selector)
-        if resources.items:
-            for service in resources.items:
-                node_ports = []
-                if service.spec.type == "NodePort":
-                    for port in service.spec.ports:
-                        # Check if the port is a NodePort and add it to the list
-                        if port.node_port:
-                            node_ports.append(port.node_port)
-                service_ports[service.metadata.name] = max(node_ports)
-
-        return service_ports
-    
-    def get_job_info_for_labels(self, labels, namespace, tail_lines=100):
-        """Aggregates kubectl describe and kubectl logs when available"""
-        job_info = defaultdict(dict)
-        try:
-            match = self.get_logs_for_labels(
-                labels=labels,
-                namespace=namespace,
-                tail_lines=tail_lines
-            )
-            for label_match, info in match.items():
-                job_info[label_match] = defaultdict(dict)
-                for pod_name, logs in info.items():
-                    job_info[label_match][pod_name]["logs"] = logs
-        except Exception as e:
-            print(f"Error in get log for labels: {str(e)}")
-            pass
-        try:
-            match = self.describe_pods_for_labels(
-                labels=labels,
-                namespace=namespace
-            )
-            for label_match, descriptions in match.items():
-                for pod_name, description in descriptions.items():
-                    if pod_name not in job_info[label_match]:
-                        job_info[label_match] = {pod_name: {}}
-                    job_info[label_match][pod_name]["describe"] = description
-        except Exception as e:
-            print(f"Error in describe pods for labels: {str(e)}")
-            pass
-
-        return job_info
-    
     def set_resource_quota(self, namespace: str, quotas: str, labels: dict=None):
         """
         Set resource quota for a given namespace
@@ -1586,6 +1534,224 @@ class KubeAPI():
             return HelmClient().repo_search(keyword=term)
         except Exception as e:
             return {"error": str(e)}
+    
+    ################
+    ## DEPRECATED ##
+    ################
+    def deploy_flow(
+        self,
+        deployment_name,
+        namespace,
+        flow_id,
+        flow_url,
+        api_key,
+        num_cores=1,
+        ram_memory="1Gi"
+    ):
+        # Deploy a deepsparse model
+        yaml = create_flow_deployment_yaml(
+            values={
+                "deployment_name": deployment_name,
+                "username": namespace,
+                "num_cores": num_cores,
+                "ram_memory": ram_memory,
+                "api_key": api_key,
+                "flow_id": flow_id,
+                "flow_url": flow_url
+            }
+        )
+        return self.kube_deploy(yaml)
+    
+    def delete_flow(
+        self,
+        deployment_name,
+        namespace
+    ):
+        """Delete a flow deployment within a namespace.
+        """
+        try:
+            # TODO create a CRD for flow deployments so we don't have to delete individual components
+            # service
+            self.core_api.delete_namespaced_service(name=f"{deployment_name}-service", namespace=namespace)
+            # deployment
+            client.AppsV1Api().delete_namespaced_deployment(name=f"{deployment_name}", namespace=namespace)
+            # ingress
+            client.NetworkingV1Api().delete_namespaced_ingress(name=f"{deployment_name}-ingress", namespace=namespace)
+            return True
+        except Exception as e:
+            print(f"Exception when calling CoreV1Api->delete_namespace: {str(e)}")
+
+    def get_storage_usage(self, namespace, target_storages: list=None):
+
+        storages = defaultdict(dict)
+
+        # get pvc statuses
+        pvc_list = self.core_api.list_namespaced_persistent_volume_claim(namespace)
+
+        for pvc in pvc_list.items:
+            storages[pvc.metadata.name] = {
+                "status": pvc.status.phase
+            }
+
+        # Fetch metrics
+        response = requests.get(f"{LONGHORN_MANAGER_ENDPOINT}/metrics")
+        if response.status_code != 200:
+            print("Failed to fetch metrics:", response.text)
+            exit()
+
+        # Parse metrics to extract longhorn PVC details
+        storage_capacity = extract_longhorn_metric_from_prometheus(
+            metric_keys=["longhorn_volume_actual_size", "longhorn_volume_capacity_bytes"],
+            map_fields={"longhorn_volume_actual_size": "used_capacity", "longhorn_volume_capacity_bytes": "total_capacity"},
+            metrics=response.text
+        )
+        for pvc in storages:
+            if pvc not in storage_capacity:
+                storage_capacity[pvc] = {"used_capacity": 0, "total_capacity": 0}
+            storages[pvc] = {**storages[pvc], **storage_capacity[pvc]}
+            
+        return {name: data for name, data in storages.items() if target_storages is None or name in target_storages}
+
+    def deploy_agent_builder(
+        self,
+        deployment_name,
+        namespace,
+        username,
+        password,
+        num_cores=1,
+        ram_memory="1Gi",
+        storage_memory="0.5Gi",
+        replicas=1
+    ):
+        # Deploy a deepsparse model
+        yaml = create_agent_builder_deployment_yaml(
+            values={
+                "deployment_name": deployment_name,
+                "namespace": namespace,
+                "username": base64.b64encode(username.encode("ascii")).decode("ascii"),
+                "password": password,
+                "num_cores": num_cores,
+                "ram_memory": ram_memory,
+                "storage_memory": storage_memory,
+                "replicas": replicas
+            }
+        )
+        return self.kube_deploy(yaml)
+    
+    def delete_agent_builder(
+        self,
+        deployment_name,
+        namespace
+    ):
+        """Delete an agent builder deployment within a namespace.
+        """
+        try:
+            # TODO create a CRD for flow deployments so we don't have to delete individual components
+            # service
+            self.core_api.delete_namespaced_service(name=f"{deployment_name}-agent-builder-service", namespace=namespace)
+            # deployment
+            client.AppsV1Api().delete_namespaced_deployment(name=f"{deployment_name}-agent-builder", namespace=namespace)
+            # ingress
+            client.NetworkingV1Api().delete_namespaced_ingress(name=f"{deployment_name}-agent-builder-ingress", namespace=namespace)
+            # pvc
+            self.core_api.delete_namespaced_persistent_volume_claim(name=f"{deployment_name}-agent-builder-pvc", namespace=namespace)
+            return True
+        except Exception as e:
+            print(f"Exception when calling delete agent builder: {str(e)}")
+        
+    def deploy_generic_model(self, config: str, force_namespace: str="default"):
+        # Deploy a generic config
+        return self.kube_deploy_plus(
+            yaml_strs=config,
+            force_namespace=force_namespace)
+
+    def find_resources_with_label(self, namespace:str, labels: dict):
+        core_api = client.CoreV1Api()
+        apps_api = client.AppsV1Api()
+        batch_v1_api = client.BatchV1Api()
+        #batch_v1beta1_api = client.BatchV1beta1Api()
+
+        resources_found = {}
+
+        resource_types = {
+            'pod': core_api.list_namespaced_pod,
+            'service': core_api.list_namespaced_service,
+            'daemonset': apps_api.list_namespaced_daemon_set,
+            'deployment': apps_api.list_namespaced_deployment,
+            'replicaset': apps_api.list_namespaced_replica_set,
+            'statefulset': apps_api.list_namespaced_stateful_set,
+            'job': batch_v1_api.list_namespaced_job,
+            'persistentvolumeclaim': core_api.list_namespaced_persistent_volume_claim,
+            'secret': core_api.list_namespaced_secret
+        }
+
+        label_selector = ",".join(
+            [f"{label_key}={label_value}" if label_value is not None else label_key for label_key, label_value in labels.items()]
+        )
+
+        for resource_type, list_func in resource_types.items():
+            try:
+                resources = list_func(namespace, label_selector=label_selector)
+                if resources.items:
+                    resources_found[resource_type] = {resource.metadata.name: resource.metadata.to_dict() for resource in resources.items}
+            except Exception as e:
+                print(f"Exception when checking for {resource_type}: {e}")
+
+        return resources_found
+
+    def find_nodeport_url(self, namespace:str, label_key:str, label_value=None):
+        """ Termporary Way to find the nodeport url for a service with a given label"""
+
+    
+        # pull only the service with the given label
+        label_selector = label_key if label_value is None else f"{label_key}={label_value}"
+
+        service_ports = {}        
+
+        resources = self.core_api.list_namespaced_service(namespace, label_selector=label_selector)
+        if resources.items:
+            for service in resources.items:
+                node_ports = []
+                if service.spec.type == "NodePort":
+                    for port in service.spec.ports:
+                        # Check if the port is a NodePort and add it to the list
+                        if port.node_port:
+                            node_ports.append(port.node_port)
+                service_ports[service.metadata.name] = max(node_ports)
+
+        return service_ports
+    
+    def get_job_info_for_labels(self, labels, namespace, tail_lines=100):
+        """Aggregates kubectl describe and kubectl logs when available"""
+        job_info = defaultdict(dict)
+        try:
+            match = self.get_logs_for_labels(
+                labels=labels,
+                namespace=namespace,
+                tail_lines=tail_lines
+            )
+            for label_match, info in match.items():
+                job_info[label_match] = defaultdict(dict)
+                for pod_name, logs in info.items():
+                    job_info[label_match][pod_name]["logs"] = logs
+        except Exception as e:
+            print(f"Error in get log for labels: {str(e)}")
+            pass
+        try:
+            match = self.describe_pods_for_labels(
+                labels=labels,
+                namespace=namespace
+            )
+            for label_match, descriptions in match.items():
+                for pod_name, description in descriptions.items():
+                    if pod_name not in job_info[label_match]:
+                        job_info[label_match] = {pod_name: {}}
+                    job_info[label_match][pod_name]["describe"] = description
+        except Exception as e:
+            print(f"Error in describe pods for labels: {str(e)}")
+            pass
+
+        return job_info
 
 
 if __name__ == "__main__":

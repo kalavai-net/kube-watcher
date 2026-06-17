@@ -32,9 +32,11 @@ rules:
         - datashim.io
         - scheduling.k8s.io
         - helm.toolkit.fluxcd.io
+        - helm.cattle.io
         - source.toolkit.fluxcd.io
         - kalavai.net
         - traefik.io
+        - gateway.networking.k8s.io
     resources:
       - pods
       - componentstatuses
@@ -43,6 +45,7 @@ rules:
       - deployments
       - events
       - endpoints
+      - gateways
       - helmreleases
       - helmrepositories
       - horizontalpodautoscalers
