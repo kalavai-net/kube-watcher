@@ -14,6 +14,7 @@ import tarfile
 import glob
 from kubernetes import config, client, utils
 from fastapi import HTTPException
+from prometheus_client.parser import text_string_to_metric_families
 
 from kube_watcher.utils import (
     create_flow_deployment_yaml,
@@ -137,6 +138,20 @@ class KubeAPI():
         nodes = []
         for spec in nodes_data.get("items", []):
             nodes.append(spec.get("metadata", {}).get("name"))
+        return nodes
+
+    def get_node_ips(self, type="InternalIP"):
+        node_list = self.core_api.list_node(_preload_content=False)
+        nodes_data = json.loads(node_list.data)
+        nodes = {}
+        for spec in nodes_data.get("items", []):
+            node_name = spec.get("metadata", {}).get("name")
+            # parse address
+            address = ""
+            for addr in spec.get("status", {}).get("addresses", []):
+                if addr.get("type") == type:
+                    address = addr.get("address")
+            nodes[node_name] = address
         return nodes
     
     def get_nodes_with_labels(self, labels: dict) -> list:
@@ -316,6 +331,52 @@ class KubeAPI():
                             available_resources[node_name][resource] -= cast_resource_value(reqs[resource])
 
         return available_resources
+
+    def get_gpu_metrics(self):
+        """Using hami metrics endpoint to get gpu metrics"""
+
+        gpu_metrics = {}
+        url = f"http://0.0.0.0:31993/metrics"
+        try:
+            response = requests.get(url)
+            metrics = text_string_to_metric_families(response.text)
+            for family in metrics:
+                gpu_metrics[family.name] = []
+                for sample in family.samples:
+                    gpu_metrics[family.name].append({
+                        "name": sample.name,
+                        "value": sample.value,
+                        "labels": sample.labels
+                    })
+            return gpu_metrics
+        except Exception as e:
+            return {"error": f"Error when extracting GPU metrics: {str(e)}"}
+        
+    def get_gpu_utilisation(self):
+        metrics = self.get_gpu_metrics()
+
+        if "error" in metrics:
+            return metrics
+        
+        # parse GPU info
+        gpu_memory_utilisation = {}
+        for metric in metrics.get("hami_node_gpu_overview", []):
+            gpu_memory_utilisation[metric["labels"].get("device_uuid", "")] = {
+                "name": metric["labels"].get("device_type", ""),
+                "node": metric["labels"].get("node", "")
+            }
+
+        # parse GPU memory utilisation
+        for metric in ["hami_gpu_memory_limit_bytes", "hami_gpu_memory_allocated_bytes", "hami_gpu_core_limit_ratio", "hami_gpu_core_allocated_ratio"]:
+            for values in metrics.get(metric, []):
+                gpu_memory_utilisation[values["labels"]["device_uuid"]].update(
+                    {
+                        metric: values["value"]
+                    }
+                )
+        
+
+        return gpu_memory_utilisation
     
     def get_node_gpus(self, node_names=None, gpu_key="hami.io/node-nvidia-register"):
 
@@ -1758,12 +1819,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     print(
-        api.create_or_update_user_data(
-            name="test-secret",
-            namespace="default",
-            data={"test": "something"},
-            encrypted=False
-        )
+        json.dumps(api.get_gpu_utilisation(), indent=2)
     )
     exit()
     res = api.list_namespaced_kalavaijob(namespace="default", label_selector=None)

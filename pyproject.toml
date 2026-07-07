@@ -1,6 +1,6 @@
 [tool.poetry]
 name        = "kube_watcher"
-version     = "2026.6.3"
+version     = "2026.7.1"
 description = "API to interact with kubernetes cluster"
 authors     = ["Carlos Fernandez Musoles <carlos@kalavai.net>"]
 
@@ -9,6 +9,7 @@ authors     = ["Carlos Fernandez Musoles <carlos@kalavai.net>"]
 python                  = ">= 3.10, < 4.0" 
 kubernetes              = { version = "^27.2.0" }
 prometheus-api-client   = { version = "^0.5.3" }
+prometheus-client       = { version = "^0.25.0" }
 plotext                 = { version = "^5.2.8" }
 fastapi                 = { version = "0.101.1", extras = ["all"] }
 pyyaml                  = { version = "6.0.1" }

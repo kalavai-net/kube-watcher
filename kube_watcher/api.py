@@ -256,6 +256,15 @@ async def node_gpus(request: NodesRequest, api_key: str = Depends(verify_read_ke
     gpus = kube_api.get_node_gpus(node_names=request.node_names)
     return gpus
 
+@app.get("/v1/get_gpu_metrics", 
+    operation_id="get_gpu_metrics",
+    summary="Get GPU utilisation metrics for all GPUs in the Kalavai pool",
+    tags=["pool_info"],
+    description="Gets GPU utilisation metrics, such as gpu count and vRAM memory utilisation, for all nodes in the Kalavai pool",
+    response_description="GPU utilisation metrics for the nodes in the kalavai pool")
+async def gpu_metrics(api_key: str = Depends(verify_read_key)):
+    return kube_api.get_gpu_utilisation()
+
 @app.post("/v1/get_pods_with_status", 
     operation_id="get_pods_with_status",
     summary="Get pods with a given status within a set of nodes in the Kalavai compute pool",
