@@ -34,7 +34,8 @@ logger = logging.getLogger(__name__)
 
 class KubeAPI():
     def __init__(self, in_cluster=False):
-        if in_cluster:
+        self.in_cluster = in_cluster
+        if self.in_cluster:
             config.load_incluster_config()
         else:
             # Only works if this script is run by K8s as a POD
@@ -336,7 +337,7 @@ class KubeAPI():
         """Using hami metrics endpoint to get gpu metrics"""
 
         gpu_metrics = {}
-        url = f"http://0.0.0.0:31993/metrics"
+        url = f"http://0.0.0.0:31993/metrics" if not self.in_cluster else "http://hami-vgpu-scheduler.kalavai.svc:31993/metrics"
         try:
             response = requests.get(url)
             metrics = text_string_to_metric_families(response.text)
