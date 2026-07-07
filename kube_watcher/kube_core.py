@@ -364,7 +364,8 @@ class KubeAPI():
         for metric in metrics.get("hami_node_gpu_overview", []):
             gpu_memory_utilisation[metric["labels"].get("device_uuid", "")] = {
                 "name": metric["labels"].get("device_type", ""),
-                "node": metric["labels"].get("node", "")
+                "node": metric["labels"].get("node", ""),
+                "workloads": metric["labels"].get("shared_containers", "")
             }
 
         # parse GPU memory utilisation
