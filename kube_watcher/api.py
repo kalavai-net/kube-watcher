@@ -911,6 +911,7 @@ async def deploy_template(request: TemplateDeploymentRequest, can_force_namespac
         target_labels_ops=request.target_labels_ops,
         namespace=namespace,
         is_update=request.is_update,
+        resources=request.resources,
         random_suffix=request.random_suffix
     )
     print("*******************", result)

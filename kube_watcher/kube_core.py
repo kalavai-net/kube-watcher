@@ -812,7 +812,8 @@ class KubeAPI():
         template_repo,
         template_version=None,
         is_update=False,
-        random_suffix=True
+        random_suffix=True,
+        resources=None
     ):
         """
         Deploy KalavaiJob (templated jobs)
@@ -837,7 +838,8 @@ class KubeAPI():
                 "priorityClassName": priority,
                 "replicas": replicas,
                 "nodeSelectors": target_labels,
-                "nodeSelectorsOps": target_labels_ops
+                "nodeSelectorsOps": target_labels_ops,
+                "resources": resources
             }
         }
         result = self.kube_deploy_custom_object(
