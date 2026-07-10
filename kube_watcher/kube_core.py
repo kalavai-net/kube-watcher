@@ -242,7 +242,19 @@ class KubeAPI():
         total_resources = self._extract_resources(
             fn=lambda node: node.get("status", {}).get("allocatable", {}),
             node_names=node_names)
-        return total_resources["total"]
+        
+        resources = total_resources["total"]
+        # aggregate gpu utilisation info (vram only)
+        gpu_utilisation = self.get_gpu_utilisation()
+        gpu_metrics = defaultdict(float)
+        for gid, metrics in gpu_utilisation.items():
+            try:
+                gpu_metrics["vram"] += metrics["hami_gpu_memory_limit_bytes"]
+            except:
+                pass
+        for metric, value in gpu_metrics.items():
+            resources[metric] = value
+        return resources
     
     def get_available_resources(self, node_names=None):
         """Gets available resources (not currently used) in the cluster:
@@ -269,7 +281,18 @@ class KubeAPI():
                         for resource in available_resources.keys():
                             if resource in reqs:
                                 available_resources[resource] -= cast_resource_value(reqs[resource])
-
+        
+        # aggregate gpu utilisation info (vram only)
+        gpu_utilisation = self.get_gpu_utilisation()
+        gpu_metrics = defaultdict(float)
+        for gid, metrics in gpu_utilisation.items():
+            try:
+                gpu_metrics["vram"] += metrics["hami_gpu_memory_allocated_bytes"]
+            except:
+                pass
+        for metric, value in gpu_metrics.items():
+            available_resources[metric] = value
+            
         return available_resources
 
     def get_node_labels(self, node_names=None, label_filter=None, label_prefix="kalavai"):
@@ -307,7 +330,6 @@ class KubeAPI():
         - gpus
         - pods
 
-        TODO: this does not scale well with larger number of nodes. Consider switching to the CustomObjectsApi
         """
         total_resources = self._extract_resources(fn=lambda node: node.get("status", {}).get("allocatable", {}), node_names=node_names, aggregate=False)
         available_resources = {node: value["online"] for node, value in total_resources.items()}
@@ -330,6 +352,13 @@ class KubeAPI():
                     for resource in available_resources[node_name].keys():
                         if resource in reqs:
                             available_resources[node_name][resource] -= cast_resource_value(reqs[resource])
+        # add GPU utilisation info
+        gpu_utilisation = self.get_gpu_utilisation()
+        for node_name, node_resources in available_resources.items():
+            node_resources["gpus"] = []
+            for gid, values in gpu_utilisation.items():
+                if node_name == values["node"]:
+                    node_resources["gpus"].append(values)
 
         return available_resources
 
@@ -463,10 +492,16 @@ class KubeAPI():
     def get_nodes_resources(self, node_names: list=None):
         nodes_info = self.read_node(node_names=node_names)
         nodes_resources = {}
+        # add GPU information and append it to nodes info
+        gpu_utilisation = self.get_gpu_utilisation()
         for node_name, node_spec in nodes_info.items():
             nodes_resources[node_name] = {
                 key: cast_resource_value(value) for key, value in node_spec["status"]["allocatable"].items()
             }
+            nodes_resources[node_name]["gpus"] = []
+            for gid, values in gpu_utilisation.items():
+                if node_name == values["node"]:
+                    nodes_resources[node_name]["gpus"].append(values)
         return force_serialisation(nodes_resources)
     
     def delete_node(self, node_name):
@@ -1823,7 +1858,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     print(
-        json.dumps(api.get_gpu_utilisation(), indent=2)
+        json.dumps(api.get_node_available_resources(), indent=2)
     )
     exit()
     res = api.list_namespaced_kalavaijob(namespace="default", label_selector=None)
