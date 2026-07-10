@@ -186,7 +186,7 @@ async def total_resources(request: NodesRequest, api_key: str = Depends(verify_r
         if request.node_names is None or len(request.node_names) == 0:
             return {}
     if request.detailed:
-        return kube_api.get_nodes_resources(node_names=request.node_names)
+        return kube_api.get_node_resources(node_names=request.node_names)
     else:
         return kube_api.get_total_allocatable_resources(node_names=request.node_names)
 

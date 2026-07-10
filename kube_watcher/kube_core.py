@@ -287,7 +287,7 @@ class KubeAPI():
         gpu_metrics = defaultdict(float)
         for gid, metrics in gpu_utilisation.items():
             try:
-                gpu_metrics["vram"] += metrics["hami_gpu_memory_allocated_bytes"]
+                gpu_metrics["vram"] += metrics["hami_gpu_memory_limit_bytes"] - metrics["hami_gpu_memory_allocated_bytes"]
             except:
                 pass
         for metric, value in gpu_metrics.items():
@@ -352,13 +352,17 @@ class KubeAPI():
                     for resource in available_resources[node_name].keys():
                         if resource in reqs:
                             available_resources[node_name][resource] -= cast_resource_value(reqs[resource])
-        # add GPU utilisation info
+        # add GPU utilisation info (only vram for now)
         gpu_utilisation = self.get_gpu_utilisation()
         for node_name, node_resources in available_resources.items():
             node_resources["gpus"] = []
             for gid, values in gpu_utilisation.items():
                 if node_name == values["node"]:
-                    node_resources["gpus"].append(values)
+                    node_resources["gpus"].append({
+                        "name": values["name"],
+                        "gpu_id": gid,
+                        "vram": values["hami_gpu_memory_limit_bytes"] - values["hami_gpu_memory_allocated_bytes"]
+                    })
 
         return available_resources
 
@@ -489,10 +493,10 @@ class KubeAPI():
         
         return force_serialisation(nodes_info)
 
-    def get_nodes_resources(self, node_names: list=None):
+    def get_node_resources(self, node_names: list=None):
         nodes_info = self.read_node(node_names=node_names)
         nodes_resources = {}
-        # add GPU information and append it to nodes info
+        # add GPU information and append it to nodes info (vram only)
         gpu_utilisation = self.get_gpu_utilisation()
         for node_name, node_spec in nodes_info.items():
             nodes_resources[node_name] = {
@@ -501,7 +505,10 @@ class KubeAPI():
             nodes_resources[node_name]["gpus"] = []
             for gid, values in gpu_utilisation.items():
                 if node_name == values["node"]:
-                    nodes_resources[node_name]["gpus"].append(values)
+                    nodes_resources[node_name]["gpus"].append({
+                        "gpu_id": gid,
+                        "vram": values["hami_gpu_memory_limit_bytes"]
+                    })
         return force_serialisation(nodes_resources)
     
     def delete_node(self, node_name):
@@ -1858,7 +1865,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     print(
-        json.dumps(api.get_node_available_resources(), indent=2)
+        json.dumps(api.get_available_resources(), indent=2)
     )
     exit()
     res = api.list_namespaced_kalavaijob(namespace="default", label_selector=None)
