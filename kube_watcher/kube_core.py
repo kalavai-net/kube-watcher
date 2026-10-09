@@ -295,7 +295,7 @@ class KubeAPI():
             
         return available_resources
 
-    def get_node_labels(self, node_names=None, label_filter=None, label_prefix="kalavai"):
+    def get_node_labels(self, node_names=None, label_filter=None):
         # Fetch raw JSON to avoid expensive object instantiation
         kwargs = {"_preload_content": False}
         if label_filter:
@@ -308,7 +308,6 @@ class KubeAPI():
         return {
             node["metadata"]["name"]: {
                 k: v for k, v in node["metadata"].get("labels", {}).items()
-                if label_prefix is None or k.startswith(label_prefix)
             }
             for node in nodes_data.get("items", []) if node_names is None or node["metadata"]["name"] in node_names
         }
@@ -1865,7 +1864,7 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     print(
-        json.dumps(api.get_available_resources(), indent=2)
+        json.dumps(api.get_node_available_resources(), indent=2)
     )
     exit()
     res = api.list_namespaced_kalavaijob(namespace="default", label_selector=None)
