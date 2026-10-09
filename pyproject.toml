@@ -17,6 +17,7 @@ jinja2                  = { version = "3.1.4" }
 fastapi-mcp             = { version = "0.3.0" }
 mcp                     = { version = "<=1.7.0" } # tackling issue: https://github.com/modelcontextprotocol/python-sdk/issues/691
 uvicorn                 = { version = "0.34.0" }
+pydantic                = { version = "2.10.6" }
 
 black                   = { version = ">= 22.1.0", optional = true }
 
