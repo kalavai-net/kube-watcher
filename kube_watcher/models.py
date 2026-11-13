@@ -164,6 +164,16 @@ class GetLabelledResourcesRequest(BaseModel):
     labels: Dict[str, Union[str, None]]
     force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
     tail_lines: int = 100
+
+
+class StreamLabelledLogsRequest(BaseModel):
+    labels: Dict[str, Union[str, None]]
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
+    tail_lines: int = 100
+    follow: bool = Field(True, description="If True, keep the stream open and follow new log lines")
+    previous: bool = Field(False, description="If True, return logs from previously terminated containers")
+    timestamps: bool = Field(False, description="If True, prepend RFC3339 timestamps to each log line")
+    since_seconds: Optional[Union[int, None]] = Field(None, description="Only return logs newer than this many seconds")
     
 class UserRequest(BaseModel):
     email: str

@@ -9,11 +9,17 @@ from collections import defaultdict
 import uvicorn
 from starlette.requests import Request
 from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi.responses import StreamingResponse
+import asyncio
+import json
+import queue
+import threading
 from fastapi_mcp import FastApiMCP
 
 from kube_watcher.cost_core import OpenCostAPI
 
 from kube_watcher.models import (
+    StreamLabelledLogsRequest,
     NodeStatusRequest,
     NodesRequest,
     NodeCostRequest,
@@ -436,6 +442,93 @@ async def get_logs_for_label(request: GetLabelledResourcesRequest, can_force_nam
         labels=request.labels,
         tail_lines=request.tail_lines)
     return logs
+
+
+def _pump_pod_logs(pod, namespace, out_queue, stop_event, **log_kwargs):
+    """Thread worker: read one pod's log stream line-by-line into a shared queue."""
+    resp = None
+    try:
+        resp = kube_api.open_log_stream(pod=pod, namespace=namespace, **log_kwargs)
+        # resp is a urllib3 HTTPResponse when _preload_content=False
+        while not stop_event.is_set():
+            line = resp.readline()
+            if not line:
+                break
+            if isinstance(line, bytes):
+                line = line.decode("utf-8", errors="replace")
+            out_queue.put({"pod": pod, "namespace": namespace, "log": line.rstrip("\n")})
+    except Exception as e:
+        out_queue.put({"pod": pod, "namespace": namespace, "error": str(e)})
+    finally:
+        try:
+            if resp is not None:
+                resp.release_conn()
+        except Exception:
+            pass
+        out_queue.put(None)  # sentinel: this pod's stream ended
+
+
+@app.post("/v1/stream_logs_for_label",
+    operation_id="stream_logs_for_label",
+    summary="Stream logs for a given label in a namespace in the Kalavai compute pool",
+    tags=["workload_info"],
+    description="Streams logs (Server-Sent Events) for all pods matching a given label in the kalavai pool. Each event is JSON: {\"pod\": ..., \"namespace\": ..., \"log\": ...}. Send follow=false for a one-shot stream that closes when existing logs are exhausted.",
+    response_description="SSE stream of logs for the given label")
+async def stream_logs_for_label(request: StreamLabelledLogsRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_read_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+
+    targets = kube_api.list_pod_names_for_labels(
+        namespace=namespace,
+        labels=request.labels)
+    if not targets:
+        raise HTTPException(status_code=404, detail=f"No pods found matching labels {request.labels} in namespace {namespace}")
+
+    log_kwargs = dict(
+        tail_lines=request.tail_lines,
+        follow=request.follow,
+        previous=request.previous,
+        timestamps=request.timestamps,
+        since_seconds=request.since_seconds,
+    )
+
+    out_queue: queue.Queue = queue.Queue()
+    stop_event = threading.Event()
+    threads = [
+        threading.Thread(target=_pump_pod_logs, args=(pod, namespace, out_queue, stop_event), kwargs=log_kwargs, daemon=True)
+        for _, pod in targets
+    ]
+    for t in threads:
+        t.start()
+
+    async def event_generator():
+        from collections import deque
+        alive = len(threads)
+        # Per-pod dedup: remember hashes of recently sent lines so reconnects /
+        # kube retries that resend buffered lines don't produce duplicate events.
+        # Bounded deques keep memory constant on long-lived streams.
+        seen_per_pod: dict = {}
+        seq_per_pod: dict = {}
+        try:
+            while alive > 0:
+                item = await asyncio.to_thread(out_queue.get)
+                if item is None:
+                    alive -= 1
+                    continue
+                if "log" in item:
+                    pod = item.get("pod")
+                    line_hash = hash((pod, item["log"]))
+                    seen = seen_per_pod.setdefault(pod, deque(maxlen=1000))
+                    if line_hash in seen:
+                        continue  # already streamed, skip duplicate
+                    seen.append(line_hash)
+                    seq_per_pod[pod] = seq_per_pod.get(pod, 0) + 1
+                    item["seq"] = seq_per_pod[pod]
+                yield f"data: {json.dumps(item)}\n\n"
+        finally:
+            stop_event.set()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.post("/v1/get_job_details", 
     operation_id="get_job_details",

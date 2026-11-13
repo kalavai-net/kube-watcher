@@ -1005,6 +1005,34 @@ class KubeAPI():
             namespace=namespace
         )
     
+    def list_pod_names_for_labels(self, labels, namespace=None):
+        """Return list of (label_match, pod_name) for pods matching labels."""
+        match = self.find_pods_with_label(
+            namespace=namespace,
+            labels=labels
+        )
+        result = []
+        for label_match, pods in match.items():
+            for pod_name in pods.keys():
+                result.append((label_match, pod_name))
+        return result
+
+    def open_log_stream(self, pod, namespace, tail_lines=100, follow=True,
+                        previous=False, timestamps=False, since_seconds=None):
+        """Open a streaming log response for a pod. Caller must close/release it."""
+        kwargs = dict(
+            name=pod,
+            namespace=namespace,
+            tail_lines=tail_lines,
+            follow=follow,
+            previous=previous,
+            timestamps=timestamps,
+            _preload_content=False,
+        )
+        if since_seconds is not None:
+            kwargs["since_seconds"] = since_seconds
+        return self.core_api.read_namespaced_pod_log(**kwargs)
+
     def get_logs_for_labels(self, labels, namespace=None, tail_lines=100):
         """Get logs for all pods that match a label key:value"""
         match = self.find_pods_with_label(
@@ -1864,18 +1892,5 @@ if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
     print(
-        json.dumps(api.get_node_available_resources(), indent=2)
-    )
-    exit()
-    res = api.list_namespaced_kalavaijob(namespace="default", label_selector=None)
-    
-    ns_logs = defaultdict(dict)
-    for job in res["items"]:
-        job_id = job.get("metadata", {}).get("labels", {}).get("jobId", None)
-        ns_logs[job_id]["pods"] = job.get("status", {}).get("podRecords")
-        ns_logs[job_id]["services"] = job.get("status", {}).get("serviceRecords")
-        ns_logs[job_id]["jobs"] = job.get("spec", {})
-    
-    print(
-        json.dumps(ns_logs, indent=2)
+        json.dumps(api.get_logs_for_labels(labels={"component": "anythingllm"}, namespace="default"), indent=2)
     )
