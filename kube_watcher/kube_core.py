@@ -866,13 +866,15 @@ class KubeAPI():
         """
         name = sanitize_kubernetes_name(name + "-" + str(uuid.uuid4())[:6]) if not is_update and random_suffix else name
 
+        # get template category
+        template_category = self.helm_show_chart(chart_name=f"{template_repo}/{template_chart}").get("annotations", {}).get("category", "unknown")
         body = {
             "apiVersion": "kalavai.net/v1",
             "kind": "KalavaiJob",
             "metadata": {
                 "name": name,
                 "labels": {
-                    TEMPLATE_CATEGORY_LABEL: template_repo, # TODO
+                    TEMPLATE_CATEGORY_LABEL: template_category,
                     TEMPLATE_TYPE_LABEL: template_chart
                 }
             },
@@ -1898,6 +1900,8 @@ class KubeAPI():
 if __name__ == "__main__":
     
     api = KubeAPI(in_cluster=False)
+
+    data = api.helm_show_chart(chart_name="kalavai-templates/llama.cpp")
     print(
-        json.dumps(api.get_logs_for_labels(labels={"component": "anythingllm"}, namespace="default"), indent=2)
+        json.dumps(data, indent=2)
     )
