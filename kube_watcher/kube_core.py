@@ -26,9 +26,12 @@ from kube_watcher.utils import (
     HelmClient,
     sanitize_kubernetes_name
 )
+from kube_watcher.envs import (
+    LONGHORN_MANAGER_ENDPOINT,
+    TEMPLATE_CATEGORY_LABEL,
+    TEMPLATE_TYPE_LABEL
+)
 
-
-LONGHORN_MANAGER_ENDPOINT = os.getenv("LONGHORN_MANAGER_ENDPOINT", "http://localhost:30132")
 
 logger = logging.getLogger(__name__)
 
@@ -868,6 +871,10 @@ class KubeAPI():
             "kind": "KalavaiJob",
             "metadata": {
                 "name": name,
+                "labels": {
+                    TEMPLATE_CATEGORY_LABEL: template_repo, # TODO
+                    TEMPLATE_TYPE_LABEL: template_chart
+                }
             },
             "spec": {
                 "template": {

@@ -57,6 +57,10 @@ from kube_watcher.jobs import (
     JobTemplate,
     get_template_types
 )
+from kube_watcher.envs import (
+    KALAVAI_USER_KEY,
+    TEMPLATE_ID_LABEL
+)
 
 
 logger = logging.getLogger(__name__)
@@ -76,8 +80,6 @@ USE_AUTH = not os.getenv("KW_USE_AUTH", "True").lower() in ("false", "0", "f", "
 ADMIN_KEY = os.getenv("KW_ADMIN_KEY") # all permissions
 WRITE_KEY = os.getenv("KW_WRITE_KEY") # deploy and read permissions
 READ_ONLY_KEY = os.getenv("KW_READ_ONLY_KEY") # read permissions
-
-KALAVAI_USER_KEY = os.getenv("KALAVAI_USER_KEY", "kalavai.cluster.user")
 
 kube_api = KubeAPI(in_cluster=IN_CLUSTER)
 app = FastAPI()
@@ -564,7 +566,7 @@ async def get_jobs_overview(request: GetJobsOverviewRequest, can_force_namespace
             jobs = kube_api.list_namespaced_kalavaijob(namespace=namespace, label_selector=None)
             ns_logs[namespace] = defaultdict(dict)
             for job in jobs["items"]:
-                job_id = job.get("metadata", {}).get("labels", {}).get("jobId", None)
+                job_id = job.get("metadata", {}).get("labels", {}).get(TEMPLATE_ID_LABEL, None)
                 ns_logs[namespace][job_id]["status"] = job.get("status", {})
                 ns_logs[namespace][job_id]["spec"] = job.get("spec", {})
                 ns_logs[namespace][job_id]["metadata"] = job.get("metadata", {})
