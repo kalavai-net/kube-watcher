@@ -32,6 +32,7 @@ from kube_watcher.models import (
     TemplateDeploymentRequest,
     TemplateDeleteRequest,
     TemplateUpdateRequest,
+    TemplateSuspendRequest,
     CustomObjectDeploymentRequest,
     PodsWithStatusRequest,
     ServiceWithLabelRequest,
@@ -1032,6 +1033,27 @@ async def patch_template(request: TemplateUpdateRequest, can_force_namespace: bo
     )
     print("*******************", result)
     
+    return result
+
+@app.post("/v1/suspend_template",
+    operation_id="suspend_template",
+    summary="Suspend or resume a job from a template in the Kalavai compute pool",
+    tags=["workload_management"],
+    description="Sets spec.suspend on a KalavaiJob in the kalavai pool",
+    response_description="Suspend result")
+async def suspend_template(request: TemplateSuspendRequest, can_force_namespace: bool = Depends(verify_force_namespace), api_key: str = Depends(verify_write_key), namespace: str = Depends(verify_write_namespace)):
+    if can_force_namespace and request.force_namespace is not None:
+        namespace = request.force_namespace
+
+    print(">>>> Suspend template on NAMESPACE: ", namespace)
+
+    result = kube_api.set_template_suspend(
+        name=request.name,
+        namespace=namespace,
+        suspend=request.suspend
+    )
+    print("*******************", result)
+
     return result
 
 @app.delete("/v1/delete_template", 

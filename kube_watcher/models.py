@@ -204,6 +204,12 @@ class TemplateDeleteRequest(BaseModel):
     force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
 
 
+class TemplateSuspendRequest(BaseModel):
+    name: str
+    suspend: bool
+    force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
+
+
 class JobTemplateRequest(BaseModel):
     force_namespace: Optional[Union[str, None]] = Field(None, description="Optional namespace override")
     template_values: dict = None

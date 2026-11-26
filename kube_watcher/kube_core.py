@@ -930,6 +930,30 @@ class KubeAPI():
 
         return force_serialisation(result)
     
+    def set_template_suspend(
+        self,
+        name,
+        namespace,
+        suspend: bool
+    ):
+        """Set spec.suspend on a KalavaiJob object."""
+
+        patched_body = {
+            "apiVersion": "kalavai.net/v1",
+            "kind": "KalavaiJob",
+            "spec": {"suspend": suspend}
+        }
+        result = self.kube_patch_custom_object(
+            name=name,
+            group="kalavai.net",
+            api_version="v1",
+            namespace=namespace,
+            plural="kalavaijobs",
+            patched_body=patched_body
+        )
+
+        return force_serialisation(result)
+
     def kube_get_custom_objects(self, group, api_version, namespace, plural, label_selector=None):
 
         try:
