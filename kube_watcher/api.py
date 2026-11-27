@@ -572,7 +572,7 @@ async def get_jobs_overview(request: GetJobsOverviewRequest, can_force_namespace
                 ns_logs[namespace][job_id]["status"] = job.get("status", {})
                 ns_logs[namespace][job_id]["spec"] = job.get("spec", {})
                 ns_logs[namespace][job_id]["metadata"] = job.get("metadata", {})
-                ns_logs[namespace][job_id]["labels"] = job.get("labels", {})
+                ns_logs[namespace][job_id]["labels"] = job.get("metadata", {}).get("labels", {})
         except:
             return {}
 
